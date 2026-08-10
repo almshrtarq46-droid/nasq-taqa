@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f6b4f">
+<title>نسق الطاقة — النظام</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{--green:#0f6b4f;--green-d:#0b4d38;--copper:#b5732f;--bg:#f4f6f5;--card:#fff;--ink:#182420;--muted:#6b7770;--line:#e3e8e5;--ok:#1f9d63;--bad:#c0392b;--shadow:0 2px 10px rgba(15,60,45,.07)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:'Cairo',system-ui,sans-serif;margin:0;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5}
+h1,h2,h3{margin:0;font-weight:800}
+button{font-family:inherit;cursor:pointer;border:none}
+input,select,textarea{font-family:inherit;font-size:15px;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);outline:none}
+input:focus,select:focus{border-color:var(--green)}
+label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weight:600}
+.field{margin-bottom:13px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.btn{background:var(--green);color:#fff;padding:13px;border-radius:12px;font-weight:700;font-size:15px;width:100%;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn:active{transform:scale(.99)}.btn.copper{background:var(--copper)}.btn.ghost{background:#eef2f0;color:var(--green)}
+.btn.sm{width:auto;padding:8px 13px;font-size:13px;border-radius:10px}.btn.danger{background:#fbecea;color:var(--bad)}
+.btn:disabled{opacity:.55}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:var(--shadow)}
+.screen{display:none;min-height:100vh;padding:0}
+.screen.on{display:block}
+.center{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:22px;max-width:440px;margin:0 auto}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
+.logo{width:60px;height:60px;background:#fff;border-radius:15px;display:grid;place-items:center;box-shadow:var(--shadow)}
+.logo svg{width:42px;height:42px}
+.brand h1{font-size:22px;color:var(--green)}.brand p{margin:0;font-size:13px;color:var(--muted)}
+.tabs{display:flex;background:#eef2f0;border-radius:12px;padding:3px;margin-bottom:16px}
+.tabs button{flex:1;background:none;padding:10px;border-radius:10px;font-weight:700;color:var(--muted)}
+.tabs button.on{background:#fff;color:var(--green);box-shadow:var(--shadow)}
+.msg{padding:11px 13px;border-radius:11px;font-size:13.5px;font-weight:600;margin-bottom:13px;display:none}
+.msg.on{display:block}.msg.err{background:#fbecea;color:var(--bad)}.msg.ok{background:#e6f6ed;color:var(--ok)}.msg.info{background:#f6ecdf;color:var(--copper)}
+header{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;padding:16px;position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center}
+header .who b{font-size:15px}header .who span{font-size:12px;opacity:.85;display:block}
+main{padding:15px 14px 30px;max-width:820px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:30}
+nav button{flex:1;background:none;padding:10px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:700}
+nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
+.view{display:none}.view.on{display:block}
+.section-title{font-size:19px;margin:2px 2px 14px}
+.item{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:9px;background:#fff;display:flex;gap:11px;align-items:center}
+.item .ic{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;background:#eef4f1;color:var(--green);font-weight:800}
+.item .meta{flex:1;min-width:0}.item .meta b{font-size:14.5px;display:block}.item .meta small{color:var(--muted);font-size:12px}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.pill.ok{background:#e6f6ed;color:var(--ok)}.pill.pend{background:#f6ecdf;color:var(--copper)}.pill.susp{background:#f0f0f0;color:var(--muted)}.pill.role{background:#eef4f1;color:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:26px 10px;font-size:13.5px}
+.hint{font-size:12px;color:var(--muted);background:#f6ecdf;border-right:3px solid var(--copper);padding:9px 11px;border-radius:0 10px 10px 0;margin-bottom:13px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:13px;box-shadow:var(--shadow)}.kpi b{font-size:22px;display:block;color:var(--green)}.kpi span{font-size:12px;color:var(--muted);font-weight:600}
+.spin{width:22px;height:22px;border:3px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;display:inline-block}
+@keyframes sp{to{transform:rotate(360deg)}}
+.link{color:var(--green);font-weight:700;background:none;text-decoration:underline;font-size:13px;padding:0}
+code{background:#eef2f0;padding:1px 6px;border-radius:6px;font-size:13px}
+</style>
+</head>
+<body>
+
+<!-- ===== CONFIG SCREEN (first run: paste Supabase keys) ===== -->
+<section class="screen" id="screen-config"><div class="center">
+  <div class="brand"><div class="logo">LOGO</div><h1>ربط الخادم</h1><p>أدخل بيانات مشروع Supabase مرة واحدة</p></div>
+  <div class="card">
+    <div class="hint">تحصل عليها من لوحة Supabase: <b>Project Settings ← API</b>. راجع دليل الإعداد المرفق.</div>
+    <div class="field"><label>Project URL</label><input id="cfg_url" placeholder="https://xxxx.supabase.co"></div>
+    <div class="field"><label>anon public key</label><input id="cfg_key" placeholder="eyJ..."></div>
+    <div class="msg err" id="cfg_msg"></div>
+    <button class="btn" onclick="saveConfig()">حفظ وبدء التشغيل</button>
+  </div>
+</div></section>
+
+<!-- ===== AUTH SCREEN ===== -->
+<section class="screen" id="screen-auth"><div class="center">
+  <div class="brand"><div class="logo">LOGO</div><h1>نسق الطاقة</h1><p>نظام إدارة العمليات الميدانية</p></div>
+  <div class="tabs"><button id="tab-login" class="on" onclick="switchAuth('login')">دخول</button><button id="tab-reg" onclick="switchAuth('reg')">حساب جديد</button></div>
+  <div class="card">
+    <div class="msg" id="auth_msg"></div>
+    <div id="reg_fields" style="display:none">
+      <div class="field"><label>الاسم الكامل</label><input id="a_name" placeholder="مثال: خالد العتيبي"></div>
+      <div class="field"><label>رقم الجوال</label><input id="a_phone" inputmode="tel" placeholder="05xxxxxxxx"></div>
+    </div>
+    <div class="field"><label>البريد الإلكتروني</label><input id="a_email" type="email" inputmode="email" placeholder="name@example.com"></div>
+    <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="٦ أحرف على الأقل"></div>
+    <button class="btn" id="auth_btn" onclick="doAuth()">دخول</button>
+    <p style="text-align:center;margin:14px 0 0"><button class="link" onclick="resetConfig()">تغيير إعدادات الخادم</button></p>
+  </div>
+</div></section>
+
+<!-- ===== PENDING / SUSPENDED SCREEN ===== -->
+<section class="screen" id="screen-gate"><div class="center">
+  <div class="brand"><div class="logo">LOGO</div></div>
+  <div class="card" style="text-align:center">
+    <div id="gate_icon" style="font-size:42px;margin-bottom:8px">⏳</div>
+    <h2 id="gate_title" style="font-size:19px;margin-bottom:8px"></h2>
+    <p id="gate_text" style="color:var(--muted);font-size:14px"></p>
+    <button class="btn ghost" style="margin-top:16px" onclick="logout()">تسجيل الخروج</button>
+  </div>
+</div></section>
+
+<!-- ===== MAIN APP ===== -->
+<section class="screen" id="screen-app">
+  <header>
+    <div class="who"><b id="h_name"></b><span id="h_role"></span></div>
+    <button class="btn ghost sm" onclick="logout()">خروج</button>
+  </header>
+  <main>
+    <!-- ADMIN: approvals -->
+    <div class="view" id="v-approvals">
+      <h2 class="section-title">اعتماد الحسابات</h2>
+      <div class="hint">العامل يسجّل بنفسه ثم يظهر هنا. اعتمده ليتمكن من الدخول واستخدام التطبيق.</div>
+      <div id="approvalsList"></div>
+      <h3 style="margin:18px 2px 10px;font-size:15px">كل المستخدمين</h3>
+      <div id="allUsers"></div>
+    </div>
+    <!-- ADMIN: projects -->
+    <div class="view" id="v-projects">
+      <h2 class="section-title">المشاريع والبنود</h2>
+      <button class="btn" style="margin-bottom:13px" onclick="openProject()">+ مشروع جديد</button>
+      <div id="projList"></div>
+    </div>
+    <!-- WORKER: home -->
+    <div class="view" id="v-home">
+      <div class="grid2" id="workerKpis"></div>
+      <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3>
+        <p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
+      <div class="card" style="text-align:center;color:var(--muted)">
+        <div style="font-size:34px;margin-bottom:6px">🚧</div>
+        <b style="color:var(--ink)">الحضور والإدخال الميداني</b>
+        <p style="font-size:13px;margin:6px 0 0">قيد التطوير — المرحلة القادمة: تسجيل الحضور بالموقع، والإدخال الميداني مع الصور، متزامنة مع المكتب.</p>
+      </div>
+    </div>
+  </main>
+  <nav id="nav"></nav>
+</section>
+
+<div class="screen" id="screen-boot" style="display:flex;align-items:center;justify-content:center;min-height:100vh">
+  <div style="text-align:center;color:var(--muted)"><div class="spin" style="border-color:#cfe0d8;border-top-color:var(--green)"></div><p style="margin-top:12px">جارٍ التحميل…</p></div>
+</div>
+
+<!-- modal -->
+<div id="modal" style="position:fixed;inset:0;background:rgba(15,40,30,.45);z-index:50;display:none;align-items:flex-end;justify-content:center">
+  <div style="background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px 24px;max-height:92vh;overflow:auto"><div id="modalBody"></div></div>
+</div>
+<div id="toast" style="position:fixed;bottom:80px;right:50%;transform:translateX(50%);background:#182420;color:#fff;padding:11px 18px;border-radius:30px;font-size:13.5px;font-weight:600;z-index:99;opacity:0;transition:.25s;pointer-events:none"></div>
+
+<script>
+const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
+document.querySelectorAll('.logo').forEach(l=>l.innerHTML=LOGO_SVG);
+
+/* ---------- config (baked in) ---------- */
+const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
+let sb=null, ME=null, PROFILE=null;
+
+function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2200);}
+function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
+function clearMsg(el){el.className='msg';}
+
+function saveConfig(){
+  const url=document.getElementById('cfg_url').value.trim().replace(/\/$/,'');
+  const key=document.getElementById('cfg_key').value.trim();
+  const m=document.getElementById('cfg_msg');
+  if(!/^https:\/\/.+\.supabase\.co$/.test(url)){msg(m,'رابط المشروع غير صحيح (يجب أن ينتهي بـ .supabase.co)','err');return;}
+  if(key.length<30){msg(m,'مفتاح anon غير صحيح','err');return;}
+  localStorage.setItem('nasq_url',url);localStorage.setItem('nasq_key',key);
+  boot();
+}
+function resetConfig(){if(confirm('تغيير إعدادات الخادم؟'))location.reload();}
+function initClient(){sb=window.supabase.createClient(CFG.url,CFG.key);}
+
+/* ---------- auth ---------- */
+let authMode='login';
+function switchAuth(m){authMode=m;
+  document.getElementById('tab-login').classList.toggle('on',m==='login');
+  document.getElementById('tab-reg').classList.toggle('on',m==='reg');
+  document.getElementById('reg_fields').style.display=m==='reg'?'block':'none';
+  document.getElementById('auth_btn').textContent=m==='reg'?'إنشاء حساب':'دخول';
+  clearMsg(document.getElementById('auth_msg'));
+}
+async function doAuth(){
+  const email=document.getElementById('a_email').value.trim();
+  const pass=document.getElementById('a_pass').value;
+  const m=document.getElementById('auth_msg'), btn=document.getElementById('auth_btn');
+  if(!email||!pass){msg(m,'أدخل البريد وكلمة المرور','err');return;}
+  btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';
+  try{
+    if(authMode==='reg'){
+      const name=document.getElementById('a_name').value.trim();
+      const phone=document.getElementById('a_phone').value.trim();
+      if(!name){msg(m,'أدخل الاسم الكامل','err');return;}
+      const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,phone}}});
+      if(error)throw error;
+      msg(m,'تم إنشاء حسابك ✓ بانتظار اعتماد المدير قبل الدخول.','ok');
+      switchAuth('login');
+    }else{
+      const{error}=await sb.auth.signInWithPassword({email,password:pass});
+      if(error)throw error;
+      await afterLogin();
+    }
+  }catch(e){msg(m,translateErr(e.message),'err');}
+  finally{btn.disabled=false;btn.textContent=old;}
+}
+function translateErr(s){
+  if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';
+  if(/already registered/i.test(s))return'هذا البريد مسجّل مسبقاً';
+  if(/at least 6/i.test(s))return'كلمة المرور ٦ أحرف على الأقل';
+  if(/Email not confirmed/i.test(s))return'يجب تأكيد البريد أولاً (أو عطّل تأكيد البريد من إعدادات Supabase)';
+  return s;
+}
+async function logout(){await sb.auth.signOut();ME=null;PROFILE=null;show('screen-auth');switchAuth('login');}
+
+/* ---------- routing ---------- */
+// pure decision function (unit-tested)
+function routeFor(profile){
+  if(!profile)return'missing';
+  if(profile.status==='suspended')return'suspended';
+  if(profile.status==='pending')return'pending';
+  return profile.role==='admin'?'admin':'worker';
+}
+async function afterLogin(){
+  const{data:{user}}=await sb.auth.getUser();
+  if(!user){show('screen-auth');return;}
+  ME=user;
+  const{data:prof,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
+  if(error){ // profile row may lag right after signup
+    show('screen-gate');setGate('pending');return;
+  }
+  PROFILE=prof;
+  const route=routeFor(prof);
+  if(route==='pending'||route==='suspended'||route==='missing'){show('screen-gate');setGate(route);return;}
+  enterApp(route);
+}
+function setGate(kind){
+  const i=document.getElementById('gate_icon'),t=document.getElementById('gate_title'),x=document.getElementById('gate_text');
+  if(kind==='suspended'){i.textContent='🚫';t.textContent='الحساب موقوف';x.textContent='تواصل مع مدير النظام لإعادة تفعيل حسابك.';}
+  else{i.textContent='⏳';t.textContent='حسابك قيد الاعتماد';x.textContent='سجّلت بنجاح. المدير لازم يعتمد حسابك قبل ما تقدر تدخل. حاول لاحقاً.';}
+}
+
+/* ---------- app shell ---------- */
+function enterApp(role){
+  document.getElementById('h_name').textContent=PROFILE.full_name||ME.email;
+  document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
+  buildNav(role);show('screen-app');
+}
+function buildNav(role){
+  const nav=document.getElementById('nav');
+  const items=role==='admin'
+    ?[['approvals','الاعتمادات','M9 12l2 2 4-4'],['projects','المشاريع','M14 2H6a2 2 0 0 0-2 2v16']]
+    :[['home','الرئيسية','M3 9l9-7 9 7']];
+  nav.innerHTML=items.map((it,i)=>`<button data-v="${it[0]}" class="${i===0?'on':''}" onclick="goView('${it[0]}')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="${it[2]}"/></svg>${it[1]}</button>`).join('');
+  goView(items[0][0]);
+}
+function goView(v){
+  document.querySelectorAll('#screen-app .view').forEach(e=>e.classList.remove('on'));
+  document.getElementById('v-'+v).classList.add('on');
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  window.scrollTo(0,0);
+  if(v==='approvals')loadApprovals();
+  if(v==='projects')loadProjects();
+  if(v==='home')loadWorkerHome();
+}
+
+/* ---------- admin: approvals ---------- */
+async function loadApprovals(){
+  const{data:pend}=await sb.from('profiles').select('*').eq('status','pending').order('created_at');
+  const{data:all}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
+  const box=document.getElementById('approvalsList');
+  box.innerHTML=(pend&&pend.length)?pend.map(p=>`<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div>
+    <div class="meta"><b>${p.full_name||'—'}</b><small>${p.phone||''} · <span class="pill pend">معلّق</span></small></div>
+    <div class="row" style="flex:none;gap:6px"><button class="btn sm" onclick="setStatus('${p.id}','active')">اعتماد</button></div></div>`).join('')
+    :'<div class="empty">لا توجد حسابات بانتظار الاعتماد</div>';
+  const au=document.getElementById('allUsers');
+  au.innerHTML=(all||[]).map(p=>`<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div>
+    <div class="meta"><b>${p.full_name||'—'} ${p.id===ME.id?'<small>(أنت)</small>':''}</b>
+    <small>${p.phone||''} · <span class="pill role">${p.role==='admin'?'مدير':'عامل'}</span> <span class="pill ${p.status==='active'?'ok':p.status==='pending'?'pend':'susp'}">${statusAr(p.status)}</span></small></div>
+    ${p.id!==ME.id?`<button class="link" onclick="userActions('${p.id}','${p.role}','${p.status}')">إدارة</button>`:''}</div>`).join('');
+}
+function statusAr(s){return s==='active'?'نشط':s==='pending'?'معلّق':'موقوف';}
+async function setStatus(id,status){const{error}=await sb.from('profiles').update({status}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم التحديث ✓');loadApprovals();}
+async function setRole(id,role){const{error}=await sb.from('profiles').update({role}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم التحديث ✓');closeModal();loadApprovals();}
+function userActions(id,role,status){
+  openModal(`<h3 style="margin-bottom:14px">إدارة المستخدم</h3>
+    <button class="btn" style="margin-bottom:9px" onclick="setRole('${id}','${role==='admin'?'worker':'admin'}')">${role==='admin'?'تحويل إلى عامل':'ترقية إلى مدير'}</button>
+    ${status!=='active'?`<button class="btn ghost" style="margin-bottom:9px" onclick="setStatus('${id}','active');closeModal()">تفعيل الحساب</button>`:''}
+    ${status!=='suspended'?`<button class="btn danger" onclick="setStatus('${id}','suspended');closeModal()">إيقاف الحساب</button>`:''}
+    <button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إلغاء</button>`);
+}
+
+/* ---------- admin: projects ---------- */
+async function loadProjects(){
+  const{data:projs}=await sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false});
+  const box=document.getElementById('projList');
+  box.innerHTML=(projs&&projs.length)?projs.map(p=>`<div class="card" style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:start">
+      <div><b style="font-size:15px">${p.name}</b><div><small style="color:var(--muted)">${p.client||''} ${p.code?'· '+p.code:''}</small></div>
+      ${p.lat?`<div><small style="color:var(--muted)">📍 نطاق ${p.geofence_radius}م</small></div>`:''}</div>
+      <button class="btn ghost sm" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button>
+    </div>
+    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div>
+  </div>`).join(''):'<div class="empty">لا توجد مشاريع بعد — أضف أول مشروع</div>';
+}
+let editItems=[];
+function openProject(p){
+  editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,name:i.name,unit:i.unit,rate:i.rate})):[];
+  openModal(`<h3 style="margin-bottom:14px">${p?'تعديل مشروع':'مشروع جديد'}</h3>
+    <div class="field"><label>اسم المشروع</label><input id="m_name" value="${p?p.name:''}"></div>
+    <div class="row"><div class="field"><label>الجهة</label><input id="m_client" value="${p?(p.client||''):'الشركة السعودية للكهرباء'}"></div>
+    <div class="field"><label>رقم العقد</label><input id="m_code" value="${p?(p.code||''):''}"></div></div>
+    <div class="row"><div class="field"><label>خط العرض (lat)</label><input id="m_lat" inputmode="decimal" value="${p&&p.lat!=null?p.lat:''}" placeholder="24.7136"></div>
+    <div class="field"><label>خط الطول (lng)</label><input id="m_lng" inputmode="decimal" value="${p&&p.lng!=null?p.lng:''}" placeholder="46.6753"></div></div>
+    <div class="field"><label>نطاق الحضور (متر)</label><input id="m_rad" type="number" value="${p?p.geofence_radius:300}"></div>
+    <label>بنود الأعمال</label><div id="itemsWrap"></div>
+    <button class="btn ghost sm" style="width:100%;margin:4px 0 14px" onclick="addItemRow()">+ إضافة بند</button>
+    <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ المشروع</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+  renderItemRows();
+}
+function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div class="row" style="margin-bottom:8px">
+  <input placeholder="اسم البند" value="${it.name||''}" oninput="editItems[${i}].name=this.value" style="flex:2">
+  <input placeholder="وحدة" value="${it.unit||''}" oninput="editItems[${i}].unit=this.value">
+  <input placeholder="سعر" type="number" value="${it.rate||''}" oninput="editItems[${i}].rate=parseFloat(this.value)||0">
+  <button class="btn danger sm" style="flex:none;width:42px" onclick="editItems.splice(${i},1);renderItemRows()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لا بنود</small>';}
+function addItemRow(){editItems.push({name:'',unit:'',rate:0});renderItemRows();}
+async function saveProject(id){
+  const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المشروع');return;}
+  const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),
+    lat:parseFloat(document.getElementById('m_lat').value)||null,lng:parseFloat(document.getElementById('m_lng').value)||null,
+    geofence_radius:parseInt(document.getElementById('m_rad').value)||300};
+  const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{
+    let projectId=id;
+    if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}
+    else{rec.created_by=ME.id;const{data,error}=await sb.from('projects').insert(rec).select('id').single();if(error)throw error;projectId=data.id;}
+    // sync items: delete removed, upsert current (simple approach: delete all then insert)
+    await sb.from('work_items').delete().eq('project_id',projectId);
+    const items=editItems.filter(i=>i.name&&i.name.trim()).map(i=>({project_id:projectId,name:i.name.trim(),unit:i.unit||'وحدة',rate:Number(i.rate)||0}));
+    if(items.length){const{error}=await sb.from('work_items').insert(items);if(error)throw error;}
+    closeModal();toast('تم حفظ المشروع ✓');loadProjects();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المشروع';}
+}
+
+/* ---------- worker home ---------- */
+async function loadWorkerHome(){
+  document.getElementById('workerHi').textContent=`${PROFILE.full_name} — حسابك مفعّل. من هنا بتسجّل حضورك وأعمالك الميدانية قريباً.`;
+  const{count:eCount}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('worker_id',ME.id);
+  const{data:sum}=await sb.from('entries').select('amount').eq('worker_id',ME.id);
+  const total=(sum||[]).reduce((s,e)=>s+Number(e.amount),0);
+  document.getElementById('workerKpis').innerHTML=`
+    <div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div>
+    <div class="kpi"><b>${total.toLocaleString()}</b><span>إجمالي قيمتها ﷼</span></div>`;
+}
+
+/* ---------- modal ---------- */
+function openModal(html){document.getElementById('modalBody').innerHTML=html;document.getElementById('modal').style.display='flex';}
+function closeModal(){document.getElementById('modal').style.display='none';}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
+
+/* ---------- boot ---------- */
+async function boot(){
+  if(!CFG.url||!CFG.key){show('screen-config');return;}
+  show('screen-boot');
+  try{
+    initClient();
+    const{data:{session}}=await sb.auth.getSession();
+    if(session){await afterLogin();}else{show('screen-auth');switchAuth('login');}
+    sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){show('screen-auth');switchAuth('login');}});
+  }catch(e){show('screen-config');msg(document.getElementById('cfg_msg'),'تعذّر الاتصال بالخادم: '+e.message,'err');}
+}
+// expose for tests
+window.__test={routeFor,translateErr,statusAr};
+if(typeof document!=='undefined'&&document.getElementById('screen-boot'))boot();
+</script>
+</body>
+</html>
