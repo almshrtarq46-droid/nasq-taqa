@@ -84,9 +84,8 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     <div class="msg" id="auth_msg"></div>
     <div id="reg_fields" style="display:none">
       <div class="field"><label>الاسم الكامل</label><input id="a_name" placeholder="مثال: خالد العتيبي"></div>
-      <div class="field"><label>رقم الجوال</label><input id="a_phone" inputmode="tel" placeholder="05xxxxxxxx"></div>
     </div>
-    <div class="field"><label>البريد الإلكتروني</label><input id="a_email" type="email" inputmode="email" placeholder="name@example.com"></div>
+    <div class="field"><label>رقم الجوال</label><input id="a_phone" inputmode="tel" placeholder="05xxxxxxxx"></div>
     <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="٦ أحرف على الأقل"></div>
     <button class="btn" id="auth_btn" onclick="doAuth()">دخول</button>
   </div>
@@ -244,18 +243,20 @@ function switchAuth(m){authMode=m;
   document.getElementById('auth_btn').textContent=m==='reg'?'إنشاء حساب':'دخول';
   clearMsg(document.getElementById('auth_msg'));
 }
+function normalizePhone(p){let d=(p||'').replace(/\D/g,'');if(d.startsWith('00966'))d=d.slice(2);if(d.startsWith('966')){}else if(d.startsWith('0'))d='966'+d.slice(1);else if(d.length===9)d='966'+d;return d;}
+function identToEmail(id){id=(id||'').trim();if(id.includes('@'))return id.toLowerCase();return normalizePhone(id)+'@nasq-taqa.app';}
 async function doAuth(){
-  const email=document.getElementById('a_email').value.trim();
+  const idRaw=document.getElementById('a_phone').value.trim();
   const pass=document.getElementById('a_pass').value;
   const m=document.getElementById('auth_msg'),btn=document.getElementById('auth_btn');
-  if(!email||!pass){msg(m,'أدخل البريد وكلمة المرور','err');return;}
+  if(!idRaw||!pass){msg(m,'أدخل رقم الجوال وكلمة المرور','err');return;}
+  const email=identToEmail(idRaw);
   btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';
   try{
     if(authMode==='reg'){
       const name=document.getElementById('a_name').value.trim();
-      const phone=document.getElementById('a_phone').value.trim();
       if(!name){msg(m,'أدخل الاسم الكامل','err');btn.disabled=false;btn.textContent=old;return;}
-      const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,phone}}});
+      const{error}=await sb.auth.signUp({email,password:pass,options:{data:{full_name:name,phone:normalizePhone(idRaw)}}});
       if(error)throw error;
       msg(m,'تم إنشاء حسابك ✓ بانتظار اعتماد المدير قبل الدخول.','ok');switchAuth('login');
     }else{
@@ -647,7 +648,7 @@ async function boot(){
     sb.auth.onAuthStateChange((ev)=>{if(ev==='SIGNED_OUT'){show('screen-auth');switchAuth('login');}});
   }catch(e){show('screen-auth');toast('تعذّر الاتصال: '+e.message);}
 }
-window.__test={routeFor,translateErr,statusAr,haversine,hoursBetween};
+window.__test={routeFor,translateErr,statusAr,haversine,hoursBetween,normalizePhone,identToEmail};
 if(typeof document!=='undefined'&&document.getElementById('screen-boot'))boot();
 </script>
 </body>
