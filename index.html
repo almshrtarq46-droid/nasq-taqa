@@ -147,7 +147,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <h2 class="section-title">الموارد البشرية</h2>
       <div class="seg"><button class="on" onclick="hrTab('emp',this)">الموظفين</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
       <div id="hr_emp" class="hrbox"><div id="empList"></div></div>
-      <div id="hr_att" class="hrbox" style="display:none"><div id="map"></div><div id="attAdminList"></div></div>
+      <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
       <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الأجر = الأجر اليومي × عدد أيام الحضور هذا الشهر. عدّل الأجر اليومي من قائمة الموظفين.</div><div id="payList"></div></div>
     </div>
 
@@ -185,6 +185,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
         <div class="locbar wait" id="att_loc">📍 حدّد موقعك عند التسجيل</div>
         <div id="att_status"></div><div id="att_actions"></div>
       </div>
+      <div id="att_history"></div>
     </div>
     <div class="view" id="v-field">
       <h2 class="section-title">الإدخال الميداني</h2>
@@ -376,13 +377,14 @@ async function loadPayroll(){
 }
 let leafMap=null;
 async function loadAttAdmin(){
-  const{data:att}=await sb.from('attendance').select('*').eq('work_date',todayKey());
+  const di=document.getElementById('att_date_admin');if(di&&!di.value)di.value=todayKey();const date=di?di.value:todayKey();
+  const{data:att}=await sb.from('attendance').select('*').eq('work_date',date);
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pm={};(profs||[]).forEach(p=>pm[p.id]=p);
   drawMap(att||[],pm);
   document.getElementById('attAdminList').innerHTML=(att&&att.length)?att.map(a=>{const w=pm[a.worker_id]||{};let b,ex;
     if(a.check_out){b='<span class="badge-att out">انصرف</span>';ex=`${hm(a.check_in)} ← ${hm(a.check_out)} · ${hoursBetween(a.check_in,a.check_out)} س`;}else{b='<span class="badge-att in">حاضر</span>';ex=`منذ ${hm(a.check_in)}`;}
     const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍</a>`:'';
-    return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور اليوم</div>';
+    return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
 function hm(ts){return new Date(ts).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
 function hoursBetween(a,b){return((new Date(b)-new Date(a))/3600000).toFixed(1);}
@@ -447,7 +449,7 @@ async function loadWorkOrders(){
       <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
       ${Object.entries(byItem).map(([k,v])=>{const[n,u]=k.split('|');return `<tr><td>${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
       <tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
-      <button class="link" style="margin-top:8px" onclick="viewStationPhotos('${pid}')">📷 عرض صور الأعمال</button></div></div>`;}).join('');
+      <div class="row" style="margin-top:8px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ تعديل/حذف الأعمال</button></div></div></div>`;}).join('');
 }
 async function viewStationPhotos(pid){const es=(window._woRows||[]).filter(e=>e.project_id===pid&&(e.photo_before||e.photo_after));
   if(!es.length){toast('لا توجد صور');return;}
@@ -473,6 +475,27 @@ function exportMostakhlas(){
   aoa.push([],['ملاحظة: مسودة — تُعدّل لتطابق النموذج المعتمد من شركة الكهرباء عند توفّره.']);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:5},{wch:28},{wch:9},{wch:14},{wch:12},{wch:15}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'مستخلص');XLSX.writeFile(wb,'مستخلص_'+todayKey()+'.xlsx');toast('تم تصدير المستخلص ✓');
+}
+
+/* admin: edit/delete individual entries in a station */
+function openStationEntries(pid){
+  const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
+  openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
+    ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_name}</b>
+      <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date} · ${fmt(e.amount)} ﷼</small>
+      <div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
+      <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div></div>`).join('')||'<div class="empty">لا أعمال</div>'}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+}
+async function saveEntryQty(id,rate){
+  const q=parseFloat(document.getElementById('eq_'+id).value);if(!q||q<=0){toast('كمية غير صحيحة');return;}
+  const{error}=await sb.from('entries').update({qty:q}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}
+  await sb.from('entry_finance').update({amount:q*rate}).eq('entry_id',id);
+  toast('تم التعديل ✓');closeModal();loadWorkOrders();
+}
+async function deleteEntry(id){
+  const{error}=await sb.from('entries').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}
+  toast('تم حذف العمل');closeModal();loadWorkOrders();
 }
 
 /* ===== FINANCE ===== */
@@ -522,7 +545,13 @@ async function loadWorkerHome(){
 }
 /* ===== WORKER: attendance ===== */
 let attToday=null;
-function initAttWorker(){document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 حدّد موقعك عند التسجيل';loadAttToday();}
+function initAttWorker(){document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 حدّد موقعك عند التسجيل';loadAttToday();loadMyAttHistory();}
+async function loadMyAttHistory(){
+  const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
+  const box=document.getElementById('att_history');
+  if(!data||!data.length){box.innerHTML='';return;}
+  box.innerHTML=`<h3 style="font-size:15px;margin:16px 2px 10px">سجل حضوري هذا الشهر (${data.length} يوم)</h3>`+data.map(a=>`<div class="item"><div class="ic" style="background:#eef4f1">📅</div><div class="meta"><b>${a.work_date}</b><small>${a.check_in?hm(a.check_in):'—'}${a.check_out?' ← '+hm(a.check_out):''}${a.check_in&&a.check_out?' · '+hoursBetween(a.check_in,a.check_out)+' ساعة':''}</small></div></div>`).join('');
+}
 async function loadAttToday(){const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).eq('work_date',todayKey()).maybeSingle();attToday=data||null;renderAttWorker();}
 function renderAttWorker(){const st=document.getElementById('att_status'),ac=document.getElementById('att_actions');
   if(attToday&&attToday.check_in&&attToday.check_out){st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att out">انصرفت</span><p style="color:var(--muted);font-size:13px;margin:8px 0 0">حضور ${hm(attToday.check_in)} ← انصراف ${hm(attToday.check_out)} · ${hoursBetween(attToday.check_in,attToday.check_out)} ساعة</p></div>`;ac.innerHTML='';}
