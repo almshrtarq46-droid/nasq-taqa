@@ -200,6 +200,20 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
         <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
       </div>
     </div>
+    <div class="view" id="v-catalog">
+      <h2 class="section-title">البنود والأسعار</h2>
+      <div class="hint">القائمة المركزية للبنود (رقم البند، الاسم، الوحدة، السعر). تظهر للموظف في كل محطة بدون الأسعار.</div>
+      <button class="btn" style="margin-bottom:10px" onclick="openCatalogItem()">+ إضافة بند</button>
+      <input id="catSearch" placeholder="بحث بالاسم أو الرقم…" oninput="renderCatalog()" style="margin-bottom:12px">
+      <div id="catCount" style="font-size:12px;color:var(--muted);margin:0 2px 8px"></div>
+      <div id="catList"></div>
+    </div>
+    <div class="view" id="v-assignments">
+      <h2 class="section-title">الإسنادات</h2>
+      <div class="hint">الإسناد = دفعة عمل (مثلاً صيانة الشمال). الموظف يختار الإسناد ثم يكتب رقم المحطة عند العمل.</div>
+      <button class="btn" style="margin-bottom:13px" onclick="openAssignment()">+ إسناد جديد</button>
+      <div id="assignList"></div>
+    </div>
     <div class="view" id="v-zones">
       <h2 class="section-title">مناطق الحضور المسموحة</h2>
       <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
@@ -223,12 +237,14 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <h2 class="section-title">الإدخال الميداني</h2>
       <div class="hint">سجّل عمل المحطة: صور قبل (عدة صور)، البنود المنجزة وكمياتها، ثم صور بعد. كل صورة تُختم بالموقع والتاريخ والوقت تلقائياً.</div>
       <div class="card">
-        <div class="field"><label>المحطة</label><select id="f_project" onchange="loadFieldItems()"></select></div>
+        <div class="field"><label>الإسناد</label><select id="f_assign"></select></div>
+        <div class="row"><div class="field"><label>رقم المحطة</label><input id="f_station_no" placeholder="مثال: 47558"></div><div class="field"><label>وصف المحطة (اختياري)</label><input id="f_station_name" placeholder="اختياري"></div></div>
         <label>صور قبل التنفيذ</label>
         <div id="beforeThumbs" class="thumbs"></div>
         <input type="file" accept="image/*" capture="environment" id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
         <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('beforeInput').click()">📷 إضافة صورة قبل</button>
         <label>البنود المنجزة</label>
+        <input id="f_item_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="loadFieldItems()" style="margin-bottom:6px">
         <div class="row" style="margin-bottom:6px"><select id="f_item" style="flex:2"></select><input type="number" id="f_qty" inputmode="decimal" placeholder="الكمية"><button class="btn sm" style="flex:none;width:46px" onclick="addFieldItem()">+</button></div>
         <div id="itemsAdded" style="margin-bottom:14px"></div>
         <label>صور بعد التنفيذ</label>
@@ -263,14 +279,14 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='32';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='33';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
   else if(location.search){history.replaceState(null,'',base);}
 }catch(e){}})();
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
-let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null, MY_CREW_LED=[], MY_CREW_MEMBER=false;
+let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null, MY_CREW_LED=[], MY_CREW_MEMBER=false, CATALOG=[], ASSIGNMENTS=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);}
 function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
@@ -340,9 +356,11 @@ async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
-  await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();buildNav(role);show('screen-app');
+  await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();await loadCatalog();await loadAssignments();buildNav(role);show('screen-app');
   if(role!=='admin')startLiveTracking();
 }
+async function loadCatalog(){try{if(PROFILE.role==='admin'){const{data}=await sb.from('catalog_items').select('*').order('code');CATALOG=data||[];}else{const{data}=await sb.from('catalog_public').select('*').order('code');CATALOG=data||[];}}catch(e){CATALOG=[];}}
+async function loadAssignments(){try{const{data}=await sb.from('assignments').select('*').order('created_at',{ascending:false});ASSIGNMENTS=data||[];}catch(e){ASSIGNMENTS=[];}}
 async function loadMyCrew(){MY_CREW_LED=[];MY_CREW_MEMBER=false;try{
   const{data:led}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').eq('leader_id',ME.id);
   MY_CREW_LED=(led||[]).map(c=>{const people=[{id:ME.id,name:PROFILE.full_name||'المسؤول'}];(c.crew_members||[]).forEach(m=>{if(m.member_id!==ME.id)people.push({id:m.member_id,name:m.member_name||'عضو'});});return {id:c.id,name:c.name,people};});
@@ -380,10 +398,12 @@ const NAV_MAIN=[
   {v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'}
 ];
 const NAV_SET_CHILDREN=[
+  {v:'catalog',l:'البنود والأسعار',i:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M9 12h6 M9 16h6'},
+  {v:'assignments',l:'الإسنادات',i:'M3 6h18 M3 12h18 M3 18h18'},
+  {v:'projects',l:'المحطات',i:'M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'},
   {v:'settings',l:'وقت الحضور والخصم',i:'M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'},
   {v:'zones',l:'مناطق الحضور',i:'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'},
-  {v:'approvals',l:'اعتماد الحسابات',i:'M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'},
-  {v:'projects',l:'المحطات والمشاريع',i:'M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'}
+  {v:'approvals',l:'اعتماد الحسابات',i:'M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}
 ];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
@@ -408,7 +428,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
@@ -569,24 +589,19 @@ async function loadProjects(){await loadProjectsCache();
   const groups={};PROJECTS.forEach(p=>{const g=p.assignment||'بدون إسناد';(groups[g]=groups[g]||[]).push(p);});
   const card=p=>`<div class="card" style="padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:start"><div><b style="font-size:15px">${p.name}</b><div><small style="color:var(--muted)">${p.client||''} ${p.code?'· رقم '+p.code:''}</small></div></div>
-    <button class="btn ghost sm" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div>
-    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.code?i.code+' - ':''}${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div></div>`;
+    <button class="btn ghost sm" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`;
   document.getElementById('projList').innerHTML=PROJECTS.length?Object.entries(groups).map(([g,arr])=>`<div style="margin:8px 2px 8px;font-weight:800;color:var(--green)">📁 ${g} <small style="color:var(--muted);font-weight:600">(${arr.length} محطة)</small></div>`+arr.map(card).join('')).join(''):'<div class="empty">لا توجد محطات — أضف أول محطة</div>';
 }
 let editItems=[];
-function openProject(p){editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,name:i.name,unit:i.unit,rate:i.rate,code:i.code})):[];
-  const others=PROJECTS.filter(x=>!p||x.id!==p.id);
+function openProject(p){
   openModal(`<h3 style="margin-bottom:14px">${p?'تعديل محطة':'محطة جديدة'}</h3>
-    <div class="field"><label>اسم المحطة</label><input id="m_name" value="${p?p.name:''}"></div>
+    <div class="field"><label>اسم/وصف المحطة</label><input id="m_name" value="${p?p.name:''}"></div>
     <div class="row"><div class="field"><label>الجهة</label><input id="m_client" value="${p?(p.client||''):'الشركة السعودية للكهرباء'}"></div><div class="field"><label>رقم المحطة</label><input id="m_code" value="${p?(p.code||''):''}"></div></div>
-    <div class="field"><label>الإسناد / المشروع (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
-    ${others.length?`<div class="field"><label>نسخ جدول الأسعار من محطة سابقة</label><select onchange="if(this.value){copyItemsFrom(this.value);this.value=''}"><option value="">— اختر محطة لنسخ بنودها —</option>${others.map(x=>`<option value="${x.id}">${x.name}${x.assignment?' ('+x.assignment+')':''}</option>`).join('')}</select></div>`:''}
-    <label>بنود الأعمال (بأسعارها — تظهر لك فقط)</label><div id="itemsWrap"></div>
-    <button class="btn ghost sm" style="width:100%;margin:4px 0 14px" onclick="addItemRow()">+ إضافة بند</button>
+    <div class="field"><label>الإسناد (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
+    <div class="hint">البنود والأسعار تُدار مركزياً من "البنود والأسعار". الموظف يضيف البنود عند العمل على المحطة. (غالباً المحطات تُنشأ تلقائياً من رفع الموظف — هذي الشاشة للتعديل فقط.)</div>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
     ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف</button>`:''}
-    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);renderItemRows();}
-function copyItemsFrom(pid){const src=PROJECTS.find(x=>x.id===pid);if(!src)return;editItems=(src.work_items||[]).map(i=>({name:i.name,unit:i.unit,rate:i.rate,code:i.code}));renderItemRows();toast('تم نسخ '+editItems.length+' بند');}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
 function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div style="border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:8px">
   <div class="row" style="margin-bottom:6px"><input placeholder="رقم البند" value="${it.code||''}" oninput="editItems[${i}].code=this.value" style="flex:1"><input placeholder="اسم البند (دهان)" value="${it.name||''}" oninput="editItems[${i}].name=this.value" style="flex:2"></div>
@@ -596,9 +611,7 @@ function addItemRow(){editItems.push({name:'',unit:'',rate:0,code:''});renderIte
 async function saveProject(id){const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المحطة');return;}
   const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{let pid=id;if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{data,error}=await sb.from('projects').insert(rec).select('id').single();if(error)throw error;pid=data.id;}
-    await sb.from('work_items').delete().eq('project_id',pid);const items=editItems.filter(i=>i.name&&i.name.trim()).map(i=>({project_id:pid,name:i.name.trim(),unit:i.unit||'وحدة',rate:Number(i.rate)||0,code:(i.code||'').trim()}));
-    if(items.length){const{error}=await sb.from('work_items').insert(items);if(error)throw error;}
+  try{if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');loadProjects();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
@@ -622,6 +635,43 @@ async function saveSettings(){
   const btn=document.getElementById('sSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
 }
+
+/* ===== catalog (global price list) ===== */
+async function loadCatalogAdmin(){await loadCatalog();document.getElementById('catSearch').value='';renderCatalog();}
+function renderCatalog(){const q=(document.getElementById('catSearch').value||'').trim();
+  const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
+  document.getElementById('catCount').textContent=`${CATALOG.length} بند${q?` · ${list.length} مطابق`:''}`;
+  document.getElementById('catList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="font-size:11px">${i.code||'—'}</div><div class="meta"><b>${i.name}</b><small>${i.unit} · ${Number(i.rate).toLocaleString()} ﷼</small></div><button class="link" onclick='openCatalogItem(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد بنود — أضف أول بند</div>';}
+function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'تعديل بند':'بند جديد'}</h3>
+  <div class="row"><div class="field"><label>رقم البند</label><input id="ci_code" value="${it?(it.code||''):''}"></div><div class="field"><label>الوحدة</label><input id="ci_unit" value="${it?it.unit:''}" placeholder="M2 / EA / متر طولي"></div></div>
+  <div class="field"><label>اسم البند</label><input id="ci_name" value="${it?it.name:''}" placeholder="دهان جدران"></div>
+  <div class="field"><label>السعر (﷼)</label><input id="ci_rate" type="number" value="${it?it.rate:''}"></div>
+  <button class="btn" id="ciSave" onclick="saveCatalogItem('${it?it.id:''}')">حفظ</button>
+  ${it?`<button class="btn danger" style="margin-top:9px" onclick="delCatalogItem('${it.id}')">حذف</button>`:''}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveCatalogItem(id){const name=document.getElementById('ci_name').value.trim();if(!name){toast('أدخل اسم البند');return;}
+  const rec={code:document.getElementById('ci_code').value.trim(),name,unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0};
+  const btn=document.getElementById('ciSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('catalog_items').update(rec).eq('id',id);if(error)throw error;}else{const{error}=await sb.from('catalog_items').insert(rec);if(error)throw error;}
+    closeModal();toast('تم الحفظ ✓');loadCatalogAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
+async function delCatalogItem(id){const{error}=await sb.from('catalog_items').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadCatalogAdmin();}
+
+/* ===== assignments ===== */
+async function loadAssignmentsAdmin(){await loadAssignments();
+  document.getElementById('assignList').innerHTML=ASSIGNMENTS.length?ASSIGNMENTS.map(a=>`<div class="item"><div class="ic">📁</div><div class="meta"><b>${a.name}</b><small>${a.region||''}${a.main_contractor?' · '+a.main_contractor:''}</small></div><button class="link" onclick='openAssignment(${JSON.stringify(a).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد إسنادات — أضف أول إسناد</div>';}
+function openAssignment(a){openModal(`<h3 style="margin-bottom:14px">${a?'تعديل إسناد':'إسناد جديد'}</h3>
+  <div class="field"><label>اسم الإسناد</label><input id="as_name" value="${a?a.name:''}" placeholder="صيانة الشمال 2026"></div>
+  <div class="field"><label>المنطقة</label><input id="as_region" value="${a?(a.region||''):''}" placeholder="الشمال"></div>
+  <div class="field"><label>المقاول الرئيسي</label><input id="as_main" value="${a?(a.main_contractor||''):''}"></div>
+  <button class="btn" id="asSave" onclick="saveAssignment('${a?a.id:''}')">حفظ</button>
+  ${a?`<button class="btn danger" style="margin-top:9px" onclick="delAssignment('${a.id}')">حذف</button>`:''}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveAssignment(id){const name=document.getElementById('as_name').value.trim();if(!name){toast('أدخل اسم الإسناد');return;}
+  const rec={name,region:document.getElementById('as_region').value.trim(),main_contractor:document.getElementById('as_main').value.trim()};
+  const btn=document.getElementById('asSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('assignments').update(rec).eq('id',id);if(error)throw error;}else{const{error}=await sb.from('assignments').insert(rec);if(error)throw error;}
+    closeModal();toast('تم الحفظ ✓');loadAssignmentsAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
+async function delAssignment(id){const{error}=await sb.from('assignments').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadAssignmentsAdmin();}
 
 /* ===== zones (attendance geofence) ===== */
 async function loadZones(){await loadZonesCache();
@@ -917,32 +967,44 @@ async function doCheck(dir){
 }
 /* ===== WORKER: field entry (multi-photo + multi-item, no prices) ===== */
 let beforePhotos=[],afterPhotos=[],fieldItems=[];
-function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];document.getElementById('f_project').innerHTML=projOptions();document.getElementById('f_note').value='';document.getElementById('f_qty').value='';const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
-function fieldProj(){return PROJECTS.find(p=>p.id===document.getElementById('f_project').value);}
-function loadFieldItems(){const p=fieldProj();document.getElementById('f_item').innerHTML=(p?.work_items||[]).map(i=>`<option value="${i.id}">${i.code?i.code+' - ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
-function addFieldItem(){const p=fieldProj();const it=p&&p.work_items?p.work_items.find(i=>i.id===document.getElementById('f_item').value):null;const q=parseFloat(document.getElementById('f_qty').value);
+function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
+  document.getElementById('f_assign').innerHTML=ASSIGNMENTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')||'<option value="">لا توجد إسنادات — راجع المدير</option>';
+  document.getElementById('f_station_no').value='';document.getElementById('f_station_name').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
+  const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
+function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
+  document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' - ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
+function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(document.getElementById('f_qty').value);
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
   fieldItems.push({item_id:it.id,name:it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
 function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
-  const rd=new FileReader();rd.onload=()=>compress(rd.result,async d=>{try{const pos=await getPos();const proj=fieldProj();const now=new Date();
-    const lines=[`${proj?proj.name:''}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+  const rd=new FileReader();rd.onload=()=>compress(rd.result,async d=>{try{const pos=await getPos();
+    const stNo=(document.getElementById('f_station_no').value||'').trim();const stName=(document.getElementById('f_station_name').value||'').trim();const stLabel=(stName||(stNo?'محطة '+stNo:'محطة'));const now=new Date();
+    const lines=[`${stLabel}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
     const stamped=await stampImage(d,lines);(phase==='before'?beforePhotos:afterPhotos).push({data:stamped,lat:pos.lat,lng:pos.lng});renderThumbs(phase);
     lb.className='locbar ok2';lb.textContent=`✅ أُضيفت صورة ${phase==='before'?'قبل':'بعد'} (${(phase==='before'?beforePhotos:afterPhotos).length}) مختومة بالموقع`;
   }catch(e){lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد المحاولة');toast('فعّل صلاحية الموقع وأعد الالتقاط');}});rd.readAsDataURL(f);}
 function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w*=r;h*=r;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.72));};img.src=dataUrl;}
 function dataURLtoBlob(d){const[,b64]=d.split(',');const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/jpeg'});}
 async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
-async function saveFieldReport(){const p=fieldProj();
-  if(!p){toast('اختر محطة');return;}
+async function saveFieldReport(){
+  const assign=ASSIGNMENTS.find(a=>a.id===document.getElementById('f_assign').value);
+  const stationNo=document.getElementById('f_station_no').value.trim();
+  if(!assign){toast('اختر الإسناد');return;}
+  if(!stationNo){toast('اكتب رقم المحطة');return;}
   if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
+  if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
+  if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{
-    for(const ph of beforePhotos){const path=await uploadPhoto(ph.data,'before');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'before',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
-    for(const ph of afterPhotos){const path=await uploadPhoto(ph.data,'after');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'after',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
+    let pid;const{data:ex}=await sb.from('projects').select('id').eq('assignment',assign.name).eq('code',stationNo).limit(1);
+    if(ex&&ex.length){pid=ex[0].id;}
+    else{const{data,error}=await sb.from('projects').insert({name:document.getElementById('f_station_name').value.trim()||('محطة '+stationNo),code:stationNo,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id}).select('id').single();if(error)throw error;pid=data.id;}
+    for(const ph of beforePhotos){const path=await uploadPhoto(ph.data,'before');const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'before',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
+    for(const ph of afterPhotos){const path=await uploadPhoto(ph.data,'after');const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'after',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
     const note=document.getElementById('f_note').value.trim();
-    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:p.id,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
+    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
     toast('تم رفع العمل ✓');initField();goView('home');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
