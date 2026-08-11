@@ -250,7 +250,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='26';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='27';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -308,6 +308,16 @@ async function enterApp(role){
 async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
 const DEF_SETTINGS={work_start:'06:00',grace_min:15,penalty_hours:1,work_hours:8};
 const WO_STAGES=['قيد التنفيذ','تم التنفيذ','توقيع المشرف','رفع على نظام الكهرباء','توقيع الاستشاري','توقيع المالية','صدور أمر العمل','نزل المبلغ للمقاول','إصدار فاتورة ضريبية','وصل نصيبنا'];
+const DOC_TYPES=[
+  {t:'safety',l:'الأمن الصناعي',cat:'كروت شركة الكهرباء'},
+  {t:'issuer',l:'كرت مصدر',cat:'كروت شركة الكهرباء'},
+  {t:'receiver',l:'كرت مستلم',cat:'كروت شركة الكهرباء'},
+  {t:'participant',l:'كرت العامل المشارك',cat:'كروت شركة الكهرباء'},
+  {t:'iqama',l:'الإقامة',cat:'مستندات حكومية'},
+  {t:'work_permit',l:'رخصة العمل',cat:'مستندات حكومية'},
+  {t:'driving_license',l:'رخصة القيادة',cat:'مستندات حكومية'},
+  {t:'medical_insurance',l:'التأمين الطبي',cat:'مستندات حكومية'}
+];
 async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
 function isLateNow(now){if(!SETTINGS||!SETTINGS.work_start)return false;const[h,m]=SETTINGS.work_start.split(':').map(Number);const cutoff=new Date(now);cutoff.setHours(h,m+Number(SETTINGS.grace_min||0),0,0);return now.getTime()>cutoff.getTime();}
 async function loadProjectsCache(){
@@ -395,33 +405,58 @@ function hrTab(t,btn){document.querySelectorAll('#v-hr .seg button').forEach(b=>
   if(t==='emp')loadEmployees();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
 async function loadEmployees(){
   const{data:all}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
-  const today=todayKey();const missing=(all||[]).filter(p=>!p.safety_card).length;
-  const warn=missing?`<div class="hint" style="background:#fbecea;border-right-color:var(--bad);color:var(--bad)">⚠ ${missing} موظف بدون كرت أمن صناعي — إلزامي لكل موظف.</div>`:'';
-  document.getElementById('empList').innerHTML=warn+((all||[]).map(p=>{const exp=p.safety_expiry&&p.safety_expiry<today;
-    const cardRole=p.card_role==='issuer'?'<span class="pill role">مصدر</span>':p.card_role==='receiver'?'<span class="pill role">مستلم</span>':'';
-    const safety=p.safety_card?`<span class="pill ${exp?'pend':'ok'}">أمن صناعي ${exp?'منتهٍ':'✓'}</span>`:'<span class="pill susp">بدون أمن صناعي</span>';
+  const{data:docs}=await sb.from('documents').select('employee_id,type,expiry');
+  const byEmp={};(docs||[]).forEach(d=>{(byEmp[d.employee_id]=byEmp[d.employee_id]||[]).push(d);});
+  const missingSafety=(all||[]).filter(p=>!(byEmp[p.id]||[]).some(d=>d.type==='safety')).length;
+  let expiringTotal=0;(all||[]).forEach(p=>{(byEmp[p.id]||[]).forEach(d=>{const s=docStatus(d.expiry);if(s&&(s.k==='expired'||s.k==='soon'))expiringTotal++;});});
+  const warn=(missingSafety||expiringTotal)?`<div class="hint" style="background:#fbecea;border-right-color:var(--bad);color:var(--bad)">⚠ ${missingSafety?missingSafety+' بدون أمن صناعي. ':''}${expiringTotal?expiringTotal+' مستند قرب/منتهي الصلاحية.':''}</div>`:'';
+  document.getElementById('empList').innerHTML=warn+((all||[]).map(p=>{
+    const dd=byEmp[p.id]||[];const byT={};dd.forEach(d=>byT[d.type]=d);
+    const sSafety=byT.safety?docStatus(byT.safety.expiry):null;
+    const safety=byT.safety?`<span class="pill ${sSafety&&sSafety.k==='expired'?'susp':sSafety&&sSafety.k==='soon'?'pend':'ok'}">أمن صناعي ${sSafety&&sSafety.k==='expired'?'منتهٍ':sSafety&&sSafety.k==='soon'?'قرب الانتهاء':'✓'}</span>`:'<span class="pill susp">بدون أمن صناعي</span>';
+    const cardRole=byT.issuer?'<span class="pill role">مصدر</span>':byT.receiver?'<span class="pill role">مستلم</span>':'';
+    const alertN=dd.filter(d=>{const s=docStatus(d.expiry);return s&&(s.k==='expired'||s.k==='soon');}).length;
     return `<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div>
     <div class="meta"><b>${p.full_name||'—'} ${p.id===ME.id?'<small>(أنت)</small>':''}</b>
     <small>${p.phone||''} · <span class="pill role">${p.role==='admin'?'مدير':'عامل'}</span> <span class="pill ${p.status==='active'?'ok':p.status==='pending'?'pend':'susp'}">${p.status==='active'?'نشط':p.status==='pending'?'معلّق':'موقوف'}</span> · أجر ${fmt(p.daily_wage||0)} ﷼</small>
-    <div style="margin-top:5px">${safety} ${cardRole}</div></div>
+    <div style="margin-top:5px">${safety} ${cardRole} ${alertN?`<span class="pill pend">⚠ ${alertN} مستند</span>`:''}</div></div>
     <button class="link" onclick='openEmp(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div>`;}).join('')||'<div class="empty">لا يوجد موظفون</div>');
 }
 function openEmp(p){openModal(`<h3 style="margin-bottom:14px">${p.full_name||'موظف'}</h3>
   <div class="field"><label>الأجر اليومي (﷼)</label><input id="emp_wage" type="number" value="${p.daily_wage||0}"></div>
-  <label>الكروت المعتمدة لدى شركة الكهرباء</label>
-  <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:6px 2px"><input type="checkbox" id="emp_safety" ${p.safety_card?'checked':''} style="width:auto"> كرت الأمن الصناعي (إلزامي لكل موظف)</label>
-  <div class="field"><label>تاريخ انتهاء الأمن الصناعي (اختياري)</label><input type="date" id="emp_safexp" value="${p.safety_expiry||''}"></div>
-  <div class="field"><label>كرت الإصدار / الاستلام</label><select id="emp_cardrole">
-    <option value="none" ${(!p.card_role||p.card_role==='none')?'selected':''}>لا شيء</option>
-    <option value="receiver" ${p.card_role==='receiver'?'selected':''}>مستلم فقط</option>
-    <option value="issuer" ${p.card_role==='issuer'?'selected':''}>مصدر (يقدر يُصدر ويستلم)</option>
-  </select></div>
-  <button class="btn" onclick="saveEmp('${p.id}')">حفظ البيانات</button>
+  <button class="btn" onclick="saveEmp('${p.id}')">حفظ الأجر</button>
+  <button class="btn ghost" style="margin-top:9px" onclick='openEmpDocs(${JSON.stringify({id:p.id,full_name:p.full_name}).replace(/'/g,"&#39;")})'>📁 المستندات والكروت</button>
   ${p.id!==ME.id?`<div class="row" style="margin-top:9px"><button class="btn ghost sm" style="width:100%" onclick="setRole('${p.id}','${p.role==='admin'?'worker':'admin'}')">${p.role==='admin'?'تحويل لعامل':'ترقية لمدير'}</button>
   ${p.status==='active'?`<button class="btn danger sm" style="width:100%" onclick="setStatus('${p.id}','suspended')">إيقاف</button>`:`<button class="btn ghost sm" style="width:100%" onclick="setStatus('${p.id}','active')">تفعيل</button>`}</div>`:''}
   <button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>`);}
-async function saveEmp(id){const rec={daily_wage:parseFloat(document.getElementById('emp_wage').value)||0,safety_card:document.getElementById('emp_safety').checked,safety_expiry:document.getElementById('emp_safexp').value||null,card_role:document.getElementById('emp_cardrole').value};
-  const{error}=await sb.from('profiles').update(rec).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم الحفظ ✓');closeModal();loadEmployees();}
+async function saveEmp(id){const{error}=await sb.from('profiles').update({daily_wage:parseFloat(document.getElementById('emp_wage').value)||0}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم ✓');closeModal();loadEmployees();}
+/* documents / cards */
+function docStatus(expiry){if(!expiry)return null;const d=new Date(expiry+'T00:00:00');const now=new Date();now.setHours(0,0,0,0);const days=Math.round((d-now)/86400000);if(days<0)return{k:'expired',days};if(days<=30)return{k:'soon',days};return{k:'valid',days};}
+let docNewImgs={};
+function pickDocImg(input,type){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{docNewImgs[type]=d;const b=document.getElementById('dimg_'+type);b.querySelector('img')?.remove();const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
+async function openEmpDocs(emp){docNewImgs={};
+  const{data}=await sb.from('documents').select('*').eq('employee_id',emp.id);const byT={};(data||[]).forEach(d=>byT[d.type]=d);
+  const cats=[...new Set(DOC_TYPES.map(d=>d.cat))];
+  let html=`<h3 style="margin-bottom:2px">مستندات وكروت</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${emp.full_name||''}</small>`;
+  cats.forEach(cat=>{html+=`<div style="font-weight:800;color:var(--green);margin:12px 2px 8px">${cat}</div>`;
+    DOC_TYPES.filter(d=>d.cat===cat).forEach(dt=>{const ex=byT[dt.t];const st=ex?docStatus(ex.expiry):null;
+      const stPill=st?`<span class="pill ${st.k==='expired'?'susp':st.k==='soon'?'pend':'ok'}">${st.k==='expired'?'منتهٍ':st.k==='soon'?'قرب الانتهاء ('+st.days+'ي)':'ساري'}</span>`:'';
+      html+=`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${dt.l} ${stPill}</b>
+        <div class="row" style="margin-top:8px"><div class="field" style="margin:0"><label>الرقم</label><input id="dn_${dt.t}" value="${ex?(ex.number||''):''}"></div><div class="field" style="margin:0"><label>تاريخ الانتهاء</label><input type="date" id="de_${dt.t}" value="${ex?(ex.expiry||''):''}"></div></div>
+        <div class="photobox" id="dimg_${dt.t}" style="aspect-ratio:auto;height:120px;margin-top:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>${ex&&ex.photo?'استبدال الصورة':'صورة الكرت'}<input type="file" accept="image/*" onchange="pickDocImg(this,'${dt.t}')"></div>
+        ${ex&&ex.photo?`<button class="link" style="margin-top:4px" onclick="viewInvPhoto('${ex.photo}')">📷 عرض الصورة المحفوظة</button>`:''}</div>`;});});
+  html+=`<button class="btn" id="edSave" onclick="saveEmpDocs('${emp.id}')">حفظ المستندات</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`;
+  openModal(html);
+}
+async function saveEmpDocs(id){const btn=document.getElementById('edSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{data:existing}=await sb.from('documents').select('type,photo').eq('employee_id',id);const exPhoto={};(existing||[]).forEach(d=>exPhoto[d.type]=d.photo);
+    const rows=[];
+    for(const dt of DOC_TYPES){const num=document.getElementById('dn_'+dt.t).value.trim();const exp=document.getElementById('de_'+dt.t).value||null;let photo=exPhoto[dt.t]||'';
+      if(docNewImgs[dt.t])photo=await uploadPhoto(docNewImgs[dt.t],'doc_'+dt.t);
+      if(num||exp||photo)rows.push({employee_id:id,type:dt.t,number:num,expiry:exp,photo});}
+    if(rows.length){const{error}=await sb.from('documents').upsert(rows,{onConflict:'employee_id,type'});if(error)throw error;}
+    closeModal();toast('تم حفظ المستندات ✓');loadEmployees();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المستندات';}}
 async function loadPayroll(){
   const{data:profs}=await sb.from('profiles').select('id,full_name,daily_wage').eq('role','worker');
   const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours').gte('work_date',monthStart());
