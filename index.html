@@ -182,6 +182,8 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div class="hint">التسجيل يتطلب أن تكون داخل نطاق موقع المحطة. يُسجَّل موقعك ووقتك تلقائياً.</div>
       <div class="card">
         <div class="field"><label>المحطة / الموقع</label><select id="att_project"></select></div>
+        <div class="field"><label>سيلفي الإثبات (يُختم عليه التاريخ والوقت والموقع تلقائياً)</label>
+          <div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:160px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط سيلفي<input type="file" accept="image/*" capture="user" onchange="pickSelfie(this)"></div></div>
         <div class="locbar wait" id="att_loc">📍 حدّد موقعك عند التسجيل</div>
         <div id="att_status"></div><div id="att_actions"></div>
       </div>
@@ -383,8 +385,10 @@ async function loadAttAdmin(){
   drawMap(att||[],pm);
   document.getElementById('attAdminList').innerHTML=(att&&att.length)?att.map(a=>{const w=pm[a.worker_id]||{};let b,ex;
     if(a.check_out){b='<span class="badge-att out">انصرف</span>';ex=`${hm(a.check_in)} ← ${hm(a.check_out)} · ${hoursBetween(a.check_in,a.check_out)} س`;}else{b='<span class="badge-att in">حاضر</span>';ex=`منذ ${hm(a.check_in)}`;}
-    const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍</a>`:'';
-    return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
+    const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍 الموقع</a>`:'';
+    const sIn=a.in_photo?` · <button class="link" onclick="viewInvPhoto('${a.in_photo}')">📷 سيلفي الحضور</button>`:'';
+    const sOut=a.out_photo?` · <button class="link" onclick="viewInvPhoto('${a.out_photo}')">سيلفي الانصراف</button>`:'';
+    return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}${sIn}${sOut}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
 function hm(ts){return new Date(ts).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
 function hoursBetween(a,b){return((new Date(b)-new Date(a))/3600000).toFixed(1);}
@@ -544,8 +548,16 @@ async function loadWorkerHome(){
   document.getElementById('workerKpis').innerHTML=`<div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div><div class="kpi"><b>${aCount||0}</b><span>أيام حضوري هذا الشهر</span></div>`;
 }
 /* ===== WORKER: attendance ===== */
-let attToday=null;
-function initAttWorker(){document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 حدّد موقعك عند التسجيل';loadAttToday();loadMyAttHistory();}
+let attToday=null,attSelfie=null;
+function initAttWorker(){attSelfie=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 حدّد موقعك عند التسجيل';loadAttToday();loadMyAttHistory();}
+function pickSelfie(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{attSelfie=d;const b=document.getElementById('pb_selfie');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
+function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+  const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
+  const fs=Math.max(14,Math.round(w*0.035)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.45),barH=lh*lines.length+pad*1.5;
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(0,h-barH,w,barH);
+  ctx.fillStyle='#fff';ctx.textAlign='right';try{ctx.direction='rtl';}catch(e){}ctx.font=`bold ${fs}px Cairo, Arial, sans-serif`;
+  lines.forEach((t,i)=>ctx.fillText(t,w-pad,h-barH+pad+lh*(i+0.75)));
+  res(c.toDataURL('image/jpeg',0.75));};img.src=dataUrl;});}
 async function loadMyAttHistory(){
   const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
   const box=document.getElementById('att_history');
@@ -557,12 +569,20 @@ function renderAttWorker(){const st=document.getElementById('att_status'),ac=doc
   if(attToday&&attToday.check_in&&attToday.check_out){st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att out">انصرفت</span><p style="color:var(--muted);font-size:13px;margin:8px 0 0">حضور ${hm(attToday.check_in)} ← انصراف ${hm(attToday.check_out)} · ${hoursBetween(attToday.check_in,attToday.check_out)} ساعة</p></div>`;ac.innerHTML='';}
   else if(attToday&&attToday.check_in){st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att in">حاضر منذ ${hm(attToday.check_in)}</span></div>`;ac.innerHTML=`<button class="btn copper" id="att_btn" onclick="doCheck('out')">تسجيل انصراف</button>`;}
   else{st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att no">لم تسجّل حضور اليوم</span></div>`;ac.innerHTML=`<button class="btn" id="att_btn" onclick="doCheck('in')">تسجيل حضور</button>`;}}
-async function doCheck(dir){const btn=document.getElementById('att_btn');btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';const lb=document.getElementById('att_loc');
+async function doCheck(dir){
+  if(!attSelfie){toast('التقط سيلفي الإثبات أولاً');return;}
+  const btn=document.getElementById('att_btn');btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';const lb=document.getElementById('att_loc');
   try{lb.className='locbar wait';lb.textContent='📍 جارٍ تحديد موقعك…';const pos=await getPos();const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
     if(proj&&proj.lat!=null&&proj.lng!=null){const dist=haversine(pos.lat,pos.lng,proj.lat,proj.lng);if(dist>proj.geofence_radius){lb.className='locbar bad2';lb.textContent=`⛔ أنت بعيد عن الموقع بـ${dist}م (المسموح ${proj.geofence_radius}م)`;toast('خارج نطاق الموقع');btn.disabled=false;btn.textContent=old;return;}lb.className='locbar ok2';lb.textContent=`✅ داخل النطاق (${dist}م)`;}
     else{lb.className='locbar ok2';lb.textContent=`✅ تم تحديد الموقع (دقة ~${pos.acc}م)`;}
-    if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),project_id:proj?proj.id:null,check_in:new Date().toISOString(),in_lat:pos.lat,in_lng:pos.lng},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
-    else{const{error}=await sb.from('attendance').update({check_out:new Date().toISOString(),out_lat:pos.lat,out_lng:pos.lng}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
+    lb.textContent='📸 جارٍ ختم الصورة ورفعها…';
+    const now=new Date();
+    const lines=[`${now.toLocaleDateString('en-GB')} ${now.toTimeString().slice(0,5)}`,`المحطة: ${proj?proj.name:'—'}`,`الإحداثيات: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+    const stamped=await stampImage(attSelfie,lines);
+    const photoPath=await uploadPhoto(stamped, dir==='in'?'checkin':'checkout');
+    if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),project_id:proj?proj.id:null,check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
+    else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
+    attSelfie=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
   }catch(e){toast(e.message);lb.className='locbar bad2';lb.textContent='⛔ '+e.message;const b=document.getElementById('att_btn');if(b){b.disabled=false;}renderAttWorker();}
 }
