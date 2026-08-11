@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='37';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='38';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -1013,7 +1013,7 @@ function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   document.getElementById('f_station_no').value='';document.getElementById('f_station_name').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
   const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
-  document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' - ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
+  document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(document.getElementById('f_qty').value);
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
   fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
