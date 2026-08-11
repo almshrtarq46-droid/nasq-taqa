@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='33';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='34';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -400,7 +400,6 @@ const NAV_MAIN=[
 const NAV_SET_CHILDREN=[
   {v:'catalog',l:'البنود والأسعار',i:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M9 12h6 M9 16h6'},
   {v:'assignments',l:'الإسنادات',i:'M3 6h18 M3 12h18 M3 18h18'},
-  {v:'projects',l:'المحطات',i:'M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'},
   {v:'settings',l:'وقت الحضور والخصم',i:'M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'},
   {v:'zones',l:'مناطق الحضور',i:'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'},
   {v:'approvals',l:'اعتماد الحسابات',i:'M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}
@@ -600,7 +599,7 @@ function openProject(p){
     <div class="field"><label>الإسناد (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
     <div class="hint">البنود والأسعار تُدار مركزياً من "البنود والأسعار". الموظف يضيف البنود عند العمل على المحطة. (غالباً المحطات تُنشأ تلقائياً من رفع الموظف — هذي الشاشة للتعديل فقط.)</div>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
-    ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف</button>`:''}
+    ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف المحطة وكل أعمالها وصورها</button>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
 function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div style="border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:8px">
@@ -612,9 +611,13 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
   const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
-    closeModal();toast('تم الحفظ ✓');loadProjects();
+    closeModal();toast('تم الحفظ ✓');refreshAfterProject();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
-async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
+async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();}
+async function delProject(id){
+  try{await sb.from('station_photos').delete().eq('project_id',id);await sb.from('entries').delete().eq('project_id',id);const{error}=await sb.from('projects').delete().eq('id',id);if(error)throw error;
+    closeModal();toast('تم حذف المحطة وأعمالها');refreshAfterProject();
+  }catch(e){toast('خطأ: '+e.message);}}
 
 /* ===== settings menu (accordion) ===== */
 function toggleSetMenu(){const c=document.getElementById('setChildren'),ch=document.getElementById('setChev');if(!c)return;const open=c.style.display==='none';c.style.display=open?'block':'none';if(ch)ch.style.transform=open?'rotate(180deg)':'';}
@@ -752,7 +755,7 @@ async function loadWorkOrders(){
       ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
       <tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
       <div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>
-      <div class="row" style="margin-top:6px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button></div></div></div>`;}).join('');
+      <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button></div></div></div>`;}).join('');
 }
 async function viewStationPhotos(pid){
   openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
