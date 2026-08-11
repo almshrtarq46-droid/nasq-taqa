@@ -252,7 +252,12 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='21';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='22';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+/* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
+(async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
+  if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
+  else if(location.search){history.replaceState(null,'',base);}
+}catch(e){}})();
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
 let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null;
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
