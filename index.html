@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='35';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='36';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -797,9 +797,11 @@ async function viewStationPhotos(pid){
   const{data}=await sb.from('station_photos').select('*').eq('project_id',pid).order('created_at');
   if(!data||!data.length){document.getElementById('phwrap').innerHTML='<div class="empty">لا توجد صور</div>';return;}
   const before=data.filter(x=>x.phase==='before'),after=data.filter(x=>x.phase==='after');
-  async function urls(arr){const out=[];for(const x of arr){try{const{data:s}=await sb.storage.from('photos').createSignedUrl(x.photo,3600);if(s)out.push(s.signedUrl);}catch(e){}}return out;}
-  const[b,a]=await Promise.all([urls(before),urls(after)]);
-  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${b.map(u=>`<img src="${u}" style="width:48%;border-radius:8px">`).join('')||'<small class="muted">لا صور</small>'}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${a.map(u=>`<img src="${u}" style="width:48%;border-radius:8px">`).join('')||'<small class="muted">لا صور</small>'}</div>`;
+  const paths=data.map(x=>x.photo);
+  const map={};
+  try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}
+  const cell=arr=>arr.map(x=>map[x.photo]?`<img src="${map[x.photo]}" loading="lazy" style="width:48%;border-radius:8px">`:'').join('')||'<small class="muted">لا صور</small>';
+  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${cell(before)}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${cell(after)}</div>`;
 }
 function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;const val=(window._woRows||[]).filter(e=>e.project_id===pid).reduce((s,e)=>s+e.amount,0);
   openModal(`<h3 style="margin-bottom:4px">متابعة أمر العمل</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${p.name} · رقم ${p.code||'—'}</small>
@@ -970,13 +972,13 @@ async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=do
 }
 function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image();
   img.onerror=()=>res(dataUrl);
-  img.onload=()=>{try{const max=1000;let{width:w,height:h}=img;if(!w||!h){return res(dataUrl);}if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+  img.onload=()=>{try{const max=900;let{width:w,height:h}=img;if(!w||!h){return res(dataUrl);}if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
   const fs=Math.max(16,Math.round(w*0.042)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.5),barH=lh*lines.length+pad*1.6;
   ctx.fillStyle='rgba(0,0,0,0.62)';ctx.fillRect(0,h-barH,w,barH);
   ctx.fillStyle='#fff';ctx.textAlign='right';try{ctx.direction='rtl';}catch(e){}ctx.font=`bold ${fs}px Cairo, Arial, sans-serif`;
   lines.forEach((t,i)=>ctx.fillText(t,w-pad,h-barH+pad+lh*(i+0.78)));
-  res(c.toDataURL('image/jpeg',0.78));}catch(e){res(dataUrl);}};img.src=dataUrl;});}
+  res(c.toDataURL('image/jpeg',0.6));}catch(e){res(dataUrl);}};img.src=dataUrl;});}
 async function loadMyAttHistory(){
   const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
   const box=document.getElementById('att_history');
@@ -1023,7 +1025,7 @@ function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.val
     const stamped=await stampImage(d,lines);(phase==='before'?beforePhotos:afterPhotos).push({data:stamped,lat:pos.lat,lng:pos.lng});renderThumbs(phase);
     lb.className='locbar ok2';lb.textContent=`✅ أُضيفت صورة ${phase==='before'?'قبل':'بعد'} (${(phase==='before'?beforePhotos:afterPhotos).length}) مختومة بالموقع`;
   }catch(e){lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد المحاولة');toast('فعّل صلاحية الموقع وأعد الالتقاط');}});rd.readAsDataURL(f);}
-function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w*=r;h*=r;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.72));};img.src=dataUrl;}
+function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=900;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.6));};img.src=dataUrl;}
 function dataURLtoBlob(d){const[,b64]=d.split(',');const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/jpeg'});}
 async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
 async function saveFieldReport(){
@@ -1039,10 +1041,13 @@ async function saveFieldReport(){
     let pid;const{data:ex}=await sb.from('projects').select('id').eq('assignment',assign.name).eq('code',stationNo).limit(1);
     if(ex&&ex.length){pid=ex[0].id;}
     else{const{data,error}=await sb.from('projects').insert({name:document.getElementById('f_station_name').value.trim()||('محطة '+stationNo),code:stationNo,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id}).select('id').single();if(error)throw error;pid=data.id;}
-    for(const ph of beforePhotos){const path=await uploadPhoto(ph.data,'before');const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'before',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
-    for(const ph of afterPhotos){const path=await uploadPhoto(ph.data,'after');const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'after',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
+    const wd=todayKey();
+    const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
+    const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
+    const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
     const note=document.getElementById('f_note').value.trim();
-    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
+    const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
+    const{error:ee}=await sb.from('entries').insert(entryRows);if(ee)throw ee;
     toast('تم رفع العمل ✓');initField();goView('home');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
