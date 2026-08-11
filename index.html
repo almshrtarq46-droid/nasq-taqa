@@ -89,6 +89,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 .seg button{flex:1;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted)}
 .seg button.on{background:#fff;color:var(--green);box-shadow:var(--shadow)}
 .station{border:1px solid var(--line);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+#pb_selfie img{object-fit:contain !important;background:#0b0b0b}
 .station>.h{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .station .body{padding:0 14px 12px;display:none}.station.open .body{display:block}
 </style>
@@ -106,6 +107,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="٦ أحرف على الأقل"></div>
     <button class="btn" id="auth_btn" onclick="doAuth()">دخول</button>
   </div>
+  <p style="text-align:center;color:#9aa6a0;font-size:11px;margin-top:16px">الإصدار <span id="verTag">—</span></p>
 </div></section>
 
 <!-- GATE -->
@@ -182,7 +184,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div class="hint">سجّل دوامك بالتقاط سيلفي — يُختم عليه اسمك والتاريخ والوقت والموقع تلقائياً. (مستقل عن المحطات — للميداني والمكتبي.)</div>
       <div class="card">
         <div class="field"><label>سيلفي الإثبات (يُختم عليه التاريخ والوقت والموقع تلقائياً)</label>
-          <div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:160px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط سيلفي<input type="file" accept="image/*" capture="user" onchange="pickSelfie(this)"></div></div>
+          <div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:250px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط سيلفي<input type="file" accept="image/*" capture="user" onchange="pickSelfie(this)"></div></div>
         <div class="locbar wait" id="att_loc">📍 حدّد موقعك عند التسجيل</div>
         <div id="att_status"></div><div id="att_actions"></div>
       </div>
@@ -229,6 +231,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
+const APP_VER='16';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
 let sb=null, ME=null, PROFILE=null, PROJECTS=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
@@ -562,13 +565,15 @@ async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=do
     lb.className='locbar ok2';lb.textContent=`✅ الصورة مختومة — دقة الموقع ~${pos.acc}م`;
   }catch(e){attSelfie=null;attSelfiePos=null;lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد الالتقاط');toast('فعّل صلاحية الموقع وأعد التقاط السيلفي');}
 }
-function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
+function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image();
+  img.onerror=()=>res(dataUrl);
+  img.onload=()=>{try{const max=1000;let{width:w,height:h}=img;if(!w||!h){return res(dataUrl);}if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
-  const fs=Math.max(14,Math.round(w*0.035)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.45),barH=lh*lines.length+pad*1.5;
-  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.fillRect(0,h-barH,w,barH);
+  const fs=Math.max(16,Math.round(w*0.042)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.5),barH=lh*lines.length+pad*1.6;
+  ctx.fillStyle='rgba(0,0,0,0.62)';ctx.fillRect(0,h-barH,w,barH);
   ctx.fillStyle='#fff';ctx.textAlign='right';try{ctx.direction='rtl';}catch(e){}ctx.font=`bold ${fs}px Cairo, Arial, sans-serif`;
-  lines.forEach((t,i)=>ctx.fillText(t,w-pad,h-barH+pad+lh*(i+0.75)));
-  res(c.toDataURL('image/jpeg',0.75));};img.src=dataUrl;});}
+  lines.forEach((t,i)=>ctx.fillText(t,w-pad,h-barH+pad+lh*(i+0.78)));
+  res(c.toDataURL('image/jpeg',0.78));}catch(e){res(dataUrl);}};img.src=dataUrl;});}
 async function loadMyAttHistory(){
   const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
   const box=document.getElementById('att_history');
