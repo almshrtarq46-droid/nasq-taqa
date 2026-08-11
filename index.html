@@ -175,6 +175,12 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <button class="btn" style="margin-bottom:13px" onclick="openProject()">+ محطة / مشروع جديد</button>
       <div id="projList"></div>
     </div>
+    <div class="view" id="v-zones">
+      <h2 class="section-title">مناطق الحضور المسموحة</h2>
+      <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
+      <button class="btn" style="margin-bottom:13px" onclick="openZone()">+ منطقة جديدة</button>
+      <div id="zoneList"></div>
+    </div>
 
     <!-- ===== WORKER VIEWS ===== -->
     <div class="view" id="v-home">
@@ -234,9 +240,9 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='18';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='19';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
-let sb=null, ME=null, PROFILE=null, PROJECTS=[];
+let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);}
 function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
@@ -282,8 +288,9 @@ async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
-  await loadProjectsCache();buildNav(role);show('screen-app');
+  await loadProjectsCache();await loadZonesCache();buildNav(role);show('screen-app');
 }
+async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
 async function loadProjectsCache(){
   if(PROFILE.role==='admin'){const{data}=await sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false});PROJECTS=data||[];}
   else{const{data:pr}=await sb.from('projects').select('*').order('created_at',{ascending:false});
@@ -298,7 +305,8 @@ const ADMIN_MENU=[
   ['finance','المالية','M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
   ['g','الإعدادات'],
   ['approvals','اعتماد الحسابات','M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
-  ['projects','المحطات والمشاريع','M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4']
+  ['projects','المحطات والمشاريع','M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'],
+  ['zones','مناطق الحضور','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4']
 ];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
@@ -320,7 +328,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
@@ -434,6 +442,47 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
     closeModal();toast('تم الحفظ ✓');loadProjects();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
+
+/* ===== zones (attendance geofence) ===== */
+async function loadZones(){await loadZonesCache();
+  document.getElementById('zoneList').innerHTML=ZONES.length?ZONES.map(z=>`<div class="item"><div class="ic">📍</div><div class="meta"><b>${z.name}</b><small>${z.lat!=null?`${Number(z.lat).toFixed(4)}, ${Number(z.lng).toFixed(4)} · نصف قطر ${z.radius}م`:'⚠ بدون إحداثيات'}</small></div><button class="link" onclick='openZone(${JSON.stringify(z).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد مناطق — الحضور مسموح بأي مكان حالياً. أضف منطقة لتقييده.</div>';
+}
+let zoneMap=null,zoneMarker=null,zoneCircle=null,zoneCenter=null;
+function openZone(z){
+  zoneCenter=z&&z.lat!=null?{lat:Number(z.lat),lng:Number(z.lng)}:null;zoneMarker=null;zoneCircle=null;
+  openModal(`<h3 style="margin-bottom:14px">${z?'تعديل منطقة':'منطقة جديدة'}</h3>
+    <div class="field"><label>اسم المنطقة</label><input id="z_name" value="${z?z.name:''}" placeholder="مثال: شمال الرياض"></div>
+    <label>حدّد المنطقة على الخريطة</label>
+    <div class="hint">اضغط على الخريطة لتحديد مركز المنطقة، وغيّر نصف القطر ليكبّر الدائرة حتى تغطي المنطقة كاملة.</div>
+    <div id="zmap" style="height:280px;border-radius:12px;margin-bottom:10px;z-index:0"></div>
+    <div class="field"><label>نصف القطر (متر)</label><input id="z_rad" type="number" value="${z?z.radius:8000}" oninput="updateZoneCircle()"><small style="color:var(--muted);display:block;margin-top:4px">مثال: 8000 = ٨ كم · 15000 = ١٥ كم</small></div>
+    <button class="btn ghost sm" style="width:100%;margin-bottom:12px" onclick="zoneUseMyLoc()">📍 اجعل موقعي الحالي مركز المنطقة</button>
+    <button class="btn" id="zSave" onclick="saveZone('${z?z.id:''}')">حفظ المنطقة</button>
+    ${z?`<button class="btn danger" style="margin-top:9px" onclick="delZone('${z.id}')">حذف</button>`:''}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+  setTimeout(()=>initZoneMap(z?z.radius:8000),180);
+}
+function initZoneMap(radius){
+  if(!window.L)return;const center=zoneCenter?[zoneCenter.lat,zoneCenter.lng]:[24.8,46.7];
+  if(zoneMap){try{zoneMap.remove();}catch(e){}zoneMap=null;}
+  zoneMap=L.map('zmap').setView(center,zoneCenter?11:10);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(zoneMap);
+  if(zoneCenter)placeZone(zoneCenter.lat,zoneCenter.lng,radius);
+  zoneMap.on('click',e=>placeZone(e.latlng.lat,e.latlng.lng,parseInt(document.getElementById('z_rad').value)||8000));
+  setTimeout(()=>{try{zoneMap.invalidateSize();}catch(e){}},250);
+}
+function placeZone(lat,lng,radius){zoneCenter={lat,lng};
+  if(zoneMarker)zoneMarker.setLatLng([lat,lng]);else zoneMarker=L.marker([lat,lng]).addTo(zoneMap);
+  if(zoneCircle)zoneCircle.setLatLng([lat,lng]).setRadius(radius);else zoneCircle=L.circle([lat,lng],{radius,color:'#0f6b4f',fillColor:'#0f6b4f',fillOpacity:.12}).addTo(zoneMap);}
+function updateZoneCircle(){if(zoneCircle&&zoneCenter)zoneCircle.setRadius(parseInt(document.getElementById('z_rad').value)||8000);}
+async function zoneUseMyLoc(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();placeZone(p.lat,p.lng,parseInt(document.getElementById('z_rad').value)||8000);zoneMap.setView([p.lat,p.lng],12);toast('تم ✓');}catch(e){toast(e.message);}}
+async function saveZone(id){const name=document.getElementById('z_name').value.trim();if(!name){toast('أدخل اسم المنطقة');return;}
+  if(!zoneCenter){toast('اضغط على الخريطة لتحديد مركز المنطقة');return;}
+  const rec={name,lat:zoneCenter.lat,lng:zoneCenter.lng,radius:parseInt(document.getElementById('z_rad').value)||8000};
+  const btn=document.getElementById('zSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('zones').update(rec).eq('id',id);if(error)throw error;}else{const{error}=await sb.from('zones').insert(rec);if(error)throw error;}
+    closeModal();toast('تم حفظ المنطقة ✓');loadZones();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المنطقة';}}
+async function delZone(id){const{error}=await sb.from('zones').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadZones();}
 
 /* ===== WORK ORDERS (admin, with prices) ===== */
 async function loadWorkOrders(){
@@ -560,6 +609,10 @@ async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=do
   try{
     const raw=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>compress(rd.result,res);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});
     const pos=await getPos();
+    const geoZones=ZONES.filter(z=>z.lat!=null);
+    if(geoZones.length){const inside=geoZones.some(z=>haversine(pos.lat,pos.lng,Number(z.lat),Number(z.lng))<=z.radius);
+      if(!inside){const nearest=Math.min(...geoZones.map(z=>haversine(pos.lat,pos.lng,Number(z.lat),Number(z.lng))));
+        attSelfie=null;attSelfiePos=null;lb.className='locbar bad2';lb.textContent=`⛔ أنت خارج نطاق الحضور المسموح (تبعد ~${nearest}م عن أقرب نطاق)`;toast('لا يمكن تسجيل الحضور خارج المنطقة المحددة');return;}}
     const now=new Date();
     const lines=[`${PROFILE.full_name||'موظف'}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
     const stamped=await stampImage(raw,lines);
