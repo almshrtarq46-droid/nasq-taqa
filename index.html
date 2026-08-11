@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='36';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='37';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -679,16 +679,17 @@ async function loadCatalogAdmin(){await loadCatalog();document.getElementById('c
 function renderCatalog(){const q=(document.getElementById('catSearch').value||'').trim();
   const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('catCount').textContent=`${CATALOG.length} بند${q?` · ${list.length} مطابق`:''}`;
-  document.getElementById('catList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="font-size:11px">${i.code||'—'}</div><div class="meta"><b>${i.name}</b><small>${i.unit} · ${Number(i.rate).toLocaleString()} ﷼</small></div><button class="link" onclick='openCatalogItem(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد بنود — أضف أول بند</div>';}
+  document.getElementById('catList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="font-size:11px">${i.code||'—'}</div><div class="meta"><b>${i.name}</b><small>${i.unit} · ${Number(i.rate).toLocaleString()} ﷼</small>${i.name_full?`<small style="color:var(--muted)">📄 ${i.name_full}</small>`:'<small style="color:var(--copper)">⚠ أضف الاسم المفصل</small>'}</div><button class="link" onclick='openCatalogItem(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد بنود — أضف أول بند</div>';}
 function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'تعديل بند':'بند جديد'}</h3>
   <div class="row"><div class="field"><label>رقم البند</label><input id="ci_code" value="${it?(it.code||''):''}"></div><div class="field"><label>الوحدة</label><input id="ci_unit" value="${it?it.unit:''}" placeholder="M2 / EA / متر طولي"></div></div>
-  <div class="field"><label>اسم البند</label><input id="ci_name" value="${it?it.name:''}" placeholder="دهان جدران"></div>
+  <div class="field"><label>الاسم المختصر (يظهر للعامل بالجوال)</label><input id="ci_name" value="${it?it.name:''}" placeholder="دهان جدران"></div>
+  <div class="field"><label>الاسم المفصل (يظهر في أمر العمل لشركة الكهرباء)</label><textarea id="ci_name_full" rows="2" placeholder="الاسم الرسمي بالنص والحرف كما تطلبه شركة الكهرباء">${it?(it.name_full||''):''}</textarea></div>
   <div class="field"><label>السعر (﷼)</label><input id="ci_rate" type="number" value="${it?it.rate:''}"></div>
   <button class="btn" id="ciSave" onclick="saveCatalogItem('${it?it.id:''}')">حفظ</button>
   ${it?`<button class="btn danger" style="margin-top:9px" onclick="delCatalogItem('${it.id}')">حذف</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function saveCatalogItem(id){const name=document.getElementById('ci_name').value.trim();if(!name){toast('أدخل اسم البند');return;}
-  const rec={code:document.getElementById('ci_code').value.trim(),name,unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0};
+  const rec={code:document.getElementById('ci_code').value.trim(),name,name_full:document.getElementById('ci_name_full').value.trim(),unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0};
   const btn=document.getElementById('ciSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{if(id){const{error}=await sb.from('catalog_items').update(rec).eq('id',id);if(error)throw error;}else{const{error}=await sb.from('catalog_items').insert(rec);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');loadCatalogAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
@@ -781,7 +782,7 @@ async function loadWorkOrders(){
   const keys=Object.keys(byP);
   if(!keys.length){box.innerHTML='<div class="empty">لا توجد أعمال في هذه الفترة</div>';return;}
   box.innerHTML=keys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const es=byP[pid];const tot=es.reduce((s,e)=>s+e.amount,0);
-    const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+e.item_name+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
+    const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
     const stage=p.wo_stage||'قيد التنفيذ';
     return `<div class="station" id="st_${pid}"><div class="h" onclick="document.getElementById('st_${pid}').classList.toggle('open')">
       <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
@@ -818,21 +819,21 @@ async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
 function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
-  const aoa=[['أمر عمل — شركة نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
+  const aoa=[['أمر عمل — شركة نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
   let total=0;const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
-  Object.keys(byP).forEach(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};byP[pid].forEach(e=>{total+=e.amount;aoa.push([p.name||'',p.code||'',e.item_name,Number(e.qty),e.unit,e.rate,e.amount,e.work_date,e.worker_name||'',(e.photo_before&&e.photo_after)?'نعم':'—']);});});
-  aoa.push([],['','','','','','','الإجمالي',total]);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:10},{wch:22},{wch:8},{wch:7},{wch:10},{wch:12},{wch:12},{wch:14},{wch:8}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}}];
+  Object.keys(byP).forEach(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};byP[pid].forEach(e=>{total+=e.amount;aoa.push([p.name||'',p.code||'',(e.item_code||''),(e.item_name_full||e.item_name),Number(e.qty),e.unit,e.rate,e.amount,e.work_date,e.worker_name||'',(e.photo_before&&e.photo_after)?'نعم':'—']);});});
+  aoa.push([],['','','','','','','','الإجمالي',total]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:10},{wch:10},{wch:34},{wch:8},{wch:7},{wch:10},{wch:12},{wch:12},{wch:14},{wch:8}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:10}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'أمر العمل');XLSX.writeFile(wb,'أمر_عمل_'+todayKey()+'.xlsx');toast('تم التصدير ✓');}
 
 function exportMostakhlas(){
   const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
-  const byItem={};rows.forEach(e=>{const k=e.item_name+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
-  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['شركة نسق الطاقة','','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
-  let total=0,i=1;for(const[k,v]of Object.entries(byItem)){const[n,u,r]=k.split('|');const amt=v.qty*Number(r);total+=amt;aoa.push([i++,n,u,v.qty,Number(r),amt]);}
-  aoa.push([],['','','','','الإجمالي قبل الضريبة',total],['','','','','ضريبة القيمة المضافة 15%',total*0.15],['','','','','الإجمالي المستحق',total*1.15]);
+  const byItem={};rows.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
+  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['شركة نسق الطاقة','','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','رقم البند','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
+  let total=0,i=1;for(const[k,v]of Object.entries(byItem)){const[c,n,u,r]=k.split('|');const amt=v.qty*Number(r);total+=amt;aoa.push([i++,c,n,u,v.qty,Number(r),amt]);}
+  aoa.push([],['','','','','','الإجمالي قبل الضريبة',total],['','','','','','ضريبة القيمة المضافة 15%',total*0.15],['','','','','','الإجمالي المستحق',total*1.15]);
   aoa.push([],['ملاحظة: مسودة — تُعدّل لتطابق النموذج المعتمد من شركة الكهرباء عند توفّره.']);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:5},{wch:28},{wch:9},{wch:14},{wch:12},{wch:15}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:5},{wch:10},{wch:34},{wch:9},{wch:14},{wch:12},{wch:15}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'مستخلص');XLSX.writeFile(wb,'مستخلص_'+todayKey()+'.xlsx');toast('تم تصدير المستخلص ✓');
 }
 
@@ -840,7 +841,7 @@ function exportMostakhlas(){
 function openStationEntries(pid){
   const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
   openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
-    ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_name}</b>
+    ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_code?e.item_code+' · ':''}${e.item_name_full||e.item_name}</b>
       <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date} · ${fmt(e.amount)} ﷼</small>
       <div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
       <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div></div>`).join('')||'<div class="empty">لا أعمال</div>'}
@@ -1015,7 +1016,7 @@ function loadFieldItems(){const q=(document.getElementById('f_item_search').valu
   document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' - ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(document.getElementById('f_qty').value);
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
-  fieldItems.push({item_id:it.id,name:it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
+  fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
 function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
@@ -1046,7 +1047,7 @@ async function saveFieldReport(){
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
     const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
     const note=document.getElementById('f_note').value.trim();
-    const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
+    const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
     const{error:ee}=await sb.from('entries').insert(entryRows);if(ee)throw ee;
     toast('تم رفع العمل ✓');initField();goView('home');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
