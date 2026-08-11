@@ -263,7 +263,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='31';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='32';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -570,11 +570,11 @@ async function loadProjects(){await loadProjectsCache();
   const card=p=>`<div class="card" style="padding:14px">
     <div style="display:flex;justify-content:space-between;align-items:start"><div><b style="font-size:15px">${p.name}</b><div><small style="color:var(--muted)">${p.client||''} ${p.code?'· رقم '+p.code:''}</small></div></div>
     <button class="btn ghost sm" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div>
-    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div></div>`;
+    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.code?i.code+' - ':''}${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div></div>`;
   document.getElementById('projList').innerHTML=PROJECTS.length?Object.entries(groups).map(([g,arr])=>`<div style="margin:8px 2px 8px;font-weight:800;color:var(--green)">📁 ${g} <small style="color:var(--muted);font-weight:600">(${arr.length} محطة)</small></div>`+arr.map(card).join('')).join(''):'<div class="empty">لا توجد محطات — أضف أول محطة</div>';
 }
 let editItems=[];
-function openProject(p){editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,name:i.name,unit:i.unit,rate:i.rate})):[];
+function openProject(p){editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,name:i.name,unit:i.unit,rate:i.rate,code:i.code})):[];
   const others=PROJECTS.filter(x=>!p||x.id!==p.id);
   openModal(`<h3 style="margin-bottom:14px">${p?'تعديل محطة':'محطة جديدة'}</h3>
     <div class="field"><label>اسم المحطة</label><input id="m_name" value="${p?p.name:''}"></div>
@@ -586,15 +586,18 @@ function openProject(p){editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
     ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف</button>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);renderItemRows();}
-function copyItemsFrom(pid){const src=PROJECTS.find(x=>x.id===pid);if(!src)return;editItems=(src.work_items||[]).map(i=>({name:i.name,unit:i.unit,rate:i.rate}));renderItemRows();toast('تم نسخ '+editItems.length+' بند');}
+function copyItemsFrom(pid){const src=PROJECTS.find(x=>x.id===pid);if(!src)return;editItems=(src.work_items||[]).map(i=>({name:i.name,unit:i.unit,rate:i.rate,code:i.code}));renderItemRows();toast('تم نسخ '+editItems.length+' بند');}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
-function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div class="row" style="margin-bottom:8px"><input placeholder="اسم البند" value="${it.name||''}" oninput="editItems[${i}].name=this.value" style="flex:2"><input placeholder="وحدة" value="${it.unit||''}" oninput="editItems[${i}].unit=this.value"><input placeholder="سعر" type="number" value="${it.rate||''}" oninput="editItems[${i}].rate=parseFloat(this.value)||0"><button class="btn danger sm" style="flex:none;width:42px" onclick="editItems.splice(${i},1);renderItemRows()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لا بنود</small>';}
-function addItemRow(){editItems.push({name:'',unit:'',rate:0});renderItemRows();}
+function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div style="border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:8px">
+  <div class="row" style="margin-bottom:6px"><input placeholder="رقم البند" value="${it.code||''}" oninput="editItems[${i}].code=this.value" style="flex:1"><input placeholder="اسم البند (دهان)" value="${it.name||''}" oninput="editItems[${i}].name=this.value" style="flex:2"></div>
+  <div class="row"><input placeholder="الوحدة (M2/EA/متر طولي)" value="${it.unit||''}" oninput="editItems[${i}].unit=this.value" style="flex:2"><input placeholder="السعر" type="number" value="${it.rate||''}" oninput="editItems[${i}].rate=parseFloat(this.value)||0"><button class="btn danger sm" style="flex:none;width:42px" onclick="editItems.splice(${i},1);renderItemRows()">✕</button></div>
+</div>`).join('')||'<small style="color:var(--muted)">لا بنود</small>';}
+function addItemRow(){editItems.push({name:'',unit:'',rate:0,code:''});renderItemRows();}
 async function saveProject(id){const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المحطة');return;}
   const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{let pid=id;if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{data,error}=await sb.from('projects').insert(rec).select('id').single();if(error)throw error;pid=data.id;}
-    await sb.from('work_items').delete().eq('project_id',pid);const items=editItems.filter(i=>i.name&&i.name.trim()).map(i=>({project_id:pid,name:i.name.trim(),unit:i.unit||'وحدة',rate:Number(i.rate)||0}));
+    await sb.from('work_items').delete().eq('project_id',pid);const items=editItems.filter(i=>i.name&&i.name.trim()).map(i=>({project_id:pid,name:i.name.trim(),unit:i.unit||'وحدة',rate:Number(i.rate)||0,code:(i.code||'').trim()}));
     if(items.length){const{error}=await sb.from('work_items').insert(items);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');loadProjects();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
@@ -690,13 +693,13 @@ async function loadWorkOrders(){
   const keys=Object.keys(byP);
   if(!keys.length){box.innerHTML='<div class="empty">لا توجد أعمال في هذه الفترة</div>';return;}
   box.innerHTML=keys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const es=byP[pid];const tot=es.reduce((s,e)=>s+e.amount,0);
-    const byItem={};es.forEach(e=>{const k=e.item_name+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
+    const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+e.item_name+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
     const stage=p.wo_stage||'قيد التنفيذ';
     return `<div class="station" id="st_${pid}"><div class="h" onclick="document.getElementById('st_${pid}').classList.toggle('open')">
       <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
       <div style="text-align:left"><div class="pill role">${fmt(tot)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
       <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
-      ${Object.entries(byItem).map(([k,v])=>{const[n,u]=k.split('|');return `<tr><td>${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
+      ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
       <tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
       <div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>
       <div class="row" style="margin-top:6px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button></div></div></div>`;}).join('');
@@ -916,10 +919,10 @@ async function doCheck(dir){
 let beforePhotos=[],afterPhotos=[],fieldItems=[];
 function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];document.getElementById('f_project').innerHTML=projOptions();document.getElementById('f_note').value='';document.getElementById('f_qty').value='';const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function fieldProj(){return PROJECTS.find(p=>p.id===document.getElementById('f_project').value);}
-function loadFieldItems(){const p=fieldProj();document.getElementById('f_item').innerHTML=(p?.work_items||[]).map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
+function loadFieldItems(){const p=fieldProj();document.getElementById('f_item').innerHTML=(p?.work_items||[]).map(i=>`<option value="${i.id}">${i.code?i.code+' - ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const p=fieldProj();const it=p&&p.work_items?p.work_items.find(i=>i.id===document.getElementById('f_item').value):null;const q=parseFloat(document.getElementById('f_qty').value);
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
-  fieldItems.push({item_id:it.id,name:it.name,unit:it.unit,qty:q});document.getElementById('f_qty').value='';renderFieldItems();}
+  fieldItems.push({item_id:it.id,name:it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
 function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
@@ -939,7 +942,7 @@ async function saveFieldReport(){const p=fieldProj();
     for(const ph of beforePhotos){const path=await uploadPhoto(ph.data,'before');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'before',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
     for(const ph of afterPhotos){const path=await uploadPhoto(ph.data,'after');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'after',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
     const note=document.getElementById('f_note').value.trim();
-    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:p.id,item_id:it.item_id,worker_id:ME.id,item_name:it.name,unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
+    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:p.id,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
     toast('تم رفع العمل ✓');initField();goView('home');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
