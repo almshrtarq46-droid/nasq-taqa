@@ -250,7 +250,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='23';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='24';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -307,6 +307,7 @@ async function enterApp(role){
 }
 async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
 const DEF_SETTINGS={work_start:'06:00',grace_min:15,penalty_hours:1,work_hours:8};
+const WO_STAGES=['قيد التنفيذ','تم التنفيذ','توقيع المشرف','رفع على نظام الكهرباء','توقيع الاستشاري','توقيع المالية','صدور أمر العمل','نزل المبلغ للمقاول','إصدار فاتورة ضريبية','وصل نصيبنا'];
 async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
 function isLateNow(now){if(!SETTINGS||!SETTINGS.work_start)return false;const[h,m]=SETTINGS.work_start.split(':').map(Number);const cutoff=new Date(now);cutoff.setHours(h,m+Number(SETTINGS.grace_min||0),0,0);return now.getTime()>cutoff.getTime();}
 async function loadProjectsCache(){
@@ -536,7 +537,20 @@ async function loadWorkOrders(){
   const rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
   window._woRows=rows;
   const grand=rows.reduce((s,e)=>s+e.amount,0);
-  document.getElementById('woSummary').innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`;
+  const valByP={};rows.forEach(e=>{valByP[e.project_id]=(valByP[e.project_id]||0)+e.amount;});
+  const stageCount={};let vMain=0,vInv=0,vUs=0,vPending=0;
+  PROJECTS.forEach(p=>{const v=valByP[p.id]||0;if(v<=0)return;const st=p.wo_stage||'قيد التنفيذ';stageCount[st]=(stageCount[st]||0)+1;const share=v*0.75;
+    if(p.paid_to_us)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main)vMain+=share;else vPending+=share;});
+  const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
+  document.getElementById('woSummary').innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
+  <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
+    <table class="tbl"><tbody>
+    <tr><td>نصيبنا بانتظار النزول للمقاول</td><td style="text-align:left">${fmt(vPending)} ﷼</td></tr>
+    <tr><td>نزل للمقاول — بانتظار إصدار فاتورتنا</td><td style="text-align:left;color:var(--copper)">${fmt(vMain)} ﷼</td></tr>
+    <tr><td>صدرت الفاتورة — بانتظار وصوله لنا</td><td style="text-align:left">${fmt(vInv)} ﷼</td></tr>
+    <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
+    </tbody></table></div>
+  <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`;
   // group by project
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   const box=document.getElementById('woList');
@@ -544,13 +558,15 @@ async function loadWorkOrders(){
   if(!keys.length){box.innerHTML='<div class="empty">لا توجد أعمال في هذه الفترة</div>';return;}
   box.innerHTML=keys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const es=byP[pid];const tot=es.reduce((s,e)=>s+e.amount,0);
     const byItem={};es.forEach(e=>{const k=e.item_name+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
+    const stage=p.wo_stage||'قيد التنفيذ';
     return `<div class="station" id="st_${pid}"><div class="h" onclick="document.getElementById('st_${pid}').classList.toggle('open')">
-      <div><b>${p.name}</b><div><small style="color:var(--muted)">رقم ${p.code||'—'} · ${es.length} بند</small></div></div>
+      <div><b>${p.name}</b><div><small style="color:var(--muted)">رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
       <div style="text-align:left"><div class="pill role">${fmt(tot)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
       <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
       ${Object.entries(byItem).map(([k,v])=>{const[n,u]=k.split('|');return `<tr><td>${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
       <tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
-      <div class="row" style="margin-top:8px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ تعديل/حذف الأعمال</button></div></div></div>`;}).join('');
+      <div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>
+      <div class="row" style="margin-top:6px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button></div></div></div>`;}).join('');
 }
 async function viewStationPhotos(pid){const es=(window._woRows||[]).filter(e=>e.project_id===pid&&(e.photo_before||e.photo_after));
   if(!es.length){toast('لا توجد صور');return;}
@@ -559,6 +575,20 @@ async function viewStationPhotos(pid){const es=(window._woRows||[]).filter(e=>e.
     html+=`<div style="margin-bottom:14px"><b style="font-size:13px">${e.item_name} — ${fmt(e.qty)} ${e.unit}</b><div class="row" style="margin-top:5px">${urls.map(u=>`<img src="${u}" style="width:100%;border-radius:10px">`).join('')}</div></div>`;}
   document.getElementById('phwrap').innerHTML=html||'لا صور';
 }
+function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;const val=(window._woRows||[]).filter(e=>e.project_id===pid).reduce((s,e)=>s+e.amount,0);
+  openModal(`<h3 style="margin-bottom:4px">متابعة أمر العمل</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${p.name} · رقم ${p.code||'—'}</small>
+    <div class="field"><label>المرحلة الحالية</label><select id="wt_stage">${WO_STAGES.map(s=>`<option ${((p.wo_stage||'قيد التنفيذ')===s)?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="card" style="background:#f6f8f7;box-shadow:none;margin-bottom:12px"><div style="display:flex;justify-content:space-between"><span>قيمة الأعمال</span><b>${fmt(val)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--green)"><span>نصيبنا 75%</span><b>${fmt(val*0.75)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--muted)"><span>المقاول 25%</span><b>${fmt(val*0.25)} ﷼</b></div></div>
+    <label>حالة الدفع</label>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_main" ${p.paid_to_main?'checked':''} style="width:auto"> نزل المبلغ للمقاول الرئيسي</label>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_inv" ${p.invoice_issued?'checked':''} style="width:auto"> أصدرنا فاتورة ضريبية للمقاول</label>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_us" ${p.paid_to_us?'checked':''} style="width:auto"> وصل نصيبنا لحسابنا ✅</label>
+    <div class="field" style="margin-top:10px"><label>ملاحظات المتابعة</label><textarea id="wt_note" rows="2">${p.wo_note||''}</textarea></div>
+    <button class="btn" id="wtSave" onclick="saveWoTrack('${pid}')">حفظ المتابعة</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
+  const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
 function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
   const aoa=[['أمر عمل — شركة نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
   let total=0;const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
