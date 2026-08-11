@@ -93,6 +93,10 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 .seg button.on{background:#fff;color:var(--green);box-shadow:var(--shadow)}
 .station{border:1px solid var(--line);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
 #pb_selfie img{object-fit:contain !important;background:#0b0b0b}
+.thumbs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px}
+.thumbs .th{position:relative;width:72px;height:72px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+.thumbs .th img{width:100%;height:100%;object-fit:cover}
+.thumbs .th button{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;padding:0}
 .station>.h{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer}
 .station .body{padding:0 14px 12px;display:none}.station.open .body{display:block}
 </style>
@@ -211,20 +215,23 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     </div>
     <div class="view" id="v-field">
       <h2 class="section-title">الإدخال الميداني</h2>
+      <div class="hint">سجّل عمل المحطة: صور قبل (عدة صور)، البنود المنجزة وكمياتها، ثم صور بعد. كل صورة تُختم بالموقع والتاريخ والوقت تلقائياً.</div>
       <div class="card">
         <div class="field"><label>المحطة</label><select id="f_project" onchange="loadFieldItems()"></select></div>
-        <div class="field"><label>البند / نوع العمل</label><select id="f_item" onchange="calcLine()"></select></div>
-        <div class="row"><div class="field"><label>الكمية المنجزة</label><input type="number" id="f_qty" inputmode="decimal" placeholder="مثال: 8" ></div>
-        <div class="field"><label>الوحدة</label><input id="f_unit" readonly placeholder="—"></div></div>
-        <div class="field"><label>صور الإثبات</label>
-          <div class="photos">
-            <div class="photobox" id="pb_before"><span class="tag">قبل</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة قبل<input type="file" accept="image/*" capture="environment" onchange="pickPhoto(this,'before')"></div>
-            <div class="photobox" id="pb_after"><span class="tag">بعد</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة بعد<input type="file" accept="image/*" capture="environment" onchange="pickPhoto(this,'after')"></div>
-          </div>
-        </div>
-        <div class="field"><label>الموقع / رقم النقطة (اختياري)</label><input id="f_loc" placeholder="مثال: نقطة 12"></div>
+        <label>صور قبل التنفيذ</label>
+        <div id="beforeThumbs" class="thumbs"></div>
+        <input type="file" accept="image/*" capture="environment" id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
+        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('beforeInput').click()">📷 إضافة صورة قبل</button>
+        <label>البنود المنجزة</label>
+        <div class="row" style="margin-bottom:6px"><select id="f_item" style="flex:2"></select><input type="number" id="f_qty" inputmode="decimal" placeholder="الكمية"><button class="btn sm" style="flex:none;width:46px" onclick="addFieldItem()">+</button></div>
+        <div id="itemsAdded" style="margin-bottom:14px"></div>
+        <label>صور بعد التنفيذ</label>
+        <div id="afterThumbs" class="thumbs"></div>
+        <input type="file" accept="image/*" capture="environment" id="afterInput" style="display:none" onchange="onFieldPhoto(this,'after')">
+        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('afterInput').click()">📷 إضافة صورة بعد</button>
         <div class="field"><label>ملاحظات</label><textarea id="f_note" rows="2" placeholder="اختياري"></textarea></div>
-        <button class="btn" id="f_save" onclick="saveField()">حفظ العمل</button>
+        <div class="locbar wait" id="f_loc" style="display:none"></div>
+        <button class="btn" id="f_save" onclick="saveFieldReport()">رفع العمل</button>
       </div>
     </div>
   </main>
@@ -250,7 +257,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='29';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='30';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -661,12 +668,14 @@ async function loadWorkOrders(){
       <div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>
       <div class="row" style="margin-top:6px"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button></div></div></div>`;}).join('');
 }
-async function viewStationPhotos(pid){const es=(window._woRows||[]).filter(e=>e.project_id===pid&&(e.photo_before||e.photo_after));
-  if(!es.length){toast('لا توجد صور');return;}
-  openModal('<h3 style="margin-bottom:12px">صور الأعمال</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
-  let html='';for(const e of es){const urls=[];for(const p of [e.photo_before,e.photo_after]){if(p){const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);if(data)urls.push(data.signedUrl);}}
-    html+=`<div style="margin-bottom:14px"><b style="font-size:13px">${e.item_name} — ${fmt(e.qty)} ${e.unit}</b><div class="row" style="margin-top:5px">${urls.map(u=>`<img src="${u}" style="width:100%;border-radius:10px">`).join('')}</div></div>`;}
-  document.getElementById('phwrap').innerHTML=html||'لا صور';
+async function viewStationPhotos(pid){
+  openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+  const{data}=await sb.from('station_photos').select('*').eq('project_id',pid).order('created_at');
+  if(!data||!data.length){document.getElementById('phwrap').innerHTML='<div class="empty">لا توجد صور</div>';return;}
+  const before=data.filter(x=>x.phase==='before'),after=data.filter(x=>x.phase==='after');
+  async function urls(arr){const out=[];for(const x of arr){try{const{data:s}=await sb.storage.from('photos').createSignedUrl(x.photo,3600);if(s)out.push(s.signedUrl);}catch(e){}}return out;}
+  const[b,a]=await Promise.all([urls(before),urls(after)]);
+  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${b.map(u=>`<img src="${u}" style="width:48%;border-radius:8px">`).join('')||'<small class="muted">لا صور</small>'}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${a.map(u=>`<img src="${u}" style="width:48%;border-radius:8px">`).join('')||'<small class="muted">لا صور</small>'}</div>`;
 }
 function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;const val=(window._woRows||[]).filter(e=>e.project_id===pid).reduce((s,e)=>s+e.amount,0);
   openModal(`<h3 style="margin-bottom:4px">متابعة أمر العمل</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${p.name} · رقم ${p.code||'—'}</small>
@@ -870,25 +879,36 @@ async function doCheck(dir){
     await loadAttToday();
   }catch(e){toast(e.message);lb.className='locbar bad2';lb.textContent='⛔ '+e.message;const b=document.getElementById('att_btn');if(b){b.disabled=false;}renderAttWorker();}
 }
-/* ===== WORKER: field entry (no prices) ===== */
-let curPhotos={before:null,after:null};
-function initField(){curPhotos={before:null,after:null};document.getElementById('pb_before').querySelector('img')?.remove();document.getElementById('pb_after').querySelector('img')?.remove();document.getElementById('f_project').innerHTML=projOptions();document.getElementById('f_qty').value='';document.getElementById('f_loc').value='';document.getElementById('f_note').value='';loadFieldItems();}
+/* ===== WORKER: field entry (multi-photo + multi-item, no prices) ===== */
+let beforePhotos=[],afterPhotos=[],fieldItems=[];
+function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];document.getElementById('f_project').innerHTML=projOptions();document.getElementById('f_note').value='';document.getElementById('f_qty').value='';const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function fieldProj(){return PROJECTS.find(p=>p.id===document.getElementById('f_project').value);}
-function loadFieldItems(){const p=fieldProj();document.getElementById('f_item').innerHTML=(p?.work_items||[]).map(i=>`<option value="${i.id}">${i.name}</option>`).join('')||'<option value="">لا توجد بنود</option>';calcLine();}
-function fieldItem(){const p=fieldProj();return p?.work_items.find(i=>i.id===document.getElementById('f_item').value);}
-function calcLine(){const it=fieldItem();document.getElementById('f_unit').value=it?it.unit:'';}
-function pickPhoto(input,which){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{curPhotos[which]=d;const box=document.getElementById('pb_'+which);box.querySelector('img')?.remove();const img=document.createElement('img');img.src=d;box.appendChild(img);});rd.readAsDataURL(f);}
+function loadFieldItems(){const p=fieldProj();document.getElementById('f_item').innerHTML=(p?.work_items||[]).map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
+function addFieldItem(){const p=fieldProj();const it=p&&p.work_items?p.work_items.find(i=>i.id===document.getElementById('f_item').value):null;const q=parseFloat(document.getElementById('f_qty').value);
+  if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
+  fieldItems.push({item_id:it.id,name:it.name,unit:it.unit,qty:q});document.getElementById('f_qty').value='';renderFieldItems();}
+function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
+function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
+function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
+  const rd=new FileReader();rd.onload=()=>compress(rd.result,async d=>{try{const pos=await getPos();const proj=fieldProj();const now=new Date();
+    const lines=[`${proj?proj.name:''}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+    const stamped=await stampImage(d,lines);(phase==='before'?beforePhotos:afterPhotos).push({data:stamped,lat:pos.lat,lng:pos.lng});renderThumbs(phase);
+    lb.className='locbar ok2';lb.textContent=`✅ أُضيفت صورة ${phase==='before'?'قبل':'بعد'} (${(phase==='before'?beforePhotos:afterPhotos).length}) مختومة بالموقع`;
+  }catch(e){lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد المحاولة');toast('فعّل صلاحية الموقع وأعد الالتقاط');}});rd.readAsDataURL(f);}
 function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w*=r;h*=r;}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.72));};img.src=dataUrl;}
 function dataURLtoBlob(d){const[,b64]=d.split(',');const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/jpeg'});}
-async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
-async function saveField(){const p=fieldProj(),it=fieldItem();const q=parseFloat(document.getElementById('f_qty').value);
-  if(!p||!it){toast('اختر محطة وبند');return;}if(!q||q<=0){toast('أدخل كمية صحيحة');return;}
+async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
+async function saveFieldReport(){const p=fieldProj();
+  if(!p){toast('اختر محطة');return;}
+  if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{let pb='',pa='';if(curPhotos.before)pb=await uploadPhoto(curPhotos.before,'before');if(curPhotos.after)pa=await uploadPhoto(curPhotos.after,'after');
-    let lat=null,lng=null;try{const pos=await getPos();lat=pos.lat;lng=pos.lng;}catch(_){}
-    const{error}=await sb.from('entries').insert({project_id:p.id,item_id:it.id,worker_id:ME.id,item_name:it.name,unit:it.unit,qty:q,loc:document.getElementById('f_loc').value.trim(),note:document.getElementById('f_note').value.trim(),photo_before:pb,photo_after:pa,lat,lng,work_date:todayKey()});
-    if(error)throw error;toast('تم حفظ العمل ✓');initField();goView('home');
-  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ العمل';}}
+  try{
+    for(const ph of beforePhotos){const path=await uploadPhoto(ph.data,'before');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'before',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
+    for(const ph of afterPhotos){const path=await uploadPhoto(ph.data,'after');const{error}=await sb.from('station_photos').insert({project_id:p.id,worker_id:ME.id,phase:'after',photo:path,lat:ph.lat,lng:ph.lng,work_date:todayKey()});if(error)throw error;}
+    const note=document.getElementById('f_note').value.trim();
+    for(const it of fieldItems){const{error}=await sb.from('entries').insert({project_id:p.id,item_id:it.item_id,worker_id:ME.id,item_name:it.name,unit:it.unit,qty:it.qty,note,work_date:todayKey()});if(error)throw error;}
+    toast('تم رفع العمل ✓');initField();goView('home');
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
 /* modal + boot */
 function openModal(html){document.getElementById('modalBody').innerHTML=html;document.getElementById('modal').style.display='flex';}
