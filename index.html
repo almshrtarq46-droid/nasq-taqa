@@ -176,20 +176,22 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div id="projList"></div>
     </div>
     <div class="view" id="v-settings">
-      <h2 class="section-title">إعدادات الدوام</h2>
-      <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
-      <div class="card">
-        <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
-        <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
-        <div class="hint" id="s_preview"></div>
-        <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
+      <h2 class="section-title">الإعدادات</h2>
+      <div class="seg"><button class="on" onclick="setSetTab('dawam',this)">الدوام والخصم</button><button onclick="setSetTab('zones',this)">مناطق الحضور</button></div>
+      <div id="set_dawam">
+        <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
+        <div class="card">
+          <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
+          <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
+          <div class="hint" id="s_preview"></div>
+          <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
+        </div>
       </div>
-    </div>
-    <div class="view" id="v-zones">
-      <h2 class="section-title">مناطق الحضور المسموحة</h2>
-      <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
-      <button class="btn" style="margin-bottom:13px" onclick="openZone()">+ منطقة جديدة</button>
-      <div id="zoneList"></div>
+      <div id="set_zones" style="display:none">
+        <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
+        <button class="btn" style="margin-bottom:13px" onclick="openZone()">+ منطقة جديدة</button>
+        <div id="zoneList"></div>
+      </div>
     </div>
 
     <!-- ===== WORKER VIEWS ===== -->
@@ -250,7 +252,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='20';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='21';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
 let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null;
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
@@ -319,8 +321,7 @@ const ADMIN_MENU=[
   ['g','الإعدادات'],
   ['approvals','اعتماد الحسابات','M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
   ['projects','المحطات والمشاريع','M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'],
-  ['zones','مناطق الحضور','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'],
-  ['settings','إعدادات الدوام','M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z']
+  ['settings','الإعدادات','M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z']
 ];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
@@ -342,7 +343,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,zones:loadZones,settings:loadSettings,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,settings:initSettings,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
@@ -459,7 +460,12 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
 
-/* ===== attendance settings ===== */
+/* ===== settings (الدوام + المناطق) ===== */
+function initSettings(){setSetTab('dawam',document.querySelector('#v-settings .seg button'));}
+function setSetTab(t,btn){document.querySelectorAll('#v-settings .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
+  document.getElementById('set_dawam').style.display=t==='dawam'?'block':'none';
+  document.getElementById('set_zones').style.display=t==='zones'?'block':'none';
+  if(t==='dawam')loadSettings();else loadZones();}
 async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
   document.getElementById('s_start').value=s.work_start||'06:00';
   document.getElementById('s_grace').value=s.grace_min??15;
