@@ -250,7 +250,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='25';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='26';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -453,29 +453,32 @@ function drawMap(rows,pm){const el=document.getElementById('map');const pts=rows
 
 /* ===== projects/stations ===== */
 async function loadProjects(){await loadProjectsCache();
-  document.getElementById('projList').innerHTML=PROJECTS.length?PROJECTS.map(p=>`<div class="card" style="padding:14px">
-    <div style="display:flex;justify-content:space-between;align-items:start"><div><b style="font-size:15px">${p.name}</b><div><small style="color:var(--muted)">${p.client||''} ${p.code?'· رقم '+p.code:''}</small></div>${p.lat!=null?`<div><small style="color:var(--muted)">📍 نطاق ${p.geofence_radius}م</small></div>`:'<div><small style="color:var(--copper)">⚠ بدون إحداثيات</small></div>'}</div>
+  const groups={};PROJECTS.forEach(p=>{const g=p.assignment||'بدون إسناد';(groups[g]=groups[g]||[]).push(p);});
+  const card=p=>`<div class="card" style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:start"><div><b style="font-size:15px">${p.name}</b><div><small style="color:var(--muted)">${p.client||''} ${p.code?'· رقم '+p.code:''}</small></div></div>
     <button class="btn ghost sm" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div>
-    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div></div>`).join(''):'<div class="empty">لا توجد محطات — أضف أول محطة</div>';
+    <div style="margin-top:10px">${(p.work_items||[]).map(i=>`<span class="pill role" style="margin:0 0 6px 6px">${i.name}: ${Number(i.rate).toLocaleString()} ﷼/${i.unit}</span>`).join('')||'<small style="color:var(--muted)">لا بنود</small>'}</div></div>`;
+  document.getElementById('projList').innerHTML=PROJECTS.length?Object.entries(groups).map(([g,arr])=>`<div style="margin:8px 2px 8px;font-weight:800;color:var(--green)">📁 ${g} <small style="color:var(--muted);font-weight:600">(${arr.length} محطة)</small></div>`+arr.map(card).join('')).join(''):'<div class="empty">لا توجد محطات — أضف أول محطة</div>';
 }
 let editItems=[];
 function openProject(p){editItems=p&&p.work_items?p.work_items.map(i=>({id:i.id,name:i.name,unit:i.unit,rate:i.rate})):[];
+  const others=PROJECTS.filter(x=>!p||x.id!==p.id);
   openModal(`<h3 style="margin-bottom:14px">${p?'تعديل محطة':'محطة جديدة'}</h3>
     <div class="field"><label>اسم المحطة</label><input id="m_name" value="${p?p.name:''}"></div>
     <div class="row"><div class="field"><label>الجهة</label><input id="m_client" value="${p?(p.client||''):'الشركة السعودية للكهرباء'}"></div><div class="field"><label>رقم المحطة</label><input id="m_code" value="${p?(p.code||''):''}"></div></div>
-    <div class="row"><div class="field"><label>lat</label><input id="m_lat" inputmode="decimal" value="${p&&p.lat!=null?p.lat:''}"></div><div class="field"><label>lng</label><input id="m_lng" inputmode="decimal" value="${p&&p.lng!=null?p.lng:''}"></div></div>
-    <button class="btn ghost sm" style="width:100%;margin-bottom:12px" onclick="fillProjLocFromGPS()">📍 استخدم موقعي الحالي</button>
-    <div class="field"><label>نطاق الحضور (متر)</label><input id="m_rad" type="number" value="${p?p.geofence_radius:300}"></div>
+    <div class="field"><label>الإسناد / المشروع (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
+    ${others.length?`<div class="field"><label>نسخ جدول الأسعار من محطة سابقة</label><select onchange="if(this.value){copyItemsFrom(this.value);this.value=''}"><option value="">— اختر محطة لنسخ بنودها —</option>${others.map(x=>`<option value="${x.id}">${x.name}${x.assignment?' ('+x.assignment+')':''}</option>`).join('')}</select></div>`:''}
     <label>بنود الأعمال (بأسعارها — تظهر لك فقط)</label><div id="itemsWrap"></div>
     <button class="btn ghost sm" style="width:100%;margin:4px 0 14px" onclick="addItemRow()">+ إضافة بند</button>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
     ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف</button>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);renderItemRows();}
+function copyItemsFrom(pid){const src=PROJECTS.find(x=>x.id===pid);if(!src)return;editItems=(src.work_items||[]).map(i=>({name:i.name,unit:i.unit,rate:i.rate}));renderItemRows();toast('تم نسخ '+editItems.length+' بند');}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
 function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div class="row" style="margin-bottom:8px"><input placeholder="اسم البند" value="${it.name||''}" oninput="editItems[${i}].name=this.value" style="flex:2"><input placeholder="وحدة" value="${it.unit||''}" oninput="editItems[${i}].unit=this.value"><input placeholder="سعر" type="number" value="${it.rate||''}" oninput="editItems[${i}].rate=parseFloat(this.value)||0"><button class="btn danger sm" style="flex:none;width:42px" onclick="editItems.splice(${i},1);renderItemRows()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لا بنود</small>';}
 function addItemRow(){editItems.push({name:'',unit:'',rate:0});renderItemRows();}
 async function saveProject(id){const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المحطة');return;}
-  const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),lat:parseFloat(document.getElementById('m_lat').value)||null,lng:parseFloat(document.getElementById('m_lng').value)||null,geofence_radius:parseInt(document.getElementById('m_rad').value)||300};
+  const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{let pid=id;if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{data,error}=await sb.from('projects').insert(rec).select('id').single();if(error)throw error;pid=data.id;}
     await sb.from('work_items').delete().eq('project_id',pid);const items=editItems.filter(i=>i.name&&i.name.trim()).map(i=>({project_id:pid,name:i.name.trim(),unit:i.unit||'وحدة',rate:Number(i.rate)||0}));
@@ -575,7 +578,7 @@ async function loadWorkOrders(){
     const byItem={};es.forEach(e=>{const k=e.item_name+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
     const stage=p.wo_stage||'قيد التنفيذ';
     return `<div class="station" id="st_${pid}"><div class="h" onclick="document.getElementById('st_${pid}').classList.toggle('open')">
-      <div><b>${p.name}</b><div><small style="color:var(--muted)">رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
+      <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
       <div style="text-align:left"><div class="pill role">${fmt(tot)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
       <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
       ${Object.entries(byItem).map(([k,v])=>{const[n,u]=k.split('|');return `<tr><td>${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
