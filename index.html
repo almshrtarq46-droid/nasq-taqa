@@ -150,10 +150,11 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 
     <div class="view" id="v-hr">
       <h2 class="section-title">الموارد البشرية</h2>
-      <div class="seg"><button class="on" onclick="hrTab('emp',this)">الموظفين</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
+      <div class="seg"><button class="on" onclick="hrTab('emp',this)">الموظفين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
       <div id="hr_emp" class="hrbox"><div id="empList"></div></div>
+      <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
       <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
-      <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الأجر = الأجر اليومي × عدد أيام الحضور هذا الشهر. عدّل الأجر اليومي من قائمة الموظفين.</div><div id="payList"></div></div>
+      <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الأجر = الأجر اليومي × أيام الحضور − خصومات التأخير. تلقائي بالكامل.</div><div id="payList"></div></div>
     </div>
 
     <div class="view" id="v-finance">
@@ -205,13 +206,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     </div>
     <div class="view" id="v-att-worker">
       <h2 class="section-title">الحضور والانصراف</h2>
-      <div class="hint">سجّل دوامك بالتقاط سيلفي — يُختم عليه اسمك والتاريخ والوقت والموقع تلقائياً. (مستقل عن المحطات — للميداني والمكتبي.)</div>
-      <div class="card">
-        <div class="field"><label>سيلفي الإثبات (يُختم عليه التاريخ والوقت والموقع تلقائياً)</label>
-          <div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:250px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط سيلفي<input type="file" accept="image/*" capture="user" onchange="pickSelfie(this)"></div></div>
-        <div class="locbar wait" id="att_loc">📍 حدّد موقعك عند التسجيل</div>
-        <div id="att_status"></div><div id="att_actions"></div>
-      </div>
+      <div id="attBody"></div>
       <div id="att_history"></div>
     </div>
     <div class="view" id="v-field">
@@ -255,14 +250,14 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='28';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='29';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
   else if(location.search){history.replaceState(null,'',base);}
 }catch(e){}})();
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
-let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null;
+let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null, MY_CREW_LED=[], MY_CREW_MEMBER=false;
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);}
 function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
@@ -308,8 +303,13 @@ async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
-  await loadProjectsCache();await loadZonesCache();await loadSettingsCache();buildNav(role);show('screen-app');
+  await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();buildNav(role);show('screen-app');
 }
+async function loadMyCrew(){MY_CREW_LED=[];MY_CREW_MEMBER=false;try{
+  const{data:led}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').eq('leader_id',ME.id);
+  MY_CREW_LED=(led||[]).map(c=>{const people=[{id:ME.id,name:PROFILE.full_name||'المسؤول'}];(c.crew_members||[]).forEach(m=>{if(m.member_id!==ME.id)people.push({id:m.member_id,name:m.member_name||'عضو'});});return {id:c.id,name:c.name,people};});
+  if(!MY_CREW_LED.length){const{count}=await sb.from('crew_members').select('*',{count:'exact',head:true}).eq('member_id',ME.id);MY_CREW_MEMBER=(count||0)>0;}
+}catch(e){}}
 async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
 const DEF_SETTINGS={work_start:'06:00',late_t1_min:15,late_t1_hours:1,late_t2_min:30,late_t2_hours:3,work_hours:8};
 const WO_STAGES=['قيد التنفيذ','تم التنفيذ','توقيع المشرف','رفع على نظام الكهرباء','توقيع الاستشاري','توقيع المالية','صدور أمر العمل','نزل المبلغ للمقاول','إصدار فاتورة ضريبية','وصل نصيبنا'];
@@ -407,8 +407,40 @@ async function setRole(id,r){const{error}=await sb.from('profiles').update({role
 /* ===== HR ===== */
 function initHR(){hrTab('emp',document.querySelector('#v-hr .seg button'));}
 function hrTab(t,btn){document.querySelectorAll('#v-hr .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  ['emp','att','pay'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
-  if(t==='emp')loadEmployees();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
+  ['emp','crew','att','pay'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
+  if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
+async function loadCrews(){
+  const{data:crews}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').order('created_at',{ascending:false});
+  const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
+  window._allProfiles=profs||[];
+  document.getElementById('crewList').innerHTML=(crews&&crews.length)?crews.map(c=>`<div class="card" style="padding:14px">
+    <div style="display:flex;justify-content:space-between;align-items:start"><div><b style="font-size:15px">${c.name}</b><div><small style="color:var(--muted)">المسؤول: ${pn[c.leader_id]||'—'} · ${(c.crew_members||[]).length} عضو</small></div></div>
+    <button class="btn ghost sm" onclick='openCrew(${JSON.stringify(c).replace(/'/g,"&#39;")})'>تعديل</button></div>
+    <div style="margin-top:10px">${(c.crew_members||[]).map(m=>`<span class="pill role" style="margin:0 0 6px 6px">${m.member_name||''}</span>`).join('')||'<small style="color:var(--muted)">لا أعضاء</small>'}</div></div>`).join(''):'<div class="empty">لا توجد فرق — أضف أول فرقة</div>';
+}
+async function openCrew(c){
+  let profs=window._allProfiles;if(!profs){const{data}=await sb.from('profiles').select('id,full_name');profs=data||[];window._allProfiles=profs;}
+  const memberIds=new Set((c&&c.crew_members?c.crew_members.map(m=>m.member_id):[]));
+  openModal(`<h3 style="margin-bottom:14px">${c?'تعديل فرقة':'فرقة جديدة'}</h3>
+    <div class="field"><label>اسم الفرقة</label><input id="cr_name" value="${c?c.name:''}" placeholder="مثال: فرقة الشمال 1"></div>
+    <div class="field"><label>مسؤول الفرقة (يسجّل الحضور)</label><select id="cr_leader">${profs.map(p=>`<option value="${p.id}" ${c&&c.leader_id===p.id?'selected':''}>${p.full_name||'—'}</option>`).join('')}</select></div>
+    <label>أعضاء الفرقة</label>
+    <div style="max-height:220px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:8px;margin-bottom:12px">${profs.map(p=>`<label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:5px 2px"><input type="checkbox" class="cr_mem" value="${p.id}" data-name="${(p.full_name||'').replace(/"/g,'')}" ${memberIds.has(p.id)?'checked':''} style="width:auto"> ${p.full_name||'—'}</label>`).join('')}</div>
+    <button class="btn" id="crSave" onclick="saveCrew('${c?c.id:''}')">حفظ الفرقة</button>
+    ${c?`<button class="btn danger" style="margin-top:9px" onclick="delCrew('${c.id}')">حذف</button>`:''}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+}
+async function saveCrew(id){const name=document.getElementById('cr_name').value.trim();if(!name){toast('أدخل اسم الفرقة');return;}
+  const leader=document.getElementById('cr_leader').value;
+  const mems=[...document.querySelectorAll('.cr_mem:checked')].map(x=>({member_id:x.value,member_name:x.getAttribute('data-name')||''}));
+  const btn=document.getElementById('crSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{let cid=id;if(id){const{error}=await sb.from('crews').update({name,leader_id:leader}).eq('id',id);if(error)throw error;}
+    else{const{data,error}=await sb.from('crews').insert({name,leader_id:leader}).select('id').single();if(error)throw error;cid=data.id;}
+    await sb.from('crew_members').delete().eq('crew_id',cid);
+    if(mems.length){const{error}=await sb.from('crew_members').insert(mems.map(m=>({crew_id:cid,member_id:m.member_id,member_name:m.member_name})));if(error)throw error;}
+    closeModal();toast('تم حفظ الفرقة ✓');loadCrews();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ الفرقة';}}
+async function delCrew(id){const{error}=await sb.from('crews').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadCrews();}
 async function loadEmployees(){
   const{data:all}=await sb.from('profiles').select('*').order('created_at',{ascending:false});
   const{data:docs}=await sb.from('documents').select('employee_id,type,expiry');
@@ -748,7 +780,44 @@ async function loadWorkerNotifs(){
 }
 /* ===== WORKER: attendance ===== */
 let attToday=null,attSelfie=null,attSelfiePos=null;
-function initAttWorker(){attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 التقط السيلفي وبيُختم بالموقع تلقائياً';loadAttToday();loadMyAttHistory();}
+const SELFIE_BOX=(label,cap)=>`<div class="field"><label>${label}</label><div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:250px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط الصورة<input type="file" accept="image/*" capture="${cap||'user'}" onchange="pickSelfie(this)"></div></div>`;
+async function initAttWorker(){attSelfie=null;attSelfiePos=null;const body=document.getElementById('attBody');
+  if(MY_CREW_LED&&MY_CREW_LED.length){await renderCrewAtt(body);loadMyAttHistory();return;}
+  if(MY_CREW_MEMBER){body.innerHTML=`<div class="card" style="text-align:center;color:var(--muted)"><div style="font-size:34px;margin-bottom:6px">👥</div><b style="color:var(--ink);font-size:15px">حضورك يسجّله مسؤول فرقتك</b><p style="font-size:13px;margin:8px 0 0">لا تحتاج تسجّل بنفسك — مسؤول الفرقة يسجّل الفرقة كاملة بسيلفي جماعي.</p></div>`;loadMyAttHistory();return;}
+  body.innerHTML=`<div class="hint">سجّل دوامك بالتقاط سيلفي — يُختم عليه اسمك والتاريخ والوقت والموقع تلقائياً.</div>
+    <div class="card">${SELFIE_BOX('سيلفي الإثبات (يُختم عليه التاريخ والوقت والموقع تلقائياً)','user')}
+    <div class="locbar wait" id="att_loc">📍 التقط السيلفي وبيُختم بالموقع تلقائياً</div>
+    <div id="att_status"></div><div id="att_actions"></div></div>`;
+  loadAttToday();loadMyAttHistory();
+}
+async function renderCrewAtt(body){const crew=MY_CREW_LED[0];const people=crew.people;
+  const{data:att}=await sb.from('attendance').select('worker_id,check_in,check_out,is_late').eq('work_date',todayKey()).in('worker_id',people.map(p=>p.id));
+  const byW={};(att||[]).forEach(a=>byW[a.worker_id]=a);
+  const anyIn=people.some(p=>byW[p.id]&&byW[p.id].check_in);const allOut=people.every(p=>byW[p.id]&&byW[p.id].check_out);
+  body.innerHTML=`<div class="hint">أنت مسؤول فرقة "<b>${crew.name}</b>". التقط سيلفي جماعي يضم فرقتك، حدّد الحاضرين، ثم سجّل حضور/انصراف الفرقة.</div>
+    <div class="card">${SELFIE_BOX('سيلفي الفرقة (يُختم بالوقت والموقع)','environment')}
+    <div class="locbar wait" id="att_loc">📍 التقط السيلفي وبيُختم بالموقع</div>
+    <label>أعضاء الفرقة الحاضرون</label>
+    ${people.map(p=>{const a=byW[p.id];const st=a?(a.check_out?'انصرف':(a.check_in?'حاضر'+(a.is_late?' • متأخر':''):'')):'';return `<label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:7px 2px"><input type="checkbox" id="cm_${p.id}" checked style="width:auto"> ${p.name}${p.id===ME.id?' <small style="color:var(--muted)">(أنت — المسؤول)</small>':''} ${st?`<span class="pill ${a.check_out?'susp':'ok'}" style="margin-right:auto">${st}</span>`:''}</label>`;}).join('')}
+    <div style="margin-top:12px">${!anyIn?`<button class="btn" id="att_btn" onclick="doCrewCheck('in')">تسجيل حضور الفرقة</button>`:!allOut?`<button class="btn copper" id="att_btn" onclick="doCrewCheck('out')">تسجيل انصراف الفرقة</button>`:'<div style="text-align:center;color:var(--muted)">تم تسجيل حضور وانصراف الفرقة اليوم ✓</div>'}</div></div>`;
+}
+async function doCrewCheck(dir){
+  if(!attSelfie||!attSelfiePos){toast('التقط سيلفي الفرقة أولاً');return;}
+  const btn=document.getElementById('att_btn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{const crew=MY_CREW_LED[0];const pos=attSelfiePos;
+    const present=crew.people.filter(p=>document.getElementById('cm_'+p.id)&&document.getElementById('cm_'+p.id).checked).map(p=>p.id);
+    if(!present.length){toast('اختر الحاضرين');if(btn){btn.disabled=false;btn.textContent='تسجيل';}return;}
+    const photoPath=await uploadPhoto(attSelfie, dir==='in'?'crew_in':'crew_out');
+    const now=new Date();const ph=dir==='in'?lateHours(now):0;const late=ph>0;
+    for(const mid of present){
+      if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:mid,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath,is_late:late,penalty_hours:ph,recorded_by:ME.id},{onConflict:'worker_id,work_date'});if(error)throw error;
+        if(late){try{await sb.from('notifications').insert({employee_id:mid,title:'تأخير في الحضور',body:`تأخرت الفرقة ${minutesLate(now)} دقيقة اليوم، وتم خصم ${ph} ساعة عمل من راتبك.`,kind:'deduction'});}catch(_){}}}
+      else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',mid).eq('work_date',todayKey());if(error)throw error;}
+    }
+    toast('تم تسجيل الفرقة ✓'+(dir==='in'&&late?` — متأخر، خصم ${ph} ساعة`:''));
+    attSelfie=null;attSelfiePos=null;initAttWorker();
+  }catch(e){toast('خطأ: '+e.message);const b=document.getElementById('att_btn');if(b){b.disabled=false;b.textContent=dir==='in'?'تسجيل حضور الفرقة':'تسجيل انصراف الفرقة';}}
+}
 async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=document.getElementById('att_loc');
   lb.className='locbar wait';lb.textContent='📸 جارٍ تحديد الموقع وختم الصورة…';
   try{
