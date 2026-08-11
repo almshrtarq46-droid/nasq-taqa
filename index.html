@@ -179,9 +179,8 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     </div>
     <div class="view" id="v-att-worker">
       <h2 class="section-title">الحضور والانصراف</h2>
-      <div class="hint">التسجيل يتطلب أن تكون داخل نطاق موقع المحطة. يُسجَّل موقعك ووقتك تلقائياً.</div>
+      <div class="hint">سجّل دوامك بالتقاط سيلفي — يُختم عليه اسمك والتاريخ والوقت والموقع تلقائياً. (مستقل عن المحطات — للميداني والمكتبي.)</div>
       <div class="card">
-        <div class="field"><label>المحطة / الموقع</label><select id="att_project"></select></div>
         <div class="field"><label>سيلفي الإثبات (يُختم عليه التاريخ والوقت والموقع تلقائياً)</label>
           <div class="photobox" id="pb_selfie" style="aspect-ratio:auto;height:160px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>التقط سيلفي<input type="file" accept="image/*" capture="user" onchange="pickSelfie(this)"></div></div>
         <div class="locbar wait" id="att_loc">📍 حدّد موقعك عند التسجيل</div>
@@ -549,15 +548,14 @@ async function loadWorkerHome(){
 }
 /* ===== WORKER: attendance ===== */
 let attToday=null,attSelfie=null,attSelfiePos=null;
-function initAttWorker(){attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 التقط السيلفي وبيُختم بالموقع تلقائياً';loadAttToday();loadMyAttHistory();}
+function initAttWorker(){attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 التقط السيلفي وبيُختم بالموقع تلقائياً';loadAttToday();loadMyAttHistory();}
 async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=document.getElementById('att_loc');
   lb.className='locbar wait';lb.textContent='📸 جارٍ تحديد الموقع وختم الصورة…';
   try{
     const raw=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>compress(rd.result,res);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});
     const pos=await getPos();
-    const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
     const now=new Date();
-    const lines=[`${now.toLocaleDateString('en-GB')} ${now.toTimeString().slice(0,5)}`,`المحطة: ${proj?proj.name:'—'}`,`الإحداثيات: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+    const lines=[`${PROFILE.full_name||'موظف'}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,5)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
     const stamped=await stampImage(raw,lines);
     attSelfie=stamped;attSelfiePos=pos;
     const b=document.getElementById('pb_selfie');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=stamped;b.appendChild(img);
@@ -585,12 +583,11 @@ function renderAttWorker(){const st=document.getElementById('att_status'),ac=doc
 async function doCheck(dir){
   if(!attSelfie||!attSelfiePos){toast('التقط سيلفي الإثبات أولاً');return;}
   const btn=document.getElementById('att_btn');btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';const lb=document.getElementById('att_loc');
-  try{const pos=attSelfiePos;const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
-    if(proj&&proj.lat!=null&&proj.lng!=null){const dist=haversine(pos.lat,pos.lng,proj.lat,proj.lng);if(dist>proj.geofence_radius){lb.className='locbar bad2';lb.textContent=`⛔ أنت بعيد عن الموقع بـ${dist}م (المسموح ${proj.geofence_radius}م)`;toast('خارج نطاق الموقع');btn.disabled=false;btn.textContent=old;return;}}
+  try{const pos=attSelfiePos;
     lb.className='locbar wait';lb.textContent='📤 جارٍ رفع الحضور…';
     const now=new Date();
     const photoPath=await uploadPhoto(attSelfie, dir==='in'?'checkin':'checkout');
-    if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),project_id:proj?proj.id:null,check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
+    if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
     else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
     attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
