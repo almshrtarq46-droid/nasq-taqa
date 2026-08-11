@@ -161,6 +161,12 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الأجر = الأجر اليومي × أيام الحضور − خصومات التأخير. تلقائي بالكامل.</div><div id="payList"></div></div>
     </div>
 
+    <div class="view" id="v-livemap">
+      <h2 class="section-title">الخريطة المباشرة</h2>
+      <div class="hint">مواقع الموظفين المباشرة (تظهر أثناء فتحهم للتطبيق). تتحدّث تلقائياً. 🟢 = محدّث الآن، ⚪ = آخر موقع معروف.</div>
+      <div id="liveMap" style="height:300px;border-radius:14px;margin-bottom:13px;z-index:0"></div>
+      <div id="liveList"></div>
+    </div>
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
       <div id="finKpis" class="grid2" style="margin-bottom:13px"></div>
@@ -257,7 +263,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='30';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='31';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -277,6 +283,30 @@ const monthStart=()=>new Date().toISOString().slice(0,8)+'01';
 /* geo */
 function haversine(a,b,c,d){const R=6371000,t=x=>x*Math.PI/180;const dLat=t(c-a),dLng=t(d-b);const x=Math.sin(dLat/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dLng/2)**2;return Math.round(R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)));}
 function getPos(){return new Promise((res,rej)=>{if(!navigator.geolocation)return rej(new Error('خدمة الموقع غير مدعومة'));navigator.geolocation.getCurrentPosition(p=>res({lat:p.coords.latitude,lng:p.coords.longitude,acc:Math.round(p.coords.accuracy)}),()=>rej(new Error('تعذّر تحديد موقعك — فعّل صلاحية الموقع')),{enableHighAccuracy:true,timeout:15000,maximumAge:0});});}
+/* live location (worker shares while app is open) */
+let liveWatchId=null,lastLiveSent=0;
+function startLiveTracking(){if(!navigator.geolocation||liveWatchId!=null)return;
+  liveWatchId=navigator.geolocation.watchPosition(async pos=>{const now=Date.now();if(now-lastLiveSent<40000)return;lastLiveSent=now;
+    try{await sb.from('live_locations').upsert({worker_id:ME.id,lat:pos.coords.latitude,lng:pos.coords.longitude,updated_at:new Date().toISOString()},{onConflict:'worker_id'});}catch(e){}
+  },()=>{},{enableHighAccuracy:true,maximumAge:30000,timeout:60000});}
+function stopLiveTracking(){if(liveWatchId!=null){try{navigator.geolocation.clearWatch(liveWatchId);}catch(e){}liveWatchId=null;}}
+/* admin live map */
+let liveMap2=null,liveMarkers=null;
+function initLiveMap(){
+  if(window.L){if(liveMap2){try{liveMap2.remove();}catch(e){}liveMap2=null;}
+    liveMap2=L.map('liveMap').setView([24.7136,46.6753],6);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(liveMap2);
+    liveMarkers=L.layerGroup().addTo(liveMap2);setTimeout(()=>{try{liveMap2.invalidateSize();}catch(e){}},250);}
+  loadLiveMap();window._liveInterval=setInterval(loadLiveMap,25000);
+}
+async function loadLiveMap(){
+  const{data:locs}=await sb.from('live_locations').select('*');
+  const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
+  const{data:att}=await sb.from('attendance').select('worker_id,check_in,check_out').eq('work_date',todayKey());const ab={};(att||[]).forEach(a=>ab[a.worker_id]=a);
+  const pts=(locs||[]).filter(l=>l.lat!=null);const nowMs=Date.now();
+  if(liveMarkers){liveMarkers.clearLayers();const bounds=[];pts.forEach(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);L.marker([l.lat,l.lng]).addTo(liveMarkers).bindPopup(`${pn[l.worker_id]||'موظف'}<br>قبل ${mins} دقيقة`);bounds.push([l.lat,l.lng]);});if(bounds.length&&liveMap2){try{liveMap2.fitBounds(bounds,{maxZoom:14,padding:[30,30]});}catch(e){}}}
+  document.getElementById('liveList').innerHTML=(pts.length)?pts.map(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);const fresh=mins<3;const a=ab[l.worker_id];const st=a?(a.check_out?'انصرف':a.check_in?'حاضر':''):'';
+    return `<div class="item"><div class="ic" style="background:${fresh?'#e6f6ed':'#f0f0f0'};color:${fresh?'var(--ok)':'var(--muted)'}">${fresh?'🟢':'⚪'}</div><div class="meta"><b>${pn[l.worker_id]||'موظف'}</b><small>آخر تحديث قبل ${mins} دقيقة ${st?'· '+st:''} · <a class="link" href="https://www.google.com/maps?q=${l.lat},${l.lng}" target="_blank">📍 خريطة</a></small></div></div>`;}).join(''):'<div class="empty">لا توجد مواقع مباشرة الآن — تظهر عند فتح الموظفين للتطبيق.</div>';
+}
 
 /* auth */
 let authMode='login';
@@ -296,7 +326,7 @@ async function doAuth(){
   }catch(e){msg(m,translateErr(e.message),'err');}finally{btn.disabled=false;btn.textContent=old;}
 }
 function translateErr(s){if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';if(/already registered/i.test(s))return'هذا الرقم مسجّل مسبقاً';if(/at least 6/i.test(s))return'كلمة المرور ٦ أحرف على الأقل';if(/Email not confirmed/i.test(s))return'الحساب غير مُفعّل بعد';return s;}
-async function logout(){await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
+async function logout(){stopLiveTracking();if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
 function routeFor(p){if(!p)return'missing';if(p.status==='suspended')return'suspended';if(p.status==='pending')return'pending';return p.role==='admin'?'admin':'worker';}
 async function afterLogin(){const{data:{user}}=await sb.auth.getUser();if(!user){show('screen-auth');return;}ME=user;
   const{data:prof,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
@@ -311,6 +341,7 @@ async function enterApp(role){
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
   await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();buildNav(role);show('screen-app');
+  if(role!=='admin')startLiveTracking();
 }
 async function loadMyCrew(){MY_CREW_LED=[];MY_CREW_MEMBER=false;try{
   const{data:led}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').eq('leader_id',ME.id);
@@ -345,7 +376,8 @@ const NAV_MAIN=[
   {g:'العمليات'},
   {v:'workorders',l:'أوامر العمل',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'hr',l:'الموارد البشرية',i:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'},
-  {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'}
+  {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
+  {v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'}
 ];
 const NAV_SET_CHILDREN=[
   {v:'settings',l:'وقت الحضور والخصم',i:'M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'},
@@ -371,11 +403,12 @@ function buildNav(role){
 }
 function toggleSidebar(open){document.getElementById('sidebar').classList.toggle('on',open);document.getElementById('backdrop').classList.toggle('on',open);}
 function goView(v){
+  if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}
   document.querySelectorAll('#screen-app .view').forEach(e=>e.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
