@@ -158,7 +158,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div id="hr_emp" class="hrbox"><div id="empList"></div></div>
       <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
       <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
-      <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الأجر = الأجر اليومي × أيام الحضور − خصومات التأخير. تلقائي بالكامل.</div><div id="payList"></div></div>
+      <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الصافي = (أيام × الأجر اليومي) − خصم التأخير + أوفر تايم − خصومات وسلف. التأخير تلقائي، والباقي تضيفه يدوياً ويوصل إشعار للموظف.</div><button class="btn copper" style="margin-bottom:13px" onclick="exportPayroll()">تصدير كشف الرواتب Excel</button><div id="payList"></div></div>
     </div>
 
     <div class="view" id="v-livemap">
@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='34';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='35';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -295,6 +295,7 @@ function initClient(){sb=window.supabase.createClient(CFG.url,CFG.key);}
 const fmt=n=>(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const todayKey=()=>new Date().toISOString().slice(0,10);
 const monthStart=()=>new Date().toISOString().slice(0,8)+'01';
+const monthKey=()=>new Date().toISOString().slice(0,7);
 
 /* geo */
 function haversine(a,b,c,d){const R=6371000,t=x=>x*Math.PI/180;const dLat=t(c-a),dLng=t(d-b);const x=Math.sin(dLat/2)**2+Math.cos(t(a))*Math.cos(t(c))*Math.sin(dLng/2)**2;return Math.round(R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)));}
@@ -555,13 +556,47 @@ async function saveEmpDocs(id){const btn=document.getElementById('edSave');btn.d
     closeModal();toast('تم حفظ المستندات ✓');loadEmployees();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المستندات';}}
 async function loadPayroll(){
+  const mk=monthKey();
   const{data:profs}=await sb.from('profiles').select('id,full_name,daily_wage').eq('role','worker');
   const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours').gte('work_date',monthStart());
+  const{data:adj}=await sb.from('payroll_adjustments').select('*').eq('month',mk);
   const days={},pen={};(att||[]).forEach(a=>{days[a.worker_id]=(days[a.worker_id]||0)+1;pen[a.worker_id]=(pen[a.worker_id]||0)+Number(a.penalty_hours||0);});
-  const wh=Number((SETTINGS&&SETTINGS.work_hours)||8);
-  document.getElementById('payList').innerHTML=(profs&&profs.length)?profs.map(p=>{const d=days[p.id]||0,ph=pen[p.id]||0;const hourly=(p.daily_wage||0)/wh;const ded=ph*hourly;const wage=d*(p.daily_wage||0)-ded;
-    return `<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${p.full_name||'—'}</b><small>${d} يوم × ${fmt(p.daily_wage||0)} ﷼${ph?` · خصم تأخير ${ph} س (−${fmt(ded)})`:''}</small></div><div class="pill role">${fmt(wage)} ﷼</div></div>`;}).join(''):'<div class="empty">لا يوجد عمال</div>';
+  const adds={},subs={};(adj||[]).forEach(a=>{const amt=Number(a.amount||0);if(a.type==='overtime'||a.type==='bonus')adds[a.employee_id]=(adds[a.employee_id]||0)+amt;else subs[a.employee_id]=(subs[a.employee_id]||0)+amt;});
+  const wh=Number((SETTINGS&&SETTINGS.work_hours)||8);window._payAdj=adj||[];window._payRows=[];
+  document.getElementById('payList').innerHTML=(profs&&profs.length)?profs.map(p=>{const d=days[p.id]||0,ph=pen[p.id]||0;const hourly=(p.daily_wage||0)/wh;const lateDed=ph*hourly;const base=d*(p.daily_wage||0);const add=adds[p.id]||0,sub=subs[p.id]||0;const net=base-lateDed+add-sub;
+    window._payRows.push({name:p.full_name||'',days:d,base,lateDed,add,sub,net});
+    return `<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px">${p.full_name||'—'}</b><div class="pill role">${fmt(net)} ﷼</div></div>
+      <table class="tbl" style="margin-top:8px"><tbody>
+      <tr><td>الأساسي (${d} يوم × ${fmt(p.daily_wage||0)})</td><td style="text-align:left">${fmt(base)}</td></tr>
+      ${lateDed?`<tr><td>خصم تأخير (${ph} س)</td><td style="text-align:left;color:var(--bad)">− ${fmt(lateDed)}</td></tr>`:''}
+      ${add?`<tr><td>أوفر تايم / إضافات</td><td style="text-align:left;color:var(--ok)">+ ${fmt(add)}</td></tr>`:''}
+      ${sub?`<tr><td>خصومات وسلف</td><td style="text-align:left;color:var(--bad)">− ${fmt(sub)}</td></tr>`:''}
+      <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:var(--green)">${fmt(net)} ﷼</td></tr></tbody></table>
+      <div class="row" style="margin-top:8px"><button class="link" onclick='openAdjustment(${JSON.stringify({id:p.id,full_name:p.full_name}).replace(/'/g,"&#39;")})'>+ إضافة حركة</button><button class="link" onclick='viewAdjustments("${p.id}",${JSON.stringify(p.full_name||"").replace(/'/g,"&#39;")})'>حركات الشهر</button></div></div>`;}).join(''):'<div class="empty">لا يوجد عمال</div>';
 }
+function openAdjustment(emp){openModal(`<h3 style="margin-bottom:2px">حركة على الراتب</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${emp.full_name||''} · شهر ${monthKey()}</small>
+  <div class="field"><label>النوع</label><select id="adj_type"><option value="deduction">خصم (مخالفة مرورية…)</option><option value="advance">سلفة</option><option value="overtime">أوفر تايم</option><option value="bonus">مكافأة / إضافة</option></select></div>
+  <div class="field"><label>المبلغ (﷼)</label><input id="adj_amount" type="number" inputmode="decimal"></div>
+  <div class="field"><label>السبب / ملاحظة</label><input id="adj_note" placeholder="مثال: مخالفة تجاوز سرعة"></div>
+  <button class="btn" id="adjSave" onclick="saveAdjustment('${emp.id}')">حفظ وإشعار الموظف</button>
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveAdjustment(id){const amount=parseFloat(document.getElementById('adj_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
+  const type=document.getElementById('adj_type').value;const note=document.getElementById('adj_note').value.trim();
+  const btn=document.getElementById('adjSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{error}=await sb.from('payroll_adjustments').insert({employee_id:id,month:monthKey(),type,amount,note,created_by:ME.id});if(error)throw error;
+    const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[type];const plus=(type==='overtime'||type==='bonus');
+    try{await sb.from('notifications').insert({employee_id:id,title:lbl,body:`${plus?'أُضيف لك':'خُصم منك'} مبلغ ${fmt(amount)} ﷼${note?' ('+note+')':''}.`,kind:plus?'info':'deduction'});}catch(_){}
+    closeModal();toast('تم ✓ وأُشعر الموظف');loadPayroll();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ وإشعار الموظف';}}
+function viewAdjustments(id,name){const adj=(window._payAdj||[]).filter(a=>a.employee_id===id);
+  openModal(`<h3 style="margin-bottom:12px">حركات ${name||''} — ${monthKey()}</h3>${adj.length?adj.map(a=>{const plus=(a.type==='overtime'||a.type==='bonus');const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[a.type];return `<div class="item"><div class="meta"><b>${lbl}${a.note?' — '+a.note:''}</b><small>${a.created_at?a.created_at.slice(0,10):''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill ${plus?'ok':'susp'}">${plus?'+':'−'} ${fmt(a.amount)}</span><button class="btn danger sm" style="flex:none;width:36px" onclick="delAdjustment('${a.id}')">✕</button></div></div>`;}).join(''):'<div class="empty">لا حركات هذا الشهر</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+async function delAdjustment(id){const{error}=await sb.from('payroll_adjustments').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadPayroll();}
+function exportPayroll(){const rows=window._payRows||[];if(!rows.length){toast('لا بيانات');return;}
+  const aoa=[['كشف الرواتب — شركة نسق الطاقة'],['الشهر',monthKey()],[],['الموظف','أيام الحضور','الأساسي','خصم التأخير','أوفر تايم/إضافات','خصومات وسلف','الصافي']];
+  rows.forEach(r=>aoa.push([r.name,r.days,r.base,r.lateDed,r.add,r.sub,r.net]));
+  aoa.push([],['','','','','','الإجمالي',rows.reduce((s,r)=>s+r.net,0)]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:18},{wch:11},{wch:12},{wch:12},{wch:14},{wch:13},{wch:12}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الرواتب');XLSX.writeFile(wb,'رواتب_'+monthKey()+'.xlsx');toast('تم التصدير ✓');}
 let leafMap=null;
 async function loadAttAdmin(){
   const di=document.getElementById('att_date_admin');if(di&&!di.value)di.value=todayKey();const date=di?di.value:todayKey();
