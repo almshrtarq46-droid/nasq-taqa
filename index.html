@@ -142,7 +142,10 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <button class="hamb" id="hambBtn" style="display:none" onclick="toggleSidebar(true)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
       <div class="who"><b id="h_name"></b><span id="h_role"></span></div>
     </div>
-    <button class="btn ghost sm" onclick="logout()">خروج</button>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn ghost sm" onclick="refreshApp()" title="تحديث" aria-label="تحديث"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></button>
+      <button class="btn ghost sm" onclick="logout()">خروج</button>
+    </div>
   </header>
   <main>
     <!-- ===== ADMIN VIEWS ===== -->
@@ -306,7 +309,9 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='41';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='42';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+/* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
+function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ ثم تختفي بتلاشٍ ناعم */
 (function(){var el=document.getElementById('intro');if(!el)return;setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},650);},3000);})();
 /* تثبيت كتطبيق: تسجيل service worker (بدون تخزين للصفحة) */
