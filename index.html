@@ -175,6 +175,16 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <button class="btn" style="margin-bottom:13px" onclick="openProject()">+ محطة / مشروع جديد</button>
       <div id="projList"></div>
     </div>
+    <div class="view" id="v-settings">
+      <h2 class="section-title">إعدادات الدوام</h2>
+      <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
+      <div class="card">
+        <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
+        <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
+        <div class="hint" id="s_preview"></div>
+        <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
+      </div>
+    </div>
     <div class="view" id="v-zones">
       <h2 class="section-title">مناطق الحضور المسموحة</h2>
       <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
@@ -240,9 +250,9 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='19';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='20';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
-let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[];
+let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null;
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);}
 function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
@@ -288,9 +298,12 @@ async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
-  await loadProjectsCache();await loadZonesCache();buildNav(role);show('screen-app');
+  await loadProjectsCache();await loadZonesCache();await loadSettingsCache();buildNav(role);show('screen-app');
 }
 async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
+const DEF_SETTINGS={work_start:'06:00',grace_min:15,penalty_hours:1,work_hours:8};
+async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
+function isLateNow(now){if(!SETTINGS||!SETTINGS.work_start)return false;const[h,m]=SETTINGS.work_start.split(':').map(Number);const cutoff=new Date(now);cutoff.setHours(h,m+Number(SETTINGS.grace_min||0),0,0);return now.getTime()>cutoff.getTime();}
 async function loadProjectsCache(){
   if(PROFILE.role==='admin'){const{data}=await sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false});PROJECTS=data||[];}
   else{const{data:pr}=await sb.from('projects').select('*').order('created_at',{ascending:false});
@@ -306,7 +319,8 @@ const ADMIN_MENU=[
   ['g','الإعدادات'],
   ['approvals','اعتماد الحسابات','M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
   ['projects','المحطات والمشاريع','M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'],
-  ['zones','مناطق الحضور','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4']
+  ['zones','مناطق الحضور','M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'],
+  ['settings','إعدادات الدوام','M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z']
 ];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
@@ -328,7 +342,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,zones:loadZones,settings:loadSettings,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
@@ -385,10 +399,11 @@ function openEmp(p){openModal(`<h3 style="margin-bottom:14px">${p.full_name||'م
 async function saveWage(id){const w=parseFloat(document.getElementById('emp_wage').value)||0;const{error}=await sb.from('profiles').update({daily_wage:w}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم ✓');closeModal();loadEmployees();}
 async function loadPayroll(){
   const{data:profs}=await sb.from('profiles').select('id,full_name,daily_wage').eq('role','worker');
-  const{data:att}=await sb.from('attendance').select('worker_id,work_date').gte('work_date',monthStart());
-  const days={};(att||[]).forEach(a=>{days[a.worker_id]=(days[a.worker_id]||0)+1;});
-  document.getElementById('payList').innerHTML=(profs&&profs.length)?profs.map(p=>{const d=days[p.id]||0;const wage=d*(p.daily_wage||0);
-    return `<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${p.full_name||'—'}</b><small>${d} يوم × ${fmt(p.daily_wage||0)} ﷼</small></div><div class="pill role">${fmt(wage)} ﷼</div></div>`;}).join(''):'<div class="empty">لا يوجد عمال</div>';
+  const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours').gte('work_date',monthStart());
+  const days={},pen={};(att||[]).forEach(a=>{days[a.worker_id]=(days[a.worker_id]||0)+1;pen[a.worker_id]=(pen[a.worker_id]||0)+Number(a.penalty_hours||0);});
+  const wh=Number((SETTINGS&&SETTINGS.work_hours)||8);
+  document.getElementById('payList').innerHTML=(profs&&profs.length)?profs.map(p=>{const d=days[p.id]||0,ph=pen[p.id]||0;const hourly=(p.daily_wage||0)/wh;const ded=ph*hourly;const wage=d*(p.daily_wage||0)-ded;
+    return `<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${p.full_name||'—'}</b><small>${d} يوم × ${fmt(p.daily_wage||0)} ﷼${ph?` · خصم تأخير ${ph} س (−${fmt(ded)})`:''}</small></div><div class="pill role">${fmt(wage)} ﷼</div></div>`;}).join(''):'<div class="empty">لا يوجد عمال</div>';
 }
 let leafMap=null;
 async function loadAttAdmin(){
@@ -398,6 +413,7 @@ async function loadAttAdmin(){
   drawMap(att||[],pm);
   document.getElementById('attAdminList').innerHTML=(att&&att.length)?att.map(a=>{const w=pm[a.worker_id]||{};let b,ex;
     if(a.check_out){b='<span class="badge-att out">انصرف</span>';ex=`${hm(a.check_in)} ← ${hm(a.check_out)} · ${hoursBetween(a.check_in,a.check_out)} س`;}else{b='<span class="badge-att in">حاضر</span>';ex=`منذ ${hm(a.check_in)}`;}
+    if(a.is_late)b+=` <span class="badge-att out">متأخر −${a.penalty_hours||1}س</span>`;
     const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍 الموقع</a>`:'';
     const sIn=a.in_photo?` · <button class="link" onclick="viewInvPhoto('${a.in_photo}')">📷 سيلفي الحضور</button>`:'';
     const sOut=a.out_photo?` · <button class="link" onclick="viewInvPhoto('${a.out_photo}')">سيلفي الانصراف</button>`:'';
@@ -442,6 +458,23 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
     closeModal();toast('تم الحفظ ✓');loadProjects();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
+
+/* ===== attendance settings ===== */
+async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
+  document.getElementById('s_start').value=s.work_start||'06:00';
+  document.getElementById('s_grace').value=s.grace_min??15;
+  document.getElementById('s_pen').value=s.penalty_hours??1;
+  document.getElementById('s_wh').value=s.work_hours??8;
+  settingsPreview();
+}
+function settingsPreview(){const st=document.getElementById('s_start').value||'06:00';const g=parseInt(document.getElementById('s_grace').value)||0;const[h,m]=st.split(':').map(Number);const cm=(h*60+m+g);const ch=String(Math.floor(cm/60)).padStart(2,'0'),cmm=String(cm%60).padStart(2,'0');
+  document.getElementById('s_preview').textContent=`النتيجة: من يسجّل حضوره بعد ${ch}:${cmm} يُعتبر متأخراً ويُخصم منه ${document.getElementById('s_pen').value||1} ساعة.`;}
+['s_start','s_grace','s_pen'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)settingsPreview();});});
+async function saveSettings(){
+  const rec={work_start:document.getElementById('s_start').value||'06:00',grace_min:parseInt(document.getElementById('s_grace').value)||0,penalty_hours:parseFloat(document.getElementById('s_pen').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
+  const btn=document.getElementById('sSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
+}
 
 /* ===== zones (attendance geofence) ===== */
 async function loadZones(){await loadZonesCache();
@@ -634,7 +667,7 @@ async function loadMyAttHistory(){
   const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
   const box=document.getElementById('att_history');
   if(!data||!data.length){box.innerHTML='';return;}
-  box.innerHTML=`<h3 style="font-size:15px;margin:16px 2px 10px">سجل حضوري هذا الشهر (${data.length} يوم)</h3>`+data.map(a=>`<div class="item"><div class="ic" style="background:#eef4f1">📅</div><div class="meta"><b>${a.work_date}</b><small>${a.check_in?hm(a.check_in):'—'}${a.check_out?' ← '+hm(a.check_out):''}${a.check_in&&a.check_out?' · '+hoursBetween(a.check_in,a.check_out)+' ساعة':''}</small></div></div>`).join('');
+  box.innerHTML=`<h3 style="font-size:15px;margin:16px 2px 10px">سجل حضوري هذا الشهر (${data.length} يوم)</h3>`+data.map(a=>`<div class="item"><div class="ic" style="background:#eef4f1">📅</div><div class="meta"><b>${a.work_date}</b><small>${a.check_in?hm(a.check_in):'—'}${a.check_out?' ← '+hm(a.check_out):''}${a.check_in&&a.check_out?' · '+hoursBetween(a.check_in,a.check_out)+' ساعة':''}</small>${a.is_late?`<div style="margin-top:4px"><span class="badge-att out">متأخر — خصم ${a.penalty_hours||1} ساعة</span></div>`:''}</div></div>`).join('');
 }
 async function loadAttToday(){const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).eq('work_date',todayKey()).maybeSingle();attToday=data||null;renderAttWorker();}
 function renderAttWorker(){const st=document.getElementById('att_status'),ac=document.getElementById('att_actions');
@@ -648,7 +681,7 @@ async function doCheck(dir){
     lb.className='locbar wait';lb.textContent='📤 جارٍ رفع الحضور…';
     const now=new Date();
     const photoPath=await uploadPhoto(attSelfie, dir==='in'?'checkin':'checkout');
-    if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
+    if(dir==='in'){const late=isLateNow(now);const ph=late?Number((SETTINGS&&SETTINGS.penalty_hours)||1):0;const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath,is_late:late,penalty_hours:ph},{onConflict:'worker_id,work_date'});if(error)throw error;toast(late?`تم الحضور — متأخر، خصم ${ph} ساعة`:'تم تسجيل الحضور ✓');}
     else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
     attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
