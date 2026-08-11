@@ -179,8 +179,12 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <h2 class="section-title">وقت الحضور والخصم</h2>
       <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
       <div class="card">
-        <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
-        <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
+        <div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div>
+        <label>الشريحة الأولى للتأخير</label>
+        <div class="row" style="margin-bottom:6px"><div class="field"><label>تأخير من (دقيقة)</label><input type="number" id="s_t1min"></div><div class="field"><label>خصم (ساعات)</label><input type="number" id="s_t1h" inputmode="decimal"></div></div>
+        <label>الشريحة الثانية للتأخير</label>
+        <div class="row" style="margin-bottom:6px"><div class="field"><label>تأخير من (دقيقة)</label><input type="number" id="s_t2min"></div><div class="field"><label>خصم (ساعات)</label><input type="number" id="s_t2h" inputmode="decimal"></div></div>
+        <div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div>
         <div class="hint" id="s_preview"></div>
         <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
       </div>
@@ -197,6 +201,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div class="grid2" id="workerKpis"></div>
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
       <div class="row"><button class="btn" onclick="goView('field')">تسجيل عمل ميداني</button><button class="btn copper" onclick="goView('att-worker')">حضور / انصراف</button></div>
+      <div id="workerNotifs" style="margin-top:13px"></div>
     </div>
     <div class="view" id="v-att-worker">
       <h2 class="section-title">الحضور والانصراف</h2>
@@ -250,7 +255,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='27';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='28';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -306,7 +311,7 @@ async function enterApp(role){
   await loadProjectsCache();await loadZonesCache();await loadSettingsCache();buildNav(role);show('screen-app');
 }
 async function loadZonesCache(){try{const{data}=await sb.from('zones').select('*');ZONES=data||[];}catch(e){ZONES=[];}}
-const DEF_SETTINGS={work_start:'06:00',grace_min:15,penalty_hours:1,work_hours:8};
+const DEF_SETTINGS={work_start:'06:00',late_t1_min:15,late_t1_hours:1,late_t2_min:30,late_t2_hours:3,work_hours:8};
 const WO_STAGES=['قيد التنفيذ','تم التنفيذ','توقيع المشرف','رفع على نظام الكهرباء','توقيع الاستشاري','توقيع المالية','صدور أمر العمل','نزل المبلغ للمقاول','إصدار فاتورة ضريبية','وصل نصيبنا'];
 const DOC_TYPES=[
   {t:'safety',l:'الأمن الصناعي',cat:'كروت شركة الكهرباء'},
@@ -319,7 +324,8 @@ const DOC_TYPES=[
   {t:'medical_insurance',l:'التأمين الطبي',cat:'مستندات حكومية'}
 ];
 async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
-function isLateNow(now){if(!SETTINGS||!SETTINGS.work_start)return false;const[h,m]=SETTINGS.work_start.split(':').map(Number);const cutoff=new Date(now);cutoff.setHours(h,m+Number(SETTINGS.grace_min||0),0,0);return now.getTime()>cutoff.getTime();}
+function minutesLate(now){if(!SETTINGS||!SETTINGS.work_start)return 0;const[h,m]=SETTINGS.work_start.split(':').map(Number);const start=new Date(now);start.setHours(h,m,0,0);return Math.max(0,Math.round((now.getTime()-start.getTime())/60000));}
+function lateHours(now){const ml=minutesLate(now);const s=SETTINGS||DEF_SETTINGS;const t2=Number(s.late_t2_min??30),t2h=Number(s.late_t2_hours??3),t1=Number(s.late_t1_min??15),t1h=Number(s.late_t1_hours??1);if(ml>=t2)return t2h;if(ml>=t1)return t1h;return 0;}
 async function loadProjectsCache(){
   if(PROFILE.role==='admin'){const{data}=await sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false});PROJECTS=data||[];}
   else{const{data:pr}=await sb.from('projects').select('*').order('created_at',{ascending:false});
@@ -526,16 +532,18 @@ async function delProject(id){const{count}=await sb.from('entries').select('*',{
 function toggleSetMenu(){const c=document.getElementById('setChildren'),ch=document.getElementById('setChev');if(!c)return;const open=c.style.display==='none';c.style.display=open?'block':'none';if(ch)ch.style.transform=open?'rotate(180deg)':'';}
 async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
   document.getElementById('s_start').value=s.work_start||'06:00';
-  document.getElementById('s_grace').value=s.grace_min??15;
-  document.getElementById('s_pen').value=s.penalty_hours??1;
+  document.getElementById('s_t1min').value=s.late_t1_min??15;
+  document.getElementById('s_t1h').value=s.late_t1_hours??1;
+  document.getElementById('s_t2min').value=s.late_t2_min??30;
+  document.getElementById('s_t2h').value=s.late_t2_hours??3;
   document.getElementById('s_wh').value=s.work_hours??8;
   settingsPreview();
 }
-function settingsPreview(){const st=document.getElementById('s_start').value||'06:00';const g=parseInt(document.getElementById('s_grace').value)||0;const[h,m]=st.split(':').map(Number);const cm=(h*60+m+g);const ch=String(Math.floor(cm/60)).padStart(2,'0'),cmm=String(cm%60).padStart(2,'0');
-  document.getElementById('s_preview').textContent=`النتيجة: من يسجّل حضوره بعد ${ch}:${cmm} يُعتبر متأخراً ويُخصم منه ${document.getElementById('s_pen').value||1} ساعة.`;}
-['s_start','s_grace','s_pen'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)settingsPreview();});});
+function settingsPreview(){const g=v=>document.getElementById(v).value;
+  document.getElementById('s_preview').textContent=`النتيجة: بداية الدوام ${g('s_start')}. من يتأخر ${g('s_t1min')}+ دقيقة يُخصم ${g('s_t1h')} ساعة، ومن يتأخر ${g('s_t2min')}+ دقيقة يُخصم ${g('s_t2h')} ساعة — تلقائياً مع إشعار للموظف.`;}
+['s_start','s_t1min','s_t1h','s_t2min','s_t2h'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)settingsPreview();});});
 async function saveSettings(){
-  const rec={work_start:document.getElementById('s_start').value||'06:00',grace_min:parseInt(document.getElementById('s_grace').value)||0,penalty_hours:parseFloat(document.getElementById('s_pen').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
+  const rec={work_start:document.getElementById('s_start').value||'06:00',late_t1_min:parseInt(document.getElementById('s_t1min').value)||0,late_t1_hours:parseFloat(document.getElementById('s_t1h').value)||0,late_t2_min:parseInt(document.getElementById('s_t2min').value)||0,late_t2_hours:parseFloat(document.getElementById('s_t2h').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
   const btn=document.getElementById('sSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
 }
@@ -726,6 +734,17 @@ async function loadWorkerHome(){
   const{count:eCount}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('worker_id',ME.id);
   const{count:aCount}=await sb.from('attendance').select('*',{count:'exact',head:true}).eq('worker_id',ME.id).gte('work_date',monthStart());
   document.getElementById('workerKpis').innerHTML=`<div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div><div class="kpi"><b>${aCount||0}</b><span>أيام حضوري هذا الشهر</span></div>`;
+  loadWorkerNotifs();
+}
+async function loadWorkerNotifs(){
+  const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(20);
+  const box=document.getElementById('workerNotifs');if(!box)return;
+  if(!data||!data.length){box.innerHTML='';return;}
+  const unread=data.filter(n=>!n.is_read).length;
+  box.innerHTML=`<div class="card"><h3 style="font-size:15px;margin-bottom:10px">🔔 الإشعارات ${unread?`<span class="pill susp">${unread} جديد</span>`:''}</h3>`+
+    data.map(n=>`<div class="item" style="${n.is_read?'':'border-color:var(--copper)'}"><div class="ic" style="background:${n.kind==='deduction'?'#fbecea':'#eef4f1'};color:${n.kind==='deduction'?'var(--bad)':'var(--green)'}">${n.kind==='deduction'?'⚠':'🔔'}</div><div class="meta"><b>${n.title||''}</b><small>${n.body||''}</small><small style="display:block;color:var(--muted)">${n.created_at?n.created_at.slice(0,16).replace('T',' '):''}</small></div></div>`).join('')+`</div>`;
+  const ids=data.filter(n=>!n.is_read).map(n=>n.id);
+  if(ids.length){try{await sb.from('notifications').update({is_read:true}).in('id',ids);}catch(_){}}
 }
 /* ===== WORKER: attendance ===== */
 let attToday=null,attSelfie=null,attSelfiePos=null;
@@ -774,7 +793,9 @@ async function doCheck(dir){
     lb.className='locbar wait';lb.textContent='📤 جارٍ رفع الحضور…';
     const now=new Date();
     const photoPath=await uploadPhoto(attSelfie, dir==='in'?'checkin':'checkout');
-    if(dir==='in'){const late=isLateNow(now);const ph=late?Number((SETTINGS&&SETTINGS.penalty_hours)||1):0;const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath,is_late:late,penalty_hours:ph},{onConflict:'worker_id,work_date'});if(error)throw error;toast(late?`تم الحضور — متأخر، خصم ${ph} ساعة`:'تم تسجيل الحضور ✓');}
+    if(dir==='in'){const ph=lateHours(now);const late=ph>0;const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath,is_late:late,penalty_hours:ph},{onConflict:'worker_id,work_date'});if(error)throw error;
+      if(late){try{await sb.from('notifications').insert({employee_id:ME.id,title:'تأخير في الحضور',body:`تأخرت اليوم ${minutesLate(now)} دقيقة، وتم خصم ${ph} ساعة عمل من راتبك.`,kind:'deduction'});}catch(_){}}
+      toast(late?`تم الحضور — متأخر ${minutesLate(now)}د، خصم ${ph} ساعة`:'تم تسجيل الحضور ✓');}
     else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
     attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
