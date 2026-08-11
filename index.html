@@ -130,6 +130,11 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
   </header>
   <main>
     <!-- ===== ADMIN VIEWS ===== -->
+    <div class="view" id="v-overview">
+      <h2 class="section-title">نظرة عامة</h2>
+      <div class="grid2" id="ovKpis"></div>
+      <div id="ovActions"></div>
+    </div>
     <div class="view" id="v-workorders">
       <h2 class="section-title">أوامر العمل</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر لك أنت فقط.</div>
@@ -278,6 +283,7 @@ async function loadProjectsCache(){
     PROJECTS=(pr||[]).map(p=>({...p,work_items:by[p.id]||[]}));}
 }
 const ADMIN_MENU=[
+  ['overview','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'],
   ['g','العمليات'],
   ['workorders','أوامر العمل','M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'],
   ['hr','الموارد البشرية','M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'],
@@ -292,7 +298,7 @@ function buildNav(role){
     hamb.style.display='grid';nav.style.display='none';
     document.getElementById('sbMenu').innerHTML=ADMIN_MENU.map(it=>it[0]==='g'?`<div class="grp">${it[1]}</div>`:
       `<button class="sb-item" data-v="${it[0]}" onclick="goView('${it[0]}');toggleSidebar(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${it[2].split(' M').map((d,i)=>`<path d="${i?'M'+d:d}"/>`).join('')}</svg>${it[1]}</button>`).join('');
-    goView('workorders');
+    goView('overview');
   }else{
     hamb.style.display='none';nav.style.display='flex';
     const items=[['home','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],['att-worker','الحضور','M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],['field','ميداني','M12 2v20 M2 12h20']];
@@ -306,9 +312,33 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
+
+/* ===== overview ===== */
+async function loadOverview(){
+  const box=document.getElementById('ovKpis');box.innerHTML='<div class="kpi"><b>…</b><span>جارٍ التحميل</span></div>';
+  try{
+    const[pend,present,month,inv]=await Promise.all([
+      sb.from('profiles').select('*',{count:'exact',head:true}).eq('status','pending'),
+      sb.from('attendance').select('*',{count:'exact',head:true}).eq('work_date',todayKey()),
+      sb.from('entries').select('work_date, entry_finance(amount)').gte('work_date',monthStart()),
+      sb.from('invoices').select('kind,amount,vat').gte('invoice_date',monthStart())
+    ]);
+    const monthVal=(month.data||[]).reduce((s,e)=>s+(e.entry_finance?Number(e.entry_finance.amount):0),0);
+    const invs=inv.data||[];const out=invs.filter(i=>i.kind==='out').reduce((s,i)=>s+Number(i.amount),0);
+    const pendN=pend.count||0;
+    box.innerHTML=`
+      <div class="kpi"><b>${PROJECTS.length}</b><span>المحطات</span></div>
+      <div class="kpi"><b>${present.count||0}</b><span>حضور اليوم</span></div>
+      <div class="kpi"><b>${fmt(monthVal)}</b><span>قيمة أعمال الشهر ﷼</span></div>
+      <div class="kpi"><b>${fmt(out)}</b><span>فواتير صادرة الشهر ﷼</span></div>`;
+    document.getElementById('ovActions').innerHTML=`
+      ${pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:''}
+      <div class="row"><button class="btn ghost" onclick="goView('workorders')">أوامر العمل</button><button class="btn ghost" onclick="goView('finance')">المالية</button></div>`;
+  }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل النظرة العامة: '+e.message+'</div>';}
+}
 
 /* ===== approvals ===== */
 async function loadApprovals(){
@@ -403,7 +433,7 @@ async function loadWorkOrders(){
   const rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
   window._woRows=rows;
   const grand=rows.reduce((s,e)=>s+e.amount,0);
-  document.getElementById('woSummary').innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn copper" style="margin-bottom:13px" onclick="exportWO()">تصدير أمر عمل Excel</button>`;
+  document.getElementById('woSummary').innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`;
   // group by project
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   const box=document.getElementById('woList');
@@ -433,6 +463,17 @@ function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا �
   aoa.push([],['','','','','','','الإجمالي',total]);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:10},{wch:22},{wch:8},{wch:7},{wch:10},{wch:12},{wch:12},{wch:14},{wch:8}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:9}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'أمر العمل');XLSX.writeFile(wb,'أمر_عمل_'+todayKey()+'.xlsx');toast('تم التصدير ✓');}
+
+function exportMostakhlas(){
+  const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
+  const byItem={};rows.forEach(e=>{const k=e.item_name+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
+  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['شركة نسق الطاقة','','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
+  let total=0,i=1;for(const[k,v]of Object.entries(byItem)){const[n,u,r]=k.split('|');const amt=v.qty*Number(r);total+=amt;aoa.push([i++,n,u,v.qty,Number(r),amt]);}
+  aoa.push([],['','','','','الإجمالي قبل الضريبة',total],['','','','','ضريبة القيمة المضافة 15%',total*0.15],['','','','','الإجمالي المستحق',total*1.15]);
+  aoa.push([],['ملاحظة: مسودة — تُعدّل لتطابق النموذج المعتمد من شركة الكهرباء عند توفّره.']);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:5},{wch:28},{wch:9},{wch:14},{wch:12},{wch:15}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:5}}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'مستخلص');XLSX.writeFile(wb,'مستخلص_'+todayKey()+'.xlsx');toast('تم تصدير المستخلص ✓');
+}
 
 /* ===== FINANCE ===== */
 let finFilter='all';
