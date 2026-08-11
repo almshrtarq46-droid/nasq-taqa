@@ -176,22 +176,20 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div id="projList"></div>
     </div>
     <div class="view" id="v-settings">
-      <h2 class="section-title">الإعدادات</h2>
-      <div class="seg"><button class="on" onclick="setSetTab('dawam',this)">الدوام والخصم</button><button onclick="setSetTab('zones',this)">مناطق الحضور</button></div>
-      <div id="set_dawam">
-        <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
-        <div class="card">
-          <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
-          <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
-          <div class="hint" id="s_preview"></div>
-          <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
-        </div>
+      <h2 class="section-title">وقت الحضور والخصم</h2>
+      <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
+      <div class="card">
+        <div class="row"><div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div><div class="field"><label>فترة السماح (دقيقة)</label><input type="number" id="s_grace"></div></div>
+        <div class="row"><div class="field"><label>خصم التأخير (ساعات)</label><input type="number" id="s_pen" inputmode="decimal"></div><div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div></div>
+        <div class="hint" id="s_preview"></div>
+        <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
       </div>
-      <div id="set_zones" style="display:none">
-        <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
-        <button class="btn" style="margin-bottom:13px" onclick="openZone()">+ منطقة جديدة</button>
-        <div id="zoneList"></div>
-      </div>
+    </div>
+    <div class="view" id="v-zones">
+      <h2 class="section-title">مناطق الحضور المسموحة</h2>
+      <div class="hint">حدّد المنطقة (أو المناطق) اللي يُسمح فيها بتسجيل الحضور. الموظف خارجها ما يقدر يسجّل. لو ما فيه أي منطقة، الحضور مسموح بأي مكان.</div>
+      <button class="btn" style="margin-bottom:13px" onclick="openZone()">+ منطقة جديدة</button>
+      <div id="zoneList"></div>
     </div>
 
     <!-- ===== WORKER VIEWS ===== -->
@@ -252,7 +250,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='22';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='23';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -317,23 +315,28 @@ async function loadProjectsCache(){
     const{data:it}=await sb.from('items_public').select('*');const by={};(it||[]).forEach(i=>{(by[i.project_id]=by[i.project_id]||[]).push(i);});
     PROJECTS=(pr||[]).map(p=>({...p,work_items:by[p.id]||[]}));}
 }
-const ADMIN_MENU=[
-  ['overview','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'],
-  ['g','العمليات'],
-  ['workorders','أوامر العمل','M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'],
-  ['hr','الموارد البشرية','M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'],
-  ['finance','المالية','M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'],
-  ['g','الإعدادات'],
-  ['approvals','اعتماد الحسابات','M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
-  ['projects','المحطات والمشاريع','M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'],
-  ['settings','الإعدادات','M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z']
+function _svgPath(p){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.split(' M').map((d,i)=>`<path d="${i?'M'+d:d}"/>`).join('')}</svg>`;}
+const NAV_MAIN=[
+  {v:'overview',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'},
+  {g:'العمليات'},
+  {v:'workorders',l:'أوامر العمل',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
+  {v:'hr',l:'الموارد البشرية',i:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'},
+  {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'}
+];
+const NAV_SET_CHILDREN=[
+  {v:'settings',l:'وقت الحضور والخصم',i:'M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z'},
+  {v:'zones',l:'مناطق الحضور',i:'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'},
+  {v:'approvals',l:'اعتماد الحسابات',i:'M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'},
+  {v:'projects',l:'المحطات والمشاريع',i:'M3 21h18 M5 21V7l8-4v18 M19 21V11l-6-4'}
 ];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
   if(role==='admin'){
     hamb.style.display='grid';nav.style.display='none';
-    document.getElementById('sbMenu').innerHTML=ADMIN_MENU.map(it=>it[0]==='g'?`<div class="grp">${it[1]}</div>`:
-      `<button class="sb-item" data-v="${it[0]}" onclick="goView('${it[0]}');toggleSidebar(false)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${it[2].split(' M').map((d,i)=>`<path d="${i?'M'+d:d}"/>`).join('')}</svg>${it[1]}</button>`).join('');
+    let html=NAV_MAIN.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
+    html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
+    html+=`<div id="setChildren" style="display:none">`+NAV_SET_CHILDREN.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
+    document.getElementById('sbMenu').innerHTML=html;
     goView('overview');
   }else{
     hamb.style.display='none';nav.style.display='flex';
@@ -348,7 +351,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,settings:initSettings,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,approvals:loadApprovals,projects:loadProjects,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
@@ -465,12 +468,8 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delProject(id){const{count}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('project_id',id);if(count>0){toast('لا يمكن حذف محطة لها أعمال');return;}const{error}=await sb.from('projects').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadProjects();}
 
-/* ===== settings (الدوام + المناطق) ===== */
-function initSettings(){setSetTab('dawam',document.querySelector('#v-settings .seg button'));}
-function setSetTab(t,btn){document.querySelectorAll('#v-settings .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  document.getElementById('set_dawam').style.display=t==='dawam'?'block':'none';
-  document.getElementById('set_zones').style.display=t==='zones'?'block':'none';
-  if(t==='dawam')loadSettings();else loadZones();}
+/* ===== settings menu (accordion) ===== */
+function toggleSetMenu(){const c=document.getElementById('setChildren'),ch=document.getElementById('setChev');if(!c)return;const open=c.style.display==='none';c.style.display=open?'block':'none';if(ch)ch.style.transform=open?'rotate(180deg)':'';}
 async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
   document.getElementById('s_start').value=s.work_start||'06:00';
   document.getElementById('s_grace').value=s.grace_min??15;
