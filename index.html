@@ -234,7 +234,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='17';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='18';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
 let sb=null, ME=null, PROFILE=null, PROJECTS=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
@@ -561,7 +561,7 @@ async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=do
     const raw=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>compress(rd.result,res);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});
     const pos=await getPos();
     const now=new Date();
-    const lines=[`${PROFILE.full_name||'موظف'}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,5)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+    const lines=[`${PROFILE.full_name||'موظف'}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
     const stamped=await stampImage(raw,lines);
     attSelfie=stamped;attSelfiePos=pos;
     const b=document.getElementById('pb_selfie');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=stamped;b.appendChild(img);
