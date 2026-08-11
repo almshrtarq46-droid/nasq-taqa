@@ -279,7 +279,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='38';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='39';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
@@ -829,7 +829,7 @@ function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا �
 function exportMostakhlas(){
   const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
   const byItem={};rows.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
-  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['شركة نسق الطاقة','','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','رقم البند','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
+  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['المقاول الرئيسي','مكتب الشرق','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','رقم البند','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
   let total=0,i=1;for(const[k,v]of Object.entries(byItem)){const[c,n,u,r]=k.split('|');const amt=v.qty*Number(r);total+=amt;aoa.push([i++,c,n,u,v.qty,Number(r),amt]);}
   aoa.push([],['','','','','','الإجمالي قبل الضريبة',total],['','','','','','ضريبة القيمة المضافة 15%',total*0.15],['','','','','','الإجمالي المستحق',total*1.15]);
   aoa.push([],['ملاحظة: مسودة — تُعدّل لتطابق النموذج المعتمد من شركة الكهرباء عند توفّره.']);
