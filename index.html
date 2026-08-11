@@ -274,6 +274,26 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
   <div class="sb-menu" id="sbMenu"></div>
 </aside>
 
+<style>
+#intro{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 32%,#13845f,#0f6b4f 46%,#0a4530);color:#fff;transition:opacity .6s ease}
+#intro.hide{opacity:0;pointer-events:none}
+.intro-logo{width:118px;height:118px;animation:introPop .9s cubic-bezier(.2,.8,.2,1) both}
+.intro-logo svg{width:100%;height:100%;filter:drop-shadow(0 8px 22px rgba(0,0,0,.28))}
+.intro-title{font-size:30px;font-weight:800;margin-top:20px;letter-spacing:.5px;opacity:0;animation:introUp .7s ease .35s forwards}
+.intro-sub{font-size:14px;color:#cfeee1;margin-top:7px;opacity:0;animation:introUp .7s ease .55s forwards}
+.intro-bar{width:150px;height:3px;background:rgba(255,255,255,.22);border-radius:3px;margin-top:28px;overflow:hidden;opacity:0;animation:introUp .5s ease .72s forwards}
+.intro-bar span{display:block;height:100%;width:0;background:#fff;border-radius:3px;animation:introLoad 2.3s ease .75s forwards}
+@keyframes introPop{from{transform:scale(.55) rotate(-6deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+@keyframes introUp{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes introLoad{to{width:100%}}
+</style>
+<div id="intro">
+  <div class="intro-logo"><svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#fff"/></svg></div>
+  <div class="intro-title">نسق الطاقة</div>
+  <div class="intro-sub">نظام العمليات الميدانية</div>
+  <div class="intro-bar"><span></span></div>
+</div>
+
 <div class="screen" id="screen-boot" style="display:flex;align-items:center;justify-content:center;min-height:100vh">
   <div style="text-align:center;color:var(--muted)"><div class="spin" style="border-color:#cfe0d8;border-top-color:var(--green)"></div><p style="margin-top:12px">جارٍ التحميل…</p></div>
 </div>
@@ -286,7 +306,9 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='40';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='41';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+/* المقدمة الافتتاحية: تظهر ~3 ثوانٍ ثم تختفي بتلاشٍ ناعم */
+(function(){var el=document.getElementById('intro');if(!el)return;setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},650);},3000);})();
 /* تثبيت كتطبيق: تسجيل service worker (بدون تخزين للصفحة) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
