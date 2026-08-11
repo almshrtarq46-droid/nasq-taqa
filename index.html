@@ -548,9 +548,22 @@ async function loadWorkerHome(){
   document.getElementById('workerKpis').innerHTML=`<div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div><div class="kpi"><b>${aCount||0}</b><span>أيام حضوري هذا الشهر</span></div>`;
 }
 /* ===== WORKER: attendance ===== */
-let attToday=null,attSelfie=null;
-function initAttWorker(){attSelfie=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 حدّد موقعك عند التسجيل';loadAttToday();loadMyAttHistory();}
-function pickSelfie(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{attSelfie=d;const b=document.getElementById('pb_selfie');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
+let attToday=null,attSelfie=null,attSelfiePos=null;
+function initAttWorker(){attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();document.getElementById('att_project').innerHTML=projOptions();document.getElementById('att_loc').className='locbar wait';document.getElementById('att_loc').textContent='📍 التقط السيلفي وبيُختم بالموقع تلقائياً';loadAttToday();loadMyAttHistory();}
+async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=document.getElementById('att_loc');
+  lb.className='locbar wait';lb.textContent='📸 جارٍ تحديد الموقع وختم الصورة…';
+  try{
+    const raw=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>compress(rd.result,res);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});
+    const pos=await getPos();
+    const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
+    const now=new Date();
+    const lines=[`${now.toLocaleDateString('en-GB')} ${now.toTimeString().slice(0,5)}`,`المحطة: ${proj?proj.name:'—'}`,`الإحداثيات: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+    const stamped=await stampImage(raw,lines);
+    attSelfie=stamped;attSelfiePos=pos;
+    const b=document.getElementById('pb_selfie');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=stamped;b.appendChild(img);
+    lb.className='locbar ok2';lb.textContent=`✅ الصورة مختومة — دقة الموقع ~${pos.acc}م`;
+  }catch(e){attSelfie=null;attSelfiePos=null;lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد الالتقاط');toast('فعّل صلاحية الموقع وأعد التقاط السيلفي');}
+}
 function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image();img.onload=()=>{const max=1000;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
   const fs=Math.max(14,Math.round(w*0.035)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.45),barH=lh*lines.length+pad*1.5;
@@ -570,19 +583,16 @@ function renderAttWorker(){const st=document.getElementById('att_status'),ac=doc
   else if(attToday&&attToday.check_in){st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att in">حاضر منذ ${hm(attToday.check_in)}</span></div>`;ac.innerHTML=`<button class="btn copper" id="att_btn" onclick="doCheck('out')">تسجيل انصراف</button>`;}
   else{st.innerHTML=`<div style="text-align:center;padding:8px"><span class="badge-att no">لم تسجّل حضور اليوم</span></div>`;ac.innerHTML=`<button class="btn" id="att_btn" onclick="doCheck('in')">تسجيل حضور</button>`;}}
 async function doCheck(dir){
-  if(!attSelfie){toast('التقط سيلفي الإثبات أولاً');return;}
+  if(!attSelfie||!attSelfiePos){toast('التقط سيلفي الإثبات أولاً');return;}
   const btn=document.getElementById('att_btn');btn.disabled=true;const old=btn.textContent;btn.innerHTML='<span class="spin"></span>';const lb=document.getElementById('att_loc');
-  try{lb.className='locbar wait';lb.textContent='📍 جارٍ تحديد موقعك…';const pos=await getPos();const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
-    if(proj&&proj.lat!=null&&proj.lng!=null){const dist=haversine(pos.lat,pos.lng,proj.lat,proj.lng);if(dist>proj.geofence_radius){lb.className='locbar bad2';lb.textContent=`⛔ أنت بعيد عن الموقع بـ${dist}م (المسموح ${proj.geofence_radius}م)`;toast('خارج نطاق الموقع');btn.disabled=false;btn.textContent=old;return;}lb.className='locbar ok2';lb.textContent=`✅ داخل النطاق (${dist}م)`;}
-    else{lb.className='locbar ok2';lb.textContent=`✅ تم تحديد الموقع (دقة ~${pos.acc}م)`;}
-    lb.textContent='📸 جارٍ ختم الصورة ورفعها…';
+  try{const pos=attSelfiePos;const proj=PROJECTS.find(p=>p.id===document.getElementById('att_project').value);
+    if(proj&&proj.lat!=null&&proj.lng!=null){const dist=haversine(pos.lat,pos.lng,proj.lat,proj.lng);if(dist>proj.geofence_radius){lb.className='locbar bad2';lb.textContent=`⛔ أنت بعيد عن الموقع بـ${dist}م (المسموح ${proj.geofence_radius}م)`;toast('خارج نطاق الموقع');btn.disabled=false;btn.textContent=old;return;}}
+    lb.className='locbar wait';lb.textContent='📤 جارٍ رفع الحضور…';
     const now=new Date();
-    const lines=[`${now.toLocaleDateString('en-GB')} ${now.toTimeString().slice(0,5)}`,`المحطة: ${proj?proj.name:'—'}`,`الإحداثيات: ${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
-    const stamped=await stampImage(attSelfie,lines);
-    const photoPath=await uploadPhoto(stamped, dir==='in'?'checkin':'checkout');
+    const photoPath=await uploadPhoto(attSelfie, dir==='in'?'checkin':'checkout');
     if(dir==='in'){const{error}=await sb.from('attendance').upsert({worker_id:ME.id,work_date:todayKey(),project_id:proj?proj.id:null,check_in:now.toISOString(),in_lat:pos.lat,in_lng:pos.lng,in_photo:photoPath},{onConflict:'worker_id,work_date'});if(error)throw error;toast('تم تسجيل الحضور ✓');}
     else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
-    attSelfie=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
+    attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
   }catch(e){toast(e.message);lb.className='locbar bad2';lb.textContent='⛔ '+e.message;const b=document.getElementById('att_btn');if(b){b.disabled=false;}renderAttWorker();}
 }
