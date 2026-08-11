@@ -7,6 +7,13 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="theme-color" content="#0f6b4f">
+<link rel="manifest" href="./manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="نسق الطاقة">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<link rel="icon" type="image/png" href="./icon-192.png">
 <title>نسق الطاقة — النظام</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
@@ -279,7 +286,9 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='39';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='40';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+/* تثبيت كتطبيق: تسجيل service worker (بدون تخزين للصفحة) */
+if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
 (async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
   if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
