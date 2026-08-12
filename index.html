@@ -42,7 +42,7 @@ input[type=time]{direction:ltr;text-align:right;font-variant-numeric:tabular-num
 .dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
 .dp-wd{text-align:center;font-size:10.5px;color:var(--muted);font-weight:800;padding:4px 0}
 .dp-day{height:36px;display:grid;place-items:center;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
-.dp-day:hover{background:#eef4f1}
+.dp-day:hover{background:#eef4f1;box-shadow:inset 0 0 0 2px rgba(15,107,79,.5)}
 .dp-day.oth{color:#cdd5d0;pointer-events:none}
 .dp-day.today{box-shadow:inset 0 0 0 1.7px var(--copper)}
 .dp-day.sel{background:var(--green);color:#fff;box-shadow:0 4px 12px rgba(15,107,79,.35)}
@@ -60,8 +60,8 @@ select.enh{display:none!important}
 .sel-pop{position:fixed;z-index:310;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 40px rgba(11,60,45,.30);padding:6px;max-height:288px;overflow:auto;opacity:0;transform:translateY(-6px) scale(.98);transition:opacity .18s ease,transform .2s cubic-bezier(.4,0,.2,1);pointer-events:none}
 .sel-pop.show{opacity:1;transform:none;pointer-events:auto}
 .sel-opt{padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink);transition:background .15s ease,color .15s ease,box-shadow .15s ease}
-.sel-opt:hover{background:#eef4f1}
-.sel-opt.sel{background:#e4efe9;color:var(--green);box-shadow:inset 0 0 0 2px rgba(15,107,79,.55)}
+.sel-opt:hover{background:#eef4f1;box-shadow:inset 0 0 0 2px rgba(15,107,79,.5)}
+.sel-opt.sel{background:#e4efe9;color:var(--green);box-shadow:inset 0 0 0 2px rgba(15,107,79,.7)}
 /* الفاتورة الضريبية + الطباعة */
 #printArea{position:fixed;inset:0;z-index:400;background:rgba(15,40,30,.55);display:none;flex-direction:column;align-items:center;padding:16px;overflow:auto}
 .pa-bar{display:flex;gap:10px;margin-bottom:14px;position:sticky;top:0}
@@ -92,16 +92,20 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weig
 .btn.sm{width:auto;padding:8px 13px;font-size:13px;border-radius:10px}.btn.danger{background:#fbecea;color:var(--bad)}
 .btn:disabled{opacity:.55}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:var(--shadow);transition:box-shadow .22s ease,transform .13s ease}
-@media(hover:hover){.card:hover{box-shadow:0 0 0 2px rgba(15,107,79,.35),0 6px 18px rgba(11,77,56,.16)}}
+@media(hover:hover){.card:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 18px rgba(11,77,56,.16)}}
 .screen{display:none;min-height:100vh}.screen.on{display:block}
 .center{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:22px;max-width:440px;margin:0 auto}
 .brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
 .logo{width:60px;height:60px;background:#fff;border-radius:15px;display:grid;place-items:center;box-shadow:var(--shadow)}
 .logo svg{width:42px;height:42px}
 .brand h1{font-size:22px;color:var(--green)}.brand p{margin:0;font-size:13px;color:var(--muted)}
-.tabs{display:flex;background:#eef2f0;border-radius:12px;padding:3px;margin-bottom:16px}
-.tabs button{flex:1;background:none;padding:10px;border-radius:10px;font-weight:700;color:var(--muted)}
-.tabs button.on{background:#fff;color:var(--green);box-shadow:var(--shadow)}
+.tabs{display:flex;gap:5px;background:#eef2f0;border-radius:12px;padding:4px;margin-bottom:16px}
+.tabs button{flex:1;background:none;padding:10px;border-radius:10px;font-weight:700;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
+.tabs button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.7),0 4px 12px rgba(11,77,56,.22)}
+.tabs button:active{transform:scale(.96)}
+@media(hover:hover){.tabs button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(15,107,79,.5)}}
+#reg_fields{max-height:0;overflow:hidden;opacity:0;transition:max-height .34s cubic-bezier(.4,0,.2,1),opacity .3s ease}
+#reg_fields.open{max-height:130px;opacity:1}
 .msg{padding:11px 13px;border-radius:11px;font-size:13.5px;font-weight:600;margin-bottom:13px;display:none}
 .msg.on{display:block}.msg.err{background:#fbecea;color:var(--bad)}.msg.ok{background:#e6f6ed;color:var(--ok)}.msg.info{background:#f6ecdf;color:var(--copper)}
 header{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff;padding:14px 16px;position:sticky;top:0;z-index:20;display:flex;justify-content:space-between;align-items:center}
@@ -123,9 +127,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sb-menu .grp{font-size:11px;color:var(--muted);font-weight:700;margin:14px 12px 6px}
 .sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;margin-bottom:5px;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
 .sb-item svg{width:20px;height:20px;color:var(--green);flex:none;transition:color .22s ease}
-.sb-item.on{background:#e4efe9;color:var(--green);box-shadow:inset 0 0 0 2px rgba(15,107,79,.75)}
+.sb-item.on{background:#e4efe9;color:var(--green);box-shadow:inset 0 0 0 2px rgba(15,107,79,.7)}
 .sb-item:active{transform:scale(.975)}
-@media(hover:hover){.sb-item:hover{background:#eaf3ee;box-shadow:inset 0 0 0 2px rgba(15,107,79,.55)}}
+@media(hover:hover){.sb-item:hover{background:#eaf3ee;box-shadow:inset 0 0 0 2px rgba(15,107,79,.5)}}
 /* أكورديون الإعدادات — فتح/طي ناعم */
 #setChildren{max-height:0;overflow:hidden;opacity:0;padding:2px 3px;transition:max-height .34s cubic-bezier(.4,0,.2,1),opacity .3s ease}
 #setChildren.open{opacity:1}
@@ -136,9 +140,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 @keyframes sheetUp{from{transform:translateY(46px);opacity:.3}to{transform:translateY(0);opacity:1}}
 .section-title{font-size:19px;margin:2px 2px 14px}
 .item{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:9px;background:#fff;display:flex;gap:11px;align-items:center;transition:box-shadow .22s ease,border-color .22s ease,transform .13s ease}
-@media(hover:hover){.item:hover{box-shadow:0 0 0 2px rgba(15,107,79,.45),0 6px 16px rgba(11,77,56,.22);border-color:transparent;transform:translateY(-1px)}}
+@media(hover:hover){.item:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 16px rgba(11,77,56,.22);border-color:transparent;transform:translateY(-1px)}}
 .link{transition:opacity .18s ease}@media(hover:hover){.link:hover{opacity:.55}}
-.kpi{transition:box-shadow .22s ease,transform .13s ease}@media(hover:hover){.kpi:hover{box-shadow:0 0 0 2px rgba(15,107,79,.40),0 6px 16px rgba(11,77,56,.18);transform:translateY(-1px)}}
+.kpi{transition:box-shadow .22s ease,transform .13s ease}@media(hover:hover){.kpi:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 16px rgba(11,77,56,.18);transform:translateY(-1px)}}
 .item .ic{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;background:#eef4f1;color:var(--green);font-weight:800}
 .item .meta{flex:1;min-width:0}.item .meta b{font-size:14.5px;display:block}.item .meta small{color:var(--muted);font-size:12px}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
@@ -166,9 +170,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .locbar.ok2{background:#e6f6ed;color:var(--ok)}.locbar.wait{background:#eef2f0;color:var(--muted)}.locbar.bad2{background:#fbecea;color:var(--bad)}
 .seg{display:flex;gap:5px;background:#eef2f0;border-radius:11px;padding:4px;margin-bottom:14px}
 .seg button{flex:1;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
-.seg button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.45),0 4px 12px rgba(11,77,56,.22)}
+.seg button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.7),0 4px 12px rgba(11,77,56,.22)}
 .seg button:active{transform:scale(.96)}
-@media(hover:hover){.seg button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(15,107,79,.30)}}
+@media(hover:hover){.seg button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(15,107,79,.5)}}
 .hrbox{animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
 .station{border:1px solid var(--line);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
 #pb_selfie img{object-fit:contain !important;background:#0b0b0b}
@@ -177,7 +181,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .thumbs .th img{width:100%;height:100%;object-fit:cover}
 .thumbs .th button{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;padding:0}
 .station{transition:box-shadow .22s ease,transform .13s ease}
-@media(hover:hover){.station:hover{box-shadow:0 0 0 2px rgba(15,107,79,.40),0 6px 18px rgba(11,77,56,.18)}}
+@media(hover:hover){.station:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 18px rgba(11,77,56,.18)}}
 .station>.h{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .2s ease}
 @media(hover:hover){.station>.h:hover{background:#f6faf8}}
 .station .body{padding:0 14px 12px;display:none}.station.open .body{display:block;animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
@@ -191,7 +195,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
   <div class="tabs"><button id="tab-login" class="on" onclick="switchAuth('login')">دخول</button><button id="tab-reg" onclick="switchAuth('reg')">حساب جديد</button></div>
   <div class="card">
     <div class="msg" id="auth_msg"></div>
-    <div id="reg_fields" style="display:none"><div class="field"><label>الاسم الكامل</label><input id="a_name" placeholder="مثال: خالد العتيبي"></div></div>
+    <div id="reg_fields"><div class="field" style="margin-bottom:0"><label>الاسم الكامل</label><input id="a_name" placeholder="مثال: خالد العتيبي"></div></div>
     <div class="field"><label>رقم الجوال</label><input id="a_phone" inputmode="tel" placeholder="05xxxxxxxx"></div>
     <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="٦ أحرف على الأقل"></div>
     <button class="btn" id="auth_btn" onclick="doAuth()">دخول</button>
@@ -410,7 +414,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='60';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='61';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -534,7 +538,7 @@ async function loadLiveMap(){
 
 /* auth */
 let authMode='login';
-function switchAuth(m){authMode=m;document.getElementById('tab-login').classList.toggle('on',m==='login');document.getElementById('tab-reg').classList.toggle('on',m==='reg');document.getElementById('reg_fields').style.display=m==='reg'?'block':'none';document.getElementById('auth_btn').textContent=m==='reg'?'إنشاء حساب':'دخول';clearMsg(document.getElementById('auth_msg'));}
+function switchAuth(m){authMode=m;document.getElementById('tab-login').classList.toggle('on',m==='login');document.getElementById('tab-reg').classList.toggle('on',m==='reg');document.getElementById('reg_fields').classList.toggle('open',m==='reg');document.getElementById('auth_btn').textContent=m==='reg'?'إنشاء حساب':'دخول';clearMsg(document.getElementById('auth_msg'));}
 function normalizePhone(p){let d=(p||'').replace(/\D/g,'');if(d.startsWith('00966'))d=d.slice(2);if(d.startsWith('966')){}else if(d.startsWith('0'))d='966'+d.slice(1);else if(d.length===9)d='966'+d;return d;}
 function identToEmail(id){id=(id||'').trim();if(id.includes('@'))return id.toLowerCase();return normalizePhone(id)+'@nasq-taqa.app';}
 async function doAuth(){
