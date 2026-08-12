@@ -28,10 +28,26 @@ h1,h2,h3{margin:0;font-weight:800}
 button{font-family:inherit;cursor:pointer;border:none}
 input,select,textarea{font-family:inherit;font-size:15px;width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);outline:none;transition:border-color .22s ease,box-shadow .22s ease}
 input:focus,select:focus,textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(15,107,79,.16)}
-input[type=date],input[type=time]{direction:ltr;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.3px;cursor:pointer;appearance:none}
-input[type=date]::-webkit-calendar-picker-indicator,input[type=time]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.55;padding:2px;border-radius:6px;transition:opacity .2s ease,background .2s ease}
-input[type=date]::-webkit-calendar-picker-indicator:hover,input[type=time]::-webkit-calendar-picker-indicator:hover{opacity:1;background:#eef4f1}
+input[type=time]{direction:ltr;text-align:right;font-variant-numeric:tabular-nums;letter-spacing:.3px}
 *{font-variant-numeric:lining-nums}
+/* منتقي التاريخ المخصّص */
+.dp-input{cursor:pointer;background:#fff url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='none' stroke='%230f6b4f' stroke-width='2'><rect x='3' y='4' width='14' height='13' rx='2'/><path d='M3 8h14M7 2v3M13 2v3'/></svg>") no-repeat left 12px center;direction:ltr;text-align:right;letter-spacing:.4px;font-weight:600}
+.dp-pop{position:fixed;z-index:300;direction:ltr;background:#fff;border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 44px rgba(11,60,45,.30);padding:12px;opacity:0;transform:translateY(-6px) scale(.97);transition:opacity .2s ease,transform .2s cubic-bezier(.4,0,.2,1);pointer-events:none}
+.dp-pop.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto}
+.dp-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px}
+.dp-h b{font-size:14.5px;color:var(--ink);font-weight:800}
+.dp-nav{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eef4f1;color:var(--green);font-size:19px;font-weight:800;transition:background .18s ease,transform .12s ease}
+.dp-nav:hover{background:#dbeae3}.dp-nav:active{transform:scale(.92)}
+.dp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.dp-wd{text-align:center;font-size:10.5px;color:var(--muted);font-weight:800;padding:4px 0}
+.dp-day{height:36px;display:grid;place-items:center;border-radius:10px;font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease}
+.dp-day:hover{background:#eef4f1}
+.dp-day.oth{color:#cdd5d0;pointer-events:none}
+.dp-day.today{box-shadow:inset 0 0 0 1.7px var(--copper)}
+.dp-day.sel{background:var(--green);color:#fff;box-shadow:0 4px 12px rgba(15,107,79,.35)}
+.dp-foot{display:flex;justify-content:space-between;margin-top:9px;border-top:1px solid var(--line);padding-top:8px}
+.dp-foot button{background:none;color:var(--green);font-weight:800;font-size:12.5px;padding:5px 10px;border-radius:9px;transition:background .18s ease}
+.dp-foot button:hover{background:#eef4f1}
 input:focus,select:focus{border-color:var(--green)}
 label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weight:600}
 .field{margin-bottom:13px}
@@ -343,7 +359,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='51';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='52';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -367,8 +383,37 @@ const fmt=n=>(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maxi
 /* توحيد الأرقام: أي رقم عربي/فارسي يُكتب يتحوّل فورًا لإنجليزي (1234567890) */
 function toLatinDigits(s){return String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x0660).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-0x06F0);}
 document.addEventListener('input',e=>{const t=e.target;if(!t||(t.tagName!=='INPUT'&&t.tagName!=='TEXTAREA'))return;const v=t.value;const c=toLatinDigits(v);if(c!==v){const p=t.selectionStart;t.value=c;try{t.setSelectionRange(p,p);}catch(_){}}} ,true);
-/* فرض الإنجليزية على منتقيات التاريخ والوقت */
-function enforceEnDates(root){(root||document).querySelectorAll('input[type=date],input[type=time]').forEach(el=>{el.setAttribute('lang','en-GB');el.setAttribute('dir','ltr');});}
+/* منتقي تاريخ مخصّص (إنجليزي، أرقام لاتينية، سريع) يستبدل منتقي المتصفح */
+const _dp={input:null,view:null,open:false};
+const DP_M=['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DP_WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
+function isoOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function enforceEnDates(root){(root||document).querySelectorAll('input[type=date]').forEach(el=>{if(el.dataset.dp)return;el.dataset.dp='1';el.type='text';el.readOnly=true;el.setAttribute('inputmode','none');el.classList.add('dp-input');el.addEventListener('click',ev=>{ev.stopPropagation();openDatePicker(el);});});
+  (root||document).querySelectorAll('input[type=time]').forEach(el=>{el.setAttribute('lang','en-GB');el.setAttribute('dir','ltr');});}
+function ensureDpPop(){let p=document.getElementById('dpPop');if(!p){p=document.createElement('div');p.id='dpPop';p.className='dp-pop';document.body.appendChild(p);
+    document.addEventListener('click',e=>{if(_dp.open){const pop=document.getElementById('dpPop');if(pop&&!pop.contains(e.target)&&e.target!==_dp.input)closeDatePicker();}});}
+  return p;}
+function openDatePicker(input){const pop=ensureDpPop();_dp.input=input;let d=input.value?new Date(input.value+'T00:00:00'):new Date();if(isNaN(d.getTime()))d=new Date();_dp.view=new Date(d.getFullYear(),d.getMonth(),1);renderDatePicker();
+  pop.style.display='block';pop.style.visibility='hidden';pop.classList.remove('show');
+  const r=input.getBoundingClientRect();const pw=Math.max(r.width,278),ph=pop.offsetHeight||336;
+  let left=r.left;if(left+pw>window.innerWidth-8)left=window.innerWidth-pw-8;if(left<8)left=8;
+  let top=r.bottom+6;if(top+ph>window.innerHeight-8)top=Math.max(8,r.top-ph-6);
+  pop.style.width=pw+'px';pop.style.left=left+'px';pop.style.top=top+'px';pop.style.visibility='';
+  _dp.open=true;requestAnimationFrame(()=>pop.classList.add('show'));}
+function closeDatePicker(){const pop=document.getElementById('dpPop');if(pop){pop.classList.remove('show');setTimeout(()=>{if(!_dp.open)pop.style.display='none';},190);}_dp.open=false;}
+function renderDatePicker(){const pop=document.getElementById('dpPop');const v=_dp.view,y=v.getFullYear(),m=v.getMonth();
+  const first=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+  const selISO=_dp.input.value||'',todayISO=isoOf(new Date());let cells='';
+  for(let i=0;i<first;i++)cells+='<div class="dp-day oth"></div>';
+  for(let d=1;d<=days;d++){const iso=y+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');const cls=['dp-day'];if(iso===todayISO)cls.push('today');if(iso===selISO)cls.push('sel');cells+=`<div class="${cls.join(' ')}" data-iso="${iso}">${d}</div>`;}
+  pop.innerHTML=`<div class="dp-h"><button class="dp-nav" data-nav="-1">‹</button><b>${DP_M[m]} ${y}</b><button class="dp-nav" data-nav="1">›</button></div>
+    <div class="dp-grid">${DP_WD.map(w=>`<div class="dp-wd">${w}</div>`).join('')}${cells}</div>
+    <div class="dp-foot"><button data-act="today">Today</button><button data-act="clear">Clear</button></div>`;
+  pop.querySelectorAll('.dp-nav').forEach(b=>b.onclick=()=>{_dp.view=new Date(y,m+Number(b.dataset.nav),1);renderDatePicker();});
+  pop.querySelectorAll('.dp-day[data-iso]').forEach(c=>c.onclick=()=>pickDate(c.dataset.iso));
+  pop.querySelector('[data-act="today"]').onclick=()=>pickDate(todayISO);
+  pop.querySelector('[data-act="clear"]').onclick=()=>pickDate('');}
+function pickDate(iso){const inp=_dp.input;if(inp){inp.value=iso;inp.dispatchEvent(new Event('input',{bubbles:true}));inp.dispatchEvent(new Event('change',{bubbles:true}));}closeDatePicker();}
 const todayKey=()=>new Date().toISOString().slice(0,10);
 const monthStart=()=>new Date().toISOString().slice(0,8)+'01';
 const monthKey=()=>new Date().toISOString().slice(0,7);
