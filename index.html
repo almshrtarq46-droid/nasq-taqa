@@ -251,16 +251,16 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
         <div class="row"><div class="field"><label>رقم المحطة</label><input id="f_station_no" placeholder="مثال: 47558"></div><div class="field"><label>نوع المحطة</label><select id="f_station_type"><option value="">اختر النوع…</option><option value="غرفة">غرفة</option><option value="بكج">بكج</option><option value="ميني بيلر">ميني بيلر</option></select></div></div>
         <label>صور قبل التنفيذ</label>
         <div id="beforeThumbs" class="thumbs"></div>
-        <input type="file" accept="image/*" capture="environment" id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
-        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('beforeInput').click()">📷 إضافة صورة قبل</button>
+        <input type="file" accept="image/*" multiple id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
+        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('beforeInput').click()">📷 إضافة صور قبل (تقدر تختار عدة صور)</button>
         <label>البنود المنجزة</label>
         <input id="f_item_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="loadFieldItems()" style="margin-bottom:6px">
         <div class="row" style="margin-bottom:6px"><select id="f_item" style="flex:2"></select><input type="number" id="f_qty" inputmode="decimal" placeholder="الكمية"><button class="btn sm" style="flex:none;width:46px" onclick="addFieldItem()">+</button></div>
         <div id="itemsAdded" style="margin-bottom:14px"></div>
         <label>صور بعد التنفيذ</label>
         <div id="afterThumbs" class="thumbs"></div>
-        <input type="file" accept="image/*" capture="environment" id="afterInput" style="display:none" onchange="onFieldPhoto(this,'after')">
-        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('afterInput').click()">📷 إضافة صورة بعد</button>
+        <input type="file" accept="image/*" multiple id="afterInput" style="display:none" onchange="onFieldPhoto(this,'after')">
+        <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('afterInput').click()">📷 إضافة صور بعد (تقدر تختار عدة صور)</button>
         <div class="field"><label>ملاحظات</label><textarea id="f_note" rows="2" placeholder="اختياري"></textarea></div>
         <div class="locbar wait" id="f_loc" style="display:none"></div>
         <button class="btn" id="f_save" onclick="saveFieldReport()">رفع العمل</button>
@@ -305,11 +305,15 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
   <div style="background:#fff;width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px 24px;max-height:92vh;overflow:auto"><div id="modalBody"></div></div>
 </div>
 <div id="toast" style="position:fixed;bottom:80px;right:50%;transform:translateX(50%);background:#182420;color:#fff;padding:11px 18px;border-radius:30px;font-size:13.5px;font-weight:600;z-index:99;opacity:0;transition:.25s;pointer-events:none;max-width:88%;text-align:center"></div>
+<div id="okbig" style="position:fixed;left:50%;bottom:104px;transform:translateX(-50%) translateY(24px);background:linear-gradient(135deg,#22a86a,#0f6b4f);color:#fff;padding:16px 24px;border-radius:18px;z-index:130;display:none;align-items:center;gap:13px;box-shadow:0 12px 34px rgba(15,90,60,.4);opacity:0;transition:.32s;max-width:90%">
+  <span style="flex:none;width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:900">✓</span>
+  <span id="okbigtxt" style="font-weight:800;font-size:16px;line-height:1.3">تم رفع العمل بنجاح</span>
+</div>
 
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='43';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='44';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -325,6 +329,7 @@ const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EY
 let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null, MY_CREW_LED=[], MY_CREW_MEMBER=false, CATALOG=[], ASSIGNMENTS=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',2600);}
+function showBigSuccess(msg){const el=document.getElementById('okbig');if(!el)return;const tx=document.getElementById('okbigtxt');if(tx&&msg)tx.textContent=msg;el.style.display='flex';requestAnimationFrame(()=>{el.style.opacity='1';el.style.transform='translateX(-50%) translateY(0)';});clearTimeout(el._t);el._t=setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(-50%) translateY(24px)';setTimeout(()=>{el.style.display='none';},380);},3000);}
 function msg(el,txt,kind){el.className='msg on '+kind;el.textContent=txt;}
 function clearMsg(el){el.className='msg';}
 function initClient(){sb=window.supabase.createClient(CFG.url,CFG.key);}
@@ -1056,13 +1061,20 @@ function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById(
   fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
 function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
-function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
-  const rd=new FileReader();rd.onload=()=>compress(rd.result,async d=>{try{const pos=await getPos();
-    const stNo=(document.getElementById('f_station_no').value||'').trim();const stType=(document.getElementById('f_station_type').value||'').trim();const stLabel=(stNo?'محطة '+stNo:'محطة')+(stType?' - '+stType:'');const now=new Date();
-    const lines=[`${stLabel}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
-    const stamped=await stampImage(d,lines);(phase==='before'?beforePhotos:afterPhotos).push({data:stamped,lat:pos.lat,lng:pos.lng});renderThumbs(phase);
-    lb.className='locbar ok2';lb.textContent=`✅ أُضيفت صورة ${phase==='before'?'قبل':'بعد'} (${(phase==='before'?beforePhotos:afterPhotos).length}) مختومة بالموقع`;
-  }catch(e){lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد المحاولة');toast('فعّل صلاحية الموقع وأعد الالتقاط');}});rd.readAsDataURL(f);}
+function readFileData(f){return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});}
+async function onFieldPhoto(input,phase){
+  const files=Array.from(input.files||[]);input.value='';if(!files.length)return;
+  const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📍 جارٍ تحديد الموقع…';
+  let pos;try{pos=await getPos();}catch(e){lb.className='locbar bad2';lb.textContent='⛔ '+(e.message||'فعّل الموقع وأعد المحاولة');toast('فعّل صلاحية الموقع وأعد المحاولة');return;}
+  const stNo=(document.getElementById('f_station_no').value||'').trim();const stType=(document.getElementById('f_station_type').value||'').trim();const stLabel=(stNo?'محطة '+stNo:'محطة')+(stType?' - '+stType:'');
+  const now=new Date();const lines=[`${stLabel}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
+  const arr=(phase==='before'?beforePhotos:afterPhotos);let done=0;
+  for(const f of files){
+    lb.className='locbar wait';lb.textContent=`📸 جارٍ ختم الصور تلقائياً… (${done+1}/${files.length})`;
+    try{const raw=await readFileData(f);const d=await new Promise(r=>compress(raw,r));const stamped=await stampImage(d,lines);arr.push({data:stamped,lat:pos.lat,lng:pos.lng});done++;renderThumbs(phase);}catch(e){}
+  }
+  lb.className='locbar ok2';lb.textContent=`✅ أُضيفت ${done} ${done===1?'صورة':'صورة'} ${phase==='before'?'قبل':'بعد'} تلقائياً (الإجمالي ${arr.length}) — مختومة بالموقع`;
+}
 function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=900;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.6));};img.src=dataUrl;}
 function dataURLtoBlob(d){const[,b64]=d.split(',');const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/jpeg'});}
 async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
@@ -1088,7 +1100,7 @@ async function saveFieldReport(){
     const note=document.getElementById('f_note').value.trim();
     const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
     const{error:ee}=await sb.from('entries').insert(entryRows);if(ee)throw ee;
-    btn.disabled=false;btn.textContent='رفع العمل';toast('تم رفع العمل ✓');initField();goView('home');
+    btn.disabled=false;btn.textContent='رفع العمل';initField();goView('home');showBigSuccess('✓ تم رفع العمل بنجاح');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
 /* modal + boot */
