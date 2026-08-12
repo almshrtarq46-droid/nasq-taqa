@@ -20,6 +20,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <style>
 :root{--green:#0f6b4f;--green-d:#0b4d38;--copper:#b5732f;--bg:#f4f6f5;--card:#fff;--ink:#182420;--muted:#6b7770;--line:#e3e8e5;--ok:#1f9d63;--bad:#c0392b;--shadow:0 2px 10px rgba(15,60,45,.07)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -61,6 +62,26 @@ select.enh{display:none!important}
 .sel-opt{padding:11px 12px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--ink);transition:background .15s ease,color .15s ease,box-shadow .15s ease}
 .sel-opt:hover{background:#eef4f1}
 .sel-opt.sel{background:#e4efe9;color:var(--green);box-shadow:inset 0 0 0 2px rgba(15,107,79,.55)}
+/* الفاتورة الضريبية + الطباعة */
+#printArea{position:fixed;inset:0;z-index:400;background:rgba(15,40,30,.55);display:none;flex-direction:column;align-items:center;padding:16px;overflow:auto}
+.pa-bar{display:flex;gap:10px;margin-bottom:14px;position:sticky;top:0}
+.pa-sheet{background:#fff;width:100%;max-width:780px;border-radius:12px;padding:26px;color:#182420;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--green);padding-bottom:14px;margin-bottom:16px}
+.inv-title{font-size:22px;font-weight:800;color:var(--green)}.inv-sub{font-size:12px;color:var(--muted)}
+.inv-logo{width:56px;height:56px;background:var(--green);border-radius:12px;display:grid;place-items:center}.inv-logo svg{width:40px;height:40px}
+.inv-parties{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px}
+.inv-parties>div{flex:1}.inv-lbl{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:3px}.inv-parties b{font-size:14px}
+.inv-meta{display:flex;justify-content:space-between;background:#f2f6f4;border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:14px}
+.inv-tbl{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:16px}
+.inv-tbl th{background:var(--green);color:#fff;padding:9px 6px;text-align:center;font-weight:700}
+.inv-tbl td{border:1px solid #e3e8e5;padding:8px 6px;text-align:center}
+.inv-foot{display:flex;justify-content:space-between;gap:20px;align-items:flex-start}
+.inv-qr canvas{border:1px solid #e3e8e5;border-radius:8px;padding:6px;background:#fff}
+.inv-tot{flex:1;max-width:320px;font-size:13.5px}
+.inv-tot>div{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eef2f0}
+.inv-tot .grand{border-bottom:none;border-top:2px solid var(--green);color:var(--green);font-size:16px;font-weight:800;margin-top:4px;padding-top:8px}
+.inv-note{margin-top:18px;font-size:11px;color:var(--muted);text-align:center;border-top:1px dashed #d5ddd8;padding-top:10px}
+@media print{body *{visibility:hidden!important}#printArea,#printArea *{visibility:visible!important}#printArea{position:absolute;inset:0;background:#fff;padding:0;display:block!important}.pa-bar{display:none!important}.pa-sheet{box-shadow:none;max-width:100%;border-radius:0}}
 input:focus,select:focus{border-color:var(--green)}
 label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weight:600}
 .field{margin-bottom:13px}
@@ -238,7 +259,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
       <div id="finKpis" class="grid2" style="margin-bottom:13px"></div>
-      <button class="btn" style="margin-bottom:13px" onclick="openInvoice()">+ فاتورة جديدة</button>
+      <div class="row" style="margin-bottom:13px"><button class="btn" onclick="openInvoice()">+ فاتورة جديدة</button><button class="btn copper" onclick="openTaxInvoice()">🧾 فاتورة ضريبية</button></div>
       <div class="seg"><button class="on" onclick="finTab('all',this)">الكل</button><button onclick="finTab('out',this)">صادرة</button><button onclick="finTab('in',this)">واردة</button></div>
       <div id="invList"></div>
     </div>
@@ -266,6 +287,15 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div class="field"><label>ساعات الدوام اليومية</label><input type="number" id="s_wh" inputmode="decimal"></div>
         <div class="hint" id="s_preview"></div>
         <button class="btn" id="sSave" onclick="saveSettings()">حفظ الإعدادات</button>
+      </div>
+      <h2 class="section-title" style="margin-top:22px">بيانات الفاتورة الضريبية</h2>
+      <div class="hint">تُطبع هذي البيانات في الفاتورة الضريبية وتُدمج في رمز QR المعتمد. أدخلها مرة واحدة.</div>
+      <div class="card">
+        <div class="field"><label>الاسم النظامي للشركة (البائع)</label><input id="t_co_name" placeholder="شركة نسق الطاقة"></div>
+        <div class="field"><label>الرقم الضريبي (15 رقم)</label><input id="t_vat_no" inputmode="numeric" placeholder="3XXXXXXXXXXXXX3"></div>
+        <div class="row"><div class="field"><label>السجل التجاري</label><input id="t_cr_no" inputmode="numeric"></div></div>
+        <div class="field"><label>العنوان الوطني</label><input id="t_address" placeholder="المدينة، الحي، الشارع"></div>
+        <button class="btn" id="tSave" onclick="saveTaxInfo()">حفظ بيانات الفاتورة</button>
       </div>
     </div>
     <div class="view" id="v-catalog">
@@ -369,10 +399,18 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
   <span id="okbigtxt" style="font-weight:800;font-size:16px;line-height:1.3">تم رفع العمل بنجاح</span>
 </div>
 
+<div id="printArea">
+  <div class="pa-bar">
+    <button class="btn" style="width:auto;padding:10px 20px" onclick="doPrint()">🖨️ طباعة / حفظ PDF</button>
+    <button class="btn ghost" style="width:auto;padding:10px 20px" onclick="closePrint()">إغلاق</button>
+  </div>
+  <div id="printBody" class="pa-sheet"></div>
+</div>
+
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='56';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='57';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -852,7 +890,16 @@ async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SE
   document.getElementById('s_t2min').value=s.late_t2_min??30;
   document.getElementById('s_t2h').value=s.late_t2_hours??3;
   document.getElementById('s_wh').value=s.work_hours??8;
+  document.getElementById('t_co_name').value=s.co_name||'';
+  document.getElementById('t_vat_no').value=s.vat_no||'';
+  document.getElementById('t_cr_no').value=s.cr_no||'';
+  document.getElementById('t_address').value=s.co_address||'';
   settingsPreview();
+}
+async function saveTaxInfo(){
+  const rec={co_name:document.getElementById('t_co_name').value.trim(),vat_no:document.getElementById('t_vat_no').value.trim(),cr_no:document.getElementById('t_cr_no').value.trim(),co_address:document.getElementById('t_address').value.trim()};
+  const btn=document.getElementById('tSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS=Object.assign(SETTINGS||{},rec);toast('تم حفظ بيانات الفاتورة ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ بيانات الفاتورة';}
 }
 function settingsPreview(){const g=v=>document.getElementById(v).value;
   document.getElementById('s_preview').textContent=`النتيجة: بداية الدوام ${g('s_start')}. من يتأخر ${g('s_t1min')}+ دقيقة يُخصم ${g('s_t1h')} ساعة، ومن يتأخر ${g('s_t2min')}+ دقيقة يُخصم ${g('s_t2h')} ساعة — تلقائياً مع إشعار للموظف.`;}
@@ -1084,6 +1131,61 @@ async function saveInvoice(){
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ الفاتورة';}}
 async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);document.getElementById('phwrap').innerHTML=`<img src="${data.signedUrl}" style="width:100%;border-radius:10px">`;}catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
+
+/* ===== فاتورة ضريبية (ZATCA — المرحلة الأولى) ===== */
+let taxLines=[];
+function _tlv(tag,val){const v=new TextEncoder().encode(val==null?'':String(val));const out=new Uint8Array(2+v.length);out[0]=tag;out[1]=v.length;out.set(v,2);return out;}
+function zatcaBase64(name,vat,iso,total,vatAmt){const parts=[_tlv(1,name),_tlv(2,vat),_tlv(3,iso),_tlv(4,total),_tlv(5,vatAmt)];let len=0;parts.forEach(p=>len+=p.length);const all=new Uint8Array(len);let o=0;parts.forEach(p=>{all.set(p,o);o+=p.length;});let bin='';all.forEach(b=>bin+=String.fromCharCode(b));return btoa(bin);}
+function openTaxInvoice(){
+  const s=SETTINGS||{};
+  if(!s.co_name||!s.vat_no){openModal(`<h3 style="margin-bottom:10px">بيانات الفاتورة الضريبية ناقصة</h3><p style="color:var(--muted);font-size:14px;line-height:1.7">لازم تدخل الاسم النظامي للشركة والرقم الضريبي أولاً من: الإعدادات ← بيانات الفاتورة الضريبية.</p><button class="btn" style="margin-top:14px" onclick="closeModal();goView('settings')">فتح الإعدادات</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);return;}
+  taxLines=[{desc:'',qty:1,price:0}];
+  openModal(taxInvoiceForm());
+  renderTaxLines();
+}
+function taxInvoiceForm(){
+  const no='INV-'+new Date().toISOString().slice(0,10).replace(/-/g,'')+'-'+String(Math.floor(performance.now())%1000).padStart(3,'0');
+  return `<h3 style="margin-bottom:4px">إصدار فاتورة ضريبية</h3><small style="color:var(--muted);display:block;margin-bottom:12px">الأسعار المُدخلة غير شاملة الضريبة — يُضاف 15% تلقائياً.</small>
+  <div class="row"><div class="field"><label>رقم الفاتورة</label><input id="tx_no" value="${no}"></div><div class="field"><label>التاريخ</label><input type="date" id="tx_date" value="${todayKey()}"></div></div>
+  <div class="field"><label>اسم العميل (المشتري)</label><input id="tx_buyer" placeholder="مكتب الشرق"></div>
+  <div class="field"><label>الرقم الضريبي للعميل (اختياري)</label><input id="tx_buyer_vat" inputmode="numeric" placeholder="اختياري"></div>
+  <label>البنود</label>
+  <div id="tx_lines"></div>
+  <button class="btn ghost sm" style="width:100%;margin:6px 0 12px" onclick="addTaxLine()">+ إضافة بند</button>
+  <div class="card" style="background:#f6f8f7;box-shadow:none" id="tx_totals"></div>
+  <button class="btn" style="margin-top:12px" onclick="previewTaxInvoice()">معاينة وطباعة</button>
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`;
+}
+function addTaxLine(){taxLines.push({desc:'',qty:1,price:0});renderTaxLines();}
+function renderTaxLines(){
+  document.getElementById('tx_lines').innerHTML=taxLines.map((l,i)=>`<div class="card" style="padding:10px;margin-bottom:8px">
+    <input placeholder="وصف البند" value="${(l.desc||'').replace(/"/g,'&quot;')}" oninput="taxLines[${i}].desc=this.value" style="margin-bottom:6px">
+    <div class="row"><div class="field" style="margin:0"><label>الكمية</label><input type="number" inputmode="decimal" value="${l.qty}" oninput="taxLines[${i}].qty=parseFloat(this.value)||0;taxTotals()"></div><div class="field" style="margin:0"><label>سعر الوحدة (غير شامل)</label><input type="number" inputmode="decimal" value="${l.price}" oninput="taxLines[${i}].price=parseFloat(this.value)||0;taxTotals()"></div>${taxLines.length>1?`<button class="btn danger sm" style="flex:none;width:42px;align-self:end" onclick="taxLines.splice(${i},1);renderTaxLines()">✕</button>`:''}</div></div>`).join('');
+  taxTotals();
+}
+function taxCalc(){let sub=0;taxLines.forEach(l=>sub+=(Number(l.qty)||0)*(Number(l.price)||0));const vat=sub*0.15;return{sub,vat,total:sub+vat};}
+function taxTotals(){const t=taxCalc();const el=document.getElementById('tx_totals');if(!el)return;el.innerHTML=`<div style="display:flex;justify-content:space-between"><span>الإجمالي غير شامل الضريبة</span><b>${fmt(t.sub)} ﷼</b></div><div style="display:flex;justify-content:space-between"><span>ضريبة القيمة المضافة 15%</span><b>${fmt(t.vat)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--green);font-size:16px;margin-top:4px"><span>الإجمالي شامل الضريبة</span><b>${fmt(t.total)} ﷼</b></div>`;}
+function previewTaxInvoice(){
+  const s=SETTINGS||{};const t=taxCalc();
+  if(t.sub<=0){toast('أضف بنداً واحداً على الأقل بسعر');return;}
+  const no=document.getElementById('tx_no').value.trim();const dateV=document.getElementById('tx_date').value||todayKey();
+  const buyer=document.getElementById('tx_buyer').value.trim();const buyerVat=document.getElementById('tx_buyer_vat').value.trim();
+  const iso=new Date(dateV+'T'+new Date().toTimeString().slice(0,8)).toISOString().replace(/\.\d{3}Z$/,'Z');
+  const b64=zatcaBase64(s.co_name,s.vat_no,iso,t.total.toFixed(2),t.vat.toFixed(2));
+  const rows=taxLines.map((l,i)=>{const q=Number(l.qty)||0,p=Number(l.price)||0,ex=q*p,v=ex*0.15;return `<tr><td>${i+1}</td><td style="text-align:right">${(l.desc||'').replace(/</g,'&lt;')}</td><td>${fmt(q)}</td><td>${fmt(p)}</td><td>${fmt(ex)}</td><td>${fmt(v)}</td><td>${fmt(ex+v)}</td></tr>`;}).join('');
+  const html=`<div class="inv-head"><div><div class="inv-title">فاتورة ضريبية مبسّطة</div><div class="inv-sub">Simplified Tax Invoice</div></div><div class="inv-logo">${LOGO_SVG}</div></div>
+    <div class="inv-parties"><div><div class="inv-lbl">البائع</div><b>${s.co_name||''}</b><div>الرقم الضريبي: ${s.vat_no||''}</div>${s.cr_no?`<div>س.ت: ${s.cr_no}</div>`:''}${s.co_address?`<div>${s.co_address}</div>`:''}</div>
+    <div><div class="inv-lbl">المشتري</div><b>${buyer||'—'}</b>${buyerVat?`<div>الرقم الضريبي: ${buyerVat}</div>`:''}</div></div>
+    <div class="inv-meta"><span>رقم الفاتورة: <b>${no}</b></span><span>التاريخ: <b>${dateV}</b></span></div>
+    <table class="inv-tbl"><thead><tr><th>#</th><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>غير شامل</th><th>الضريبة 15%</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
+    <div class="inv-foot"><div class="inv-qr"><canvas id="txQR"></canvas></div>
+    <div class="inv-tot"><div><span>الإجمالي غير شامل الضريبة</span><b>${fmt(t.sub)} ﷼</b></div><div><span>ضريبة القيمة المضافة 15%</span><b>${fmt(t.vat)} ﷼</b></div><div class="grand"><span>الإجمالي شامل الضريبة</span><b>${fmt(t.total)} ﷼</b></div></div></div>
+    <div class="inv-note">هذه فاتورة ضريبية مبسّطة صادرة إلكترونياً وفق متطلبات هيئة الزكاة والضريبة والجمارك (المرحلة الأولى).</div>`;
+  const pa=document.getElementById('printArea');pa.querySelector('#printBody').innerHTML=html;pa.style.display='flex';
+  try{new QRious({element:document.getElementById('txQR'),value:b64,size:130,level:'M'});}catch(e){}
+}
+function closePrint(){document.getElementById('printArea').style.display='none';}
+function doPrint(){window.print();}
 
 /* ===== WORKER: home ===== */
 async function loadWorkerHome(){
