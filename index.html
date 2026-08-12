@@ -359,7 +359,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='52';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='53';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -385,12 +385,13 @@ function toLatinDigits(s){return String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)
 document.addEventListener('input',e=>{const t=e.target;if(!t||(t.tagName!=='INPUT'&&t.tagName!=='TEXTAREA'))return;const v=t.value;const c=toLatinDigits(v);if(c!==v){const p=t.selectionStart;t.value=c;try{t.setSelectionRange(p,p);}catch(_){}}} ,true);
 /* منتقي تاريخ مخصّص (إنجليزي، أرقام لاتينية، سريع) يستبدل منتقي المتصفح */
 const _dp={input:null,view:null,open:false};
-const DP_M=['January','February','March','April','May','June','July','August','September','October','November','December'];
-const DP_WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
+const DP_M=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+const DP_WD=['أحد','إثن','ثلا','أرب','خمي','جمع','سبت'];
 function isoOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function enforceEnDates(root){(root||document).querySelectorAll('input[type=date]').forEach(el=>{if(el.dataset.dp)return;el.dataset.dp='1';el.type='text';el.readOnly=true;el.setAttribute('inputmode','none');el.classList.add('dp-input');el.addEventListener('click',ev=>{ev.stopPropagation();openDatePicker(el);});});
   (root||document).querySelectorAll('input[type=time]').forEach(el=>{el.setAttribute('lang','en-GB');el.setAttribute('dir','ltr');});}
 function ensureDpPop(){let p=document.getElementById('dpPop');if(!p){p=document.createElement('div');p.id='dpPop';p.className='dp-pop';document.body.appendChild(p);
+    p.addEventListener('click',e=>e.stopPropagation());
     document.addEventListener('click',e=>{if(_dp.open){const pop=document.getElementById('dpPop');if(pop&&!pop.contains(e.target)&&e.target!==_dp.input)closeDatePicker();}});}
   return p;}
 function openDatePicker(input){const pop=ensureDpPop();_dp.input=input;let d=input.value?new Date(input.value+'T00:00:00'):new Date();if(isNaN(d.getTime()))d=new Date();_dp.view=new Date(d.getFullYear(),d.getMonth(),1);renderDatePicker();
