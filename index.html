@@ -153,6 +153,10 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <h2 class="section-title">نظرة عامة</h2>
       <div class="grid2" id="ovKpis"></div>
       <div id="ovActions"></div>
+      <h3 class="section-title" style="font-size:16px;margin:20px 0 8px">🗺️ الخريطة المباشرة</h3>
+      <div class="hint">مواقع الموظفين الآن (تظهر أثناء فتحهم للتطبيق). 🟢 محدّث الآن · ⚪ آخر موقع معروف.</div>
+      <div id="ovLiveMap" style="height:270px;border-radius:14px;margin-bottom:12px;z-index:0"></div>
+      <div id="ovLiveList"></div>
     </div>
     <div class="view" id="v-workorders">
       <h2 class="section-title">أوامر العمل</h2>
@@ -313,7 +317,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='44';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='45';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -348,22 +352,33 @@ function startLiveTracking(){if(!navigator.geolocation||liveWatchId!=null)return
     try{await sb.from('live_locations').upsert({worker_id:ME.id,lat:pos.coords.latitude,lng:pos.coords.longitude,updated_at:new Date().toISOString()},{onConflict:'worker_id'});}catch(e){}
   },()=>{},{enableHighAccuracy:true,maximumAge:30000,timeout:60000});}
 function stopLiveTracking(){if(liveWatchId!=null){try{navigator.geolocation.clearWatch(liveWatchId);}catch(e){}liveWatchId=null;}}
-/* admin live map */
-let liveMap2=null,liveMarkers=null;
-function initLiveMap(){
-  if(window.L){if(liveMap2){try{liveMap2.remove();}catch(e){}liveMap2=null;}
-    liveMap2=L.map('liveMap').setView([24.7136,46.6753],6);L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(liveMap2);
-    liveMarkers=L.layerGroup().addTo(liveMap2);setTimeout(()=>{try{liveMap2.invalidateSize();}catch(e){}},250);}
-  loadLiveMap();window._liveInterval=setInterval(loadLiveMap,25000);
+/* admin live map (reusable على النظرة العامة + الشاشة المخصصة) */
+let LIVE_TARGETS={};
+function mountLiveMap(mapId,listId){
+  const prev=LIVE_TARGETS[mapId];if(prev&&prev.map){try{prev.map.remove();}catch(e){}}
+  LIVE_TARGETS[mapId]={map:null,markers:null,listId};
+  if(window.L&&document.getElementById(mapId)){
+    const map=L.map(mapId).setView([24.7136,46.6753],6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+    const markers=L.layerGroup().addTo(map);
+    LIVE_TARGETS[mapId]={map,markers,listId};
+    setTimeout(()=>{try{map.invalidateSize();}catch(e){}},250);
+  }
 }
+function startLiveLoop(){if(window._liveInterval){clearInterval(window._liveInterval);}loadLiveMap();window._liveInterval=setInterval(loadLiveMap,25000);}
+function initLiveMap(){mountLiveMap('liveMap','liveList');startLiveLoop();}
 async function loadLiveMap(){
   const{data:locs}=await sb.from('live_locations').select('*');
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
   const{data:att}=await sb.from('attendance').select('worker_id,check_in,check_out').eq('work_date',todayKey());const ab={};(att||[]).forEach(a=>ab[a.worker_id]=a);
   const pts=(locs||[]).filter(l=>l.lat!=null);const nowMs=Date.now();
-  if(liveMarkers){liveMarkers.clearLayers();const bounds=[];pts.forEach(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);L.marker([l.lat,l.lng]).addTo(liveMarkers).bindPopup(`${pn[l.worker_id]||'موظف'}<br>قبل ${mins} دقيقة`);bounds.push([l.lat,l.lng]);});if(bounds.length&&liveMap2){try{liveMap2.fitBounds(bounds,{maxZoom:14,padding:[30,30]});}catch(e){}}}
-  document.getElementById('liveList').innerHTML=(pts.length)?pts.map(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);const fresh=mins<3;const a=ab[l.worker_id];const st=a?(a.check_out?'انصرف':a.check_in?'حاضر':''):'';
+  const listHtml=(pts.length)?pts.map(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);const fresh=mins<3;const a=ab[l.worker_id];const st=a?(a.check_out?'انصرف':a.check_in?'حاضر':''):'';
     return `<div class="item"><div class="ic" style="background:${fresh?'#e6f6ed':'#f0f0f0'};color:${fresh?'var(--ok)':'var(--muted)'}">${fresh?'🟢':'⚪'}</div><div class="meta"><b>${pn[l.worker_id]||'موظف'}</b><small>آخر تحديث قبل ${mins} دقيقة ${st?'· '+st:''} · <a class="link" href="https://www.google.com/maps?q=${l.lat},${l.lng}" target="_blank">📍 خريطة</a></small></div></div>`;}).join(''):'<div class="empty">لا توجد مواقع مباشرة الآن — تظهر عند فتح الموظفين للتطبيق.</div>';
+  Object.keys(LIVE_TARGETS).forEach(mapId=>{
+    if(!document.getElementById(mapId))return;const T=LIVE_TARGETS[mapId];
+    if(T.markers){T.markers.clearLayers();const bounds=[];pts.forEach(l=>{const mins=Math.round((nowMs-new Date(l.updated_at).getTime())/60000);L.marker([l.lat,l.lng]).addTo(T.markers).bindPopup(`${pn[l.worker_id]||'موظف'}<br>قبل ${mins} دقيقة`);bounds.push([l.lat,l.lng]);});if(bounds.length&&T.map){try{T.map.fitBounds(bounds,{maxZoom:14,padding:[30,30]});}catch(e){}}}
+    const le=document.getElementById(T.listId);if(le)le.innerHTML=listHtml;
+  });
 }
 
 /* auth */
@@ -495,6 +510,7 @@ async function loadOverview(){
       ${pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:''}
       <div class="row"><button class="btn ghost" onclick="goView('workorders')">أوامر العمل</button><button class="btn ghost" onclick="goView('finance')">المالية</button></div>`;
   }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل النظرة العامة: '+e.message+'</div>';}
+  mountLiveMap('ovLiveMap','ovLiveList');startLiveLoop();
 }
 
 /* ===== approvals ===== */
