@@ -359,7 +359,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='54';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='55';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -756,10 +756,10 @@ async function loadAttAdmin(){
   document.getElementById('attAdminList').innerHTML=(att&&att.length)?att.map(a=>{const w=pm[a.worker_id]||{};let b,ex;
     if(a.check_out){b='<span class="badge-att out">انصرف</span>';ex=`${hm(a.check_in)} ← ${hm(a.check_out)} · ${hoursBetween(a.check_in,a.check_out)} س`;}else{b='<span class="badge-att in">حاضر</span>';ex=`منذ ${hm(a.check_in)}`;}
     if(a.is_late)b+=` <span class="badge-att out">متأخر −${a.penalty_hours||1}س</span>`;
-    const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍 الموقع</a>`:'';
-    const sIn=a.in_photo?` · <button class="link" onclick="viewInvPhoto('${a.in_photo}','صورة الحضور')">📷 صورة الحضور</button>`:'';
-    const sOut=a.out_photo?` · <button class="link" onclick="viewInvPhoto('${a.out_photo}','صورة الانصراف')">صورة الانصراف</button>`:'';
-    return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}${sIn}${sOut}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
+    const map=a.in_lat?`<a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍 الموقع</a>`:'';
+    const sIn=a.in_photo?`<button class="link" onclick="viewInvPhoto('${a.in_photo}','صورة الحضور')">📷 صورة الحضور</button>`:'';
+    const sOut=a.out_photo?`<button class="link" onclick="viewInvPhoto('${a.out_photo}','صورة الانصراف')">📷 صورة الانصراف</button>`:'';
+    return `<div class="item" style="align-items:flex-start"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}</small><div style="margin-top:5px">${b}</div>${map?`<div style="margin-top:10px">${map}</div>`:''}${sIn?`<div style="margin-top:10px">${sIn}</div>`:''}${sOut?`<div style="margin-top:8px">${sOut}</div>`:''}</div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
 function hm(ts){return new Date(ts).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
 function hoursBetween(a,b){return((new Date(b)-new Date(a))/3600000).toFixed(1);}
