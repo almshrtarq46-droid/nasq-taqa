@@ -240,6 +240,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div class="grid2" id="workerKpis"></div>
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
       <div class="row"><button class="btn" onclick="goView('field')">رفع محطة جديدة</button><button class="btn copper" onclick="goView('att-worker')">حضور / انصراف</button></div>
+      <button class="btn ghost" id="pushBtn" style="display:none;margin-top:10px" onclick="enablePush()">🔔 تفعيل إشعارات الجوال</button>
       <div id="workerNotifs" style="margin-top:13px"></div>
     </div>
     <div class="view" id="v-att-worker">
@@ -317,7 +318,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='45';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='46';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -415,7 +416,22 @@ async function enterApp(role){
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
   await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();await loadCatalog();await loadAssignments();buildNav(role);show('screen-app');
   if(role!=='admin')startLiveTracking();
+  syncPush();
 }
+/* ===== إشعارات Push (خارج التطبيق) ===== */
+const VAPID_PUBLIC='BDYsCpUm0bFx_M_ehpYT7fEemKbsApNngbyB937gIuzvBGrJbWcqJ33Aw9pErrwBej1Lye9tVeP2DpIToXsYSe0';
+function urlB64ToUint8(base64){const pad='='.repeat((4-base64.length%4)%4);const b=(base64+pad).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(b);const arr=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);return arr;}
+async function storeSub(sub){try{const j=sub.toJSON();await sb.from('push_subscriptions').upsert({worker_id:ME.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth},{onConflict:'endpoint'});}catch(e){}}
+async function syncPush(){try{if(!('serviceWorker'in navigator)||!('PushManager'in window))return;updatePushBtn();if(Notification.permission!=='granted')return;
+  const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+  if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC)});
+  await storeSub(sub);}catch(e){}}
+async function enablePush(){if(!('serviceWorker'in navigator)||!('PushManager'in window)){toast('جهازك لا يدعم الإشعارات');return;}
+  try{const perm=await Notification.requestPermission();if(perm!=='granted'){toast('لم يُفعّل — فعّل الإشعارات من إعدادات الجوال');return;}
+    const reg=await navigator.serviceWorker.ready;let sub=await reg.pushManager.getSubscription();
+    if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8(VAPID_PUBLIC)});
+    await storeSub(sub);toast('تم تفعيل الإشعارات ✓');updatePushBtn();}catch(e){toast('تعذّر التفعيل: '+(e.message||''));}}
+function updatePushBtn(){const b=document.getElementById('pushBtn');if(!b)return;const ok=('Notification'in window)&&('serviceWorker'in navigator)&&('PushManager'in window);b.style.display=(ok&&Notification.permission!=='granted')?'block':'none';}
 async function loadCatalog(){try{if(PROFILE.role==='admin'){const{data}=await sb.from('catalog_items').select('*').order('code');CATALOG=data||[];}else{const{data}=await sb.from('catalog_public').select('*').order('code');CATALOG=data||[];}}catch(e){CATALOG=[];}}
 async function loadAssignments(){try{const{data}=await sb.from('assignments').select('*').order('created_at',{ascending:false});ASSIGNMENTS=data||[];}catch(e){ASSIGNMENTS=[];}}
 async function loadMyCrew(){MY_CREW_LED=[];MY_CREW_MEMBER=false;try{
@@ -959,7 +975,7 @@ async function loadWorkerHome(){
   const{count:eCount}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('worker_id',ME.id);
   const{count:aCount}=await sb.from('attendance').select('*',{count:'exact',head:true}).eq('worker_id',ME.id).gte('work_date',monthStart());
   document.getElementById('workerKpis').innerHTML=`<div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div><div class="kpi"><b>${aCount||0}</b><span>أيام حضوري هذا الشهر</span></div>`;
-  loadWorkerNotifs();
+  updatePushBtn();loadWorkerNotifs();
 }
 async function loadWorkerNotifs(){
   const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(20);
