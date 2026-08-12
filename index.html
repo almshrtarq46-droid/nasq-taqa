@@ -38,7 +38,7 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weig
 .btn.sm{width:auto;padding:8px 13px;font-size:13px;border-radius:10px}.btn.danger{background:#fbecea;color:var(--bad)}
 .btn:disabled{opacity:.55}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:var(--shadow);transition:box-shadow .22s ease,transform .13s ease}
-@media(hover:hover){.card:hover{box-shadow:0 8px 24px rgba(11,77,56,.16)}}
+@media(hover:hover){.card:hover{box-shadow:0 0 0 2px rgba(15,107,79,.35),0 6px 18px rgba(11,77,56,.16)}}
 .screen{display:none;min-height:100vh}.screen.on{display:block}
 .center{display:flex;flex-direction:column;justify-content:center;min-height:100vh;padding:22px;max-width:440px;margin:0 auto}
 .brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:22px}
@@ -69,9 +69,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sb-menu .grp{font-size:11px;color:var(--muted);font-weight:700;margin:14px 12px 6px}
 .sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
 .sb-item svg{width:20px;height:20px;color:var(--green);flex:none;transition:color .22s ease}
-.sb-item.on{background:#e4efe9;color:var(--green);box-shadow:0 5px 18px rgba(11,77,56,.30)}
+.sb-item.on{background:#e4efe9;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.55),0 6px 16px rgba(11,77,56,.28)}
 .sb-item:active{transform:scale(.975)}
-@media(hover:hover){.sb-item:hover{background:#e7f1ec;box-shadow:0 6px 20px rgba(11,77,56,.32)}}
+@media(hover:hover){.sb-item:hover{background:#eaf3ee;box-shadow:0 0 0 2px rgba(15,107,79,.45),0 6px 16px rgba(11,77,56,.26)}}
 /* أكورديون الإعدادات — فتح/طي ناعم */
 #setChildren{max-height:0;overflow:hidden;opacity:0;transition:max-height .34s cubic-bezier(.4,0,.2,1),opacity .3s ease}
 #setChildren.open{opacity:1}
@@ -82,9 +82,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 @keyframes sheetUp{from{transform:translateY(46px);opacity:.3}to{transform:translateY(0);opacity:1}}
 .section-title{font-size:19px;margin:2px 2px 14px}
 .item{border:1px solid var(--line);border-radius:13px;padding:12px;margin-bottom:9px;background:#fff;display:flex;gap:11px;align-items:center;transition:box-shadow .22s ease,border-color .22s ease,transform .13s ease}
-@media(hover:hover){.item:hover{box-shadow:0 7px 22px rgba(11,77,56,.22);border-color:#b6d2c7;transform:translateY(-1px)}}
+@media(hover:hover){.item:hover{box-shadow:0 0 0 2px rgba(15,107,79,.45),0 6px 16px rgba(11,77,56,.22);border-color:transparent;transform:translateY(-1px)}}
 .link{transition:opacity .18s ease}@media(hover:hover){.link:hover{opacity:.55}}
-.kpi{transition:box-shadow .22s ease,transform .13s ease}@media(hover:hover){.kpi:hover{box-shadow:0 8px 22px rgba(11,77,56,.22);transform:translateY(-1px)}}
+.kpi{transition:box-shadow .22s ease,transform .13s ease}@media(hover:hover){.kpi:hover{box-shadow:0 0 0 2px rgba(15,107,79,.40),0 6px 16px rgba(11,77,56,.18);transform:translateY(-1px)}}
 .item .ic{width:40px;height:40px;border-radius:11px;flex:none;display:grid;place-items:center;background:#eef4f1;color:var(--green);font-weight:800}
 .item .meta{flex:1;min-width:0}.item .meta b{font-size:14.5px;display:block}.item .meta small{color:var(--muted);font-size:12px}
 .pill{display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
@@ -112,9 +112,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .locbar.ok2{background:#e6f6ed;color:var(--ok)}.locbar.wait{background:#eef2f0;color:var(--muted)}.locbar.bad2{background:#fbecea;color:var(--bad)}
 .seg{display:flex;background:#eef2f0;border-radius:11px;padding:3px;margin-bottom:14px}
 .seg button{flex:1;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
-.seg button.on{background:#fff;color:var(--green);box-shadow:0 4px 14px rgba(11,77,56,.24)}
+.seg button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.45),0 4px 12px rgba(11,77,56,.22)}
 .seg button:active{transform:scale(.96)}
-@media(hover:hover){.seg button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.55)}}
+@media(hover:hover){.seg button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(15,107,79,.30)}}
 .hrbox{animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
 .station{border:1px solid var(--line);border-radius:14px;margin-bottom:11px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
 #pb_selfie img{object-fit:contain !important;background:#0b0b0b}
@@ -123,7 +123,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .thumbs .th img{width:100%;height:100%;object-fit:cover}
 .thumbs .th button{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;padding:0}
 .station{transition:box-shadow .22s ease,transform .13s ease}
-@media(hover:hover){.station:hover{box-shadow:0 8px 24px rgba(11,77,56,.20)}}
+@media(hover:hover){.station:hover{box-shadow:0 0 0 2px rgba(15,107,79,.40),0 6px 18px rgba(11,77,56,.18)}}
 .station>.h{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .2s ease}
 @media(hover:hover){.station>.h:hover{background:#f6faf8}}
 .station .body{padding:0 14px 12px;display:none}.station.open .body{display:block;animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
@@ -339,7 +339,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='48';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='49';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
