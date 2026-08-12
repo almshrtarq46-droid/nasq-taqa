@@ -359,7 +359,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='53';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='54';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -692,7 +692,7 @@ async function openEmpDocs(emp){docNewImgs={};
       html+=`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${dt.l} ${stPill}</b>
         <div class="row" style="margin-top:8px"><div class="field" style="margin:0"><label>الرقم</label><input id="dn_${dt.t}" value="${ex?(ex.number||''):''}"></div><div class="field" style="margin:0"><label>تاريخ الانتهاء</label><input type="date" id="de_${dt.t}" value="${ex?(ex.expiry||''):''}"></div></div>
         <div class="photobox" id="dimg_${dt.t}" style="aspect-ratio:auto;height:120px;margin-top:8px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>${ex&&ex.photo?'استبدال الصورة':'صورة الكرت'}<input type="file" accept="image/*" onchange="pickDocImg(this,'${dt.t}')"></div>
-        ${ex&&ex.photo?`<button class="link" style="margin-top:4px" onclick="viewInvPhoto('${ex.photo}')">📷 عرض الصورة المحفوظة</button>`:''}</div>`;});});
+        ${ex&&ex.photo?`<button class="link" style="margin-top:4px" onclick="viewInvPhoto('${ex.photo}','صورة المستند')">📷 عرض الصورة المحفوظة</button>`:''}</div>`;});});
   html+=`<button class="btn" id="edSave" onclick="saveEmpDocs('${emp.id}')">حفظ المستندات</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`;
   openModal(html);
 }
@@ -757,8 +757,8 @@ async function loadAttAdmin(){
     if(a.check_out){b='<span class="badge-att out">انصرف</span>';ex=`${hm(a.check_in)} ← ${hm(a.check_out)} · ${hoursBetween(a.check_in,a.check_out)} س`;}else{b='<span class="badge-att in">حاضر</span>';ex=`منذ ${hm(a.check_in)}`;}
     if(a.is_late)b+=` <span class="badge-att out">متأخر −${a.penalty_hours||1}س</span>`;
     const map=a.in_lat?` · <a class="link" href="https://www.google.com/maps?q=${a.in_lat},${a.in_lng}" target="_blank">📍 الموقع</a>`:'';
-    const sIn=a.in_photo?` · <button class="link" onclick="viewInvPhoto('${a.in_photo}')">📷 سيلفي الحضور</button>`:'';
-    const sOut=a.out_photo?` · <button class="link" onclick="viewInvPhoto('${a.out_photo}')">سيلفي الانصراف</button>`:'';
+    const sIn=a.in_photo?` · <button class="link" onclick="viewInvPhoto('${a.in_photo}','صورة الحضور')">📷 صورة الحضور</button>`:'';
+    const sOut=a.out_photo?` · <button class="link" onclick="viewInvPhoto('${a.out_photo}','صورة الانصراف')">صورة الانصراف</button>`:'';
     return `<div class="item"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}${map}${sIn}${sOut}</small><div style="margin-top:4px">${b}</div></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
 function hm(ts){return new Date(ts).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
@@ -1024,7 +1024,7 @@ async function loadInvoices(){
   const list=finFilter==='all'?all:all.filter(i=>i.kind===finFilter);
   document.getElementById('invList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="background:${i.kind==='out'?'#e6f6ed':'#f6ecdf'};color:${i.kind==='out'?'var(--ok)':'var(--copper)'}">${i.kind==='out'?'↗':'↘'}</div>
     <div class="meta"><b>${i.party||(i.kind==='out'?'فاتورة صادرة':'فاتورة واردة')}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · شامل ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left"><div class="pill role">${fmt(i.amount)} ﷼</div>${i.photo?`<div><button class="link" onclick="viewInvPhoto('${i.photo}')">📷 الصورة</button></div>`:''}</div></div>`).join(''):'<div class="empty">لا توجد فواتير</div>';
+    <div style="text-align:left"><div class="pill role">${fmt(i.amount)} ﷼</div>${i.photo?`<div><button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷 الصورة</button></div>`:''}</div></div>`).join(''):'<div class="empty">لا توجد فواتير</div>';
 }
 function openInvoice(){invPhoto=null;openModal(`<h3 style="margin-bottom:14px">فاتورة جديدة</h3>
   <div class="seg"><button class="on" id="ik_out" onclick="setInvKind('out')">صادرة</button><button id="ik_in" onclick="setInvKind('in')">واردة</button></div>
@@ -1046,7 +1046,7 @@ async function saveInvoice(){
     const{error}=await sb.from('invoices').insert({kind:invKind,number:document.getElementById('iv_number').value.trim(),party:document.getElementById('iv_party').value.trim(),amount,vat:parseFloat(document.getElementById('iv_vat').value)||0,invoice_date:document.getElementById('iv_date').value||todayKey(),note:document.getElementById('iv_note').value.trim(),photo,created_by:ME.id});
     if(error)throw error;closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ الفاتورة';}}
-async function viewInvPhoto(p){openModal('<h3 style="margin-bottom:12px">صورة الفاتورة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);document.getElementById('phwrap').innerHTML=`<img src="${data.signedUrl}" style="width:100%;border-radius:10px">`;}catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
 
 /* ===== WORKER: home ===== */
