@@ -68,7 +68,7 @@ select.enh{display:none!important}
 .pa-sheet{background:#fff;width:100%;max-width:780px;border-radius:12px;padding:26px;color:#182420;box-shadow:0 20px 50px rgba(0,0,0,.35)}
 .inv-head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid var(--green);padding-bottom:14px;margin-bottom:16px}
 .inv-title{font-size:22px;font-weight:800;color:var(--green)}.inv-sub{font-size:12px;color:var(--muted)}
-.inv-logo{width:56px;height:56px;background:var(--green);border-radius:12px;display:grid;place-items:center}.inv-logo svg{width:40px;height:40px}
+.inv-logo{width:56px;height:56px;background:#fff;border:1.5px solid var(--green);border-radius:12px;display:grid;place-items:center}.inv-logo svg{width:40px;height:40px}
 .inv-parties{display:flex;justify-content:space-between;gap:20px;font-size:13px;margin-bottom:14px}
 .inv-parties>div{flex:1}.inv-lbl{font-size:11px;color:var(--muted);font-weight:800;margin-bottom:3px}.inv-parties b{font-size:14px}
 .inv-meta{display:flex;justify-content:space-between;background:#f2f6f4;border-radius:9px;padding:9px 12px;font-size:13px;margin-bottom:14px}
@@ -383,7 +383,6 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <div id="intro">
   <div class="intro-logo"><svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#fff"/></svg></div>
   <div class="intro-title">نسق الطاقة</div>
-  <div class="intro-sub">نظام العمليات الميدانية</div>
   <div class="intro-bar"><span></span></div>
 </div>
 
@@ -409,9 +408,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 </div>
 
 <script>
-const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
+const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='58';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='59';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
