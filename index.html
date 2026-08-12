@@ -235,7 +235,7 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
     <div class="view" id="v-home">
       <div class="grid2" id="workerKpis"></div>
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
-      <div class="row"><button class="btn" onclick="goView('field')">تسجيل عمل ميداني</button><button class="btn copper" onclick="goView('att-worker')">حضور / انصراف</button></div>
+      <div class="row"><button class="btn" onclick="goView('field')">رفع محطة جديدة</button><button class="btn copper" onclick="goView('att-worker')">حضور / انصراف</button></div>
       <div id="workerNotifs" style="margin-top:13px"></div>
     </div>
     <div class="view" id="v-att-worker">
@@ -244,11 +244,11 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
       <div id="att_history"></div>
     </div>
     <div class="view" id="v-field">
-      <h2 class="section-title">الإدخال الميداني</h2>
+      <h2 class="section-title">رفع محطة جديدة</h2>
       <div class="hint">سجّل عمل المحطة: صور قبل (عدة صور)، البنود المنجزة وكمياتها، ثم صور بعد. كل صورة تُختم بالموقع والتاريخ والوقت تلقائياً.</div>
       <div class="card">
         <div class="field"><label>الإسناد</label><select id="f_assign"></select></div>
-        <div class="row"><div class="field"><label>رقم المحطة</label><input id="f_station_no" placeholder="مثال: 47558"></div><div class="field"><label>وصف المحطة (اختياري)</label><input id="f_station_name" placeholder="اختياري"></div></div>
+        <div class="row"><div class="field"><label>رقم المحطة</label><input id="f_station_no" placeholder="مثال: 47558"></div><div class="field"><label>نوع المحطة</label><select id="f_station_type"><option value="">اختر النوع…</option><option value="غرفة">غرفة</option><option value="بكج">بكج</option><option value="ميني بيلر">ميني بيلر</option></select></div></div>
         <label>صور قبل التنفيذ</label>
         <div id="beforeThumbs" class="thumbs"></div>
         <input type="file" accept="image/*" capture="environment" id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
@@ -309,11 +309,11 @@ nav button svg{width:22px;height:22px}nav button.on{color:var(--green)}
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='42';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='43';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
-/* المقدمة الافتتاحية: تظهر ~3 ثوانٍ ثم تختفي بتلاشٍ ناعم */
-(function(){var el=document.getElementById('intro');if(!el)return;setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},650);},3000);})();
+/* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
+(function(){var el=document.getElementById('intro');if(!el)return;if(location.search){if(el.parentNode)el.parentNode.removeChild(el);return;}setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},650);},3000);})();
 /* تثبيت كتطبيق: تسجيل service worker (بدون تخزين للصفحة) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 /* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
@@ -452,7 +452,7 @@ function buildNav(role){
     goView('overview');
   }else{
     hamb.style.display='none';nav.style.display='flex';
-    const items=[['home','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],['att-worker','الحضور','M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],['field','ميداني','M12 2v20 M2 12h20']];
+    const items=[['home','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],['att-worker','الحضور','M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],['field','رفع محطة','M12 2v20 M2 12h20']];
     nav.innerHTML=items.map((it,i)=>`<button data-v="${it[0]}" class="${i===0?'on':''}" onclick="goView('${it[0]}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${it[2].split(' M').map((d,j)=>`<path d="${j?'M'+d:d}"/>`).join('')}</svg>${it[1]}</button>`).join('');
     goView('home');
   }
@@ -821,7 +821,7 @@ async function loadWorkOrders(){
     const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
     const stage=p.wo_stage||'قيد التنفيذ';
     return `<div class="station" id="st_${pid}"><div class="h" onclick="document.getElementById('st_${pid}').classList.toggle('open')">
-      <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
+      <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'}${p.station_type?' · '+p.station_type:''} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
       <div style="text-align:left"><div class="pill role">${fmt(tot)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
       <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
       ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
@@ -1046,7 +1046,8 @@ async function doCheck(dir){
 let beforePhotos=[],afterPhotos=[],fieldItems=[];
 function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   document.getElementById('f_assign').innerHTML=ASSIGNMENTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')||'<option value="">لا توجد إسنادات — راجع المدير</option>';
-  document.getElementById('f_station_no').value='';document.getElementById('f_station_name').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
+  document.getElementById('f_station_no').value='';document.getElementById('f_station_type').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
+  const sv=document.getElementById('f_save');if(sv){sv.disabled=false;sv.textContent='رفع العمل';}
   const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
@@ -1057,7 +1058,7 @@ function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fiel
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function onFieldPhoto(input,phase){const f=input.files[0];if(!f)return;input.value='';const lb=document.getElementById('f_loc');lb.style.display='block';lb.className='locbar wait';lb.textContent='📸 جارٍ ختم الصورة بالموقع…';
   const rd=new FileReader();rd.onload=()=>compress(rd.result,async d=>{try{const pos=await getPos();
-    const stNo=(document.getElementById('f_station_no').value||'').trim();const stName=(document.getElementById('f_station_name').value||'').trim();const stLabel=(stName||(stNo?'محطة '+stNo:'محطة'));const now=new Date();
+    const stNo=(document.getElementById('f_station_no').value||'').trim();const stType=(document.getElementById('f_station_type').value||'').trim();const stLabel=(stNo?'محطة '+stNo:'محطة')+(stType?' - '+stType:'');const now=new Date();
     const lines=[`${stLabel}`,`${now.toLocaleDateString('en-GB')} - ${now.toTimeString().slice(0,8)}`,`${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)}`];
     const stamped=await stampImage(d,lines);(phase==='before'?beforePhotos:afterPhotos).push({data:stamped,lat:pos.lat,lng:pos.lng});renderThumbs(phase);
     lb.className='locbar ok2';lb.textContent=`✅ أُضيفت صورة ${phase==='before'?'قبل':'بعد'} (${(phase==='before'?beforePhotos:afterPhotos).length}) مختومة بالموقع`;
@@ -1068,8 +1069,10 @@ async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Mat
 async function saveFieldReport(){
   const assign=ASSIGNMENTS.find(a=>a.id===document.getElementById('f_assign').value);
   const stationNo=document.getElementById('f_station_no').value.trim();
+  const stationType=document.getElementById('f_station_type').value.trim();
   if(!assign){toast('اختر الإسناد');return;}
   if(!stationNo){toast('اكتب رقم المحطة');return;}
+  if(!stationType){toast('اختر نوع المحطة');return;}
   if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
   if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
   if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
@@ -1077,7 +1080,7 @@ async function saveFieldReport(){
   try{
     let pid;const{data:ex}=await sb.from('projects').select('id').eq('assignment',assign.name).eq('code',stationNo).limit(1);
     if(ex&&ex.length){pid=ex[0].id;}
-    else{const{data,error}=await sb.from('projects').insert({name:document.getElementById('f_station_name').value.trim()||('محطة '+stationNo),code:stationNo,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id}).select('id').single();if(error)throw error;pid=data.id;}
+    else{const{data,error}=await sb.from('projects').insert({name:'محطة '+stationNo,code:stationNo,station_type:stationType,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id}).select('id').single();if(error)throw error;pid=data.id;}
     const wd=todayKey();
     const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
@@ -1085,7 +1088,7 @@ async function saveFieldReport(){
     const note=document.getElementById('f_note').value.trim();
     const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
     const{error:ee}=await sb.from('entries').insert(entryRows);if(ee)throw ee;
-    toast('تم رفع العمل ✓');initField();goView('home');
+    btn.disabled=false;btn.textContent='رفع العمل';toast('تم رفع العمل ✓');initField();goView('home');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
 /* modal + boot */
