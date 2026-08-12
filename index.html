@@ -259,7 +259,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
       <div id="finKpis" class="grid2" style="margin-bottom:13px"></div>
-      <div class="row" style="margin-bottom:13px"><button class="btn" onclick="openInvoice()">+ فاتورة جديدة</button><button class="btn copper" onclick="openTaxInvoice()">🧾 فاتورة ضريبية</button></div>
+      <div class="row" style="margin-bottom:9px"><button class="btn" onclick="openInvoice()">+ فاتورة جديدة</button><button class="btn copper" onclick="openTaxInvoice()">🧾 فاتورة ضريبية</button></div>
+      <button class="btn ghost" style="margin-bottom:13px" onclick="openTaxInvoiceList()">📋 الفواتير الضريبية المحفوظة</button>
       <div class="seg"><button class="on" onclick="finTab('all',this)">الكل</button><button onclick="finTab('out',this)">صادرة</button><button onclick="finTab('in',this)">واردة</button></div>
       <div id="invList"></div>
     </div>
@@ -410,7 +411,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='57';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='58';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1165,25 +1166,37 @@ function renderTaxLines(){
 }
 function taxCalc(){let sub=0;taxLines.forEach(l=>sub+=(Number(l.qty)||0)*(Number(l.price)||0));const vat=sub*0.15;return{sub,vat,total:sub+vat};}
 function taxTotals(){const t=taxCalc();const el=document.getElementById('tx_totals');if(!el)return;el.innerHTML=`<div style="display:flex;justify-content:space-between"><span>الإجمالي غير شامل الضريبة</span><b>${fmt(t.sub)} ﷼</b></div><div style="display:flex;justify-content:space-between"><span>ضريبة القيمة المضافة 15%</span><b>${fmt(t.vat)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--green);font-size:16px;margin-top:4px"><span>الإجمالي شامل الضريبة</span><b>${fmt(t.total)} ﷼</b></div>`;}
-function previewTaxInvoice(){
-  const s=SETTINGS||{};const t=taxCalc();
-  if(t.sub<=0){toast('أضف بنداً واحداً على الأقل بسعر');return;}
-  const no=document.getElementById('tx_no').value.trim();const dateV=document.getElementById('tx_date').value||todayKey();
-  const buyer=document.getElementById('tx_buyer').value.trim();const buyerVat=document.getElementById('tx_buyer_vat').value.trim();
-  const iso=new Date(dateV+'T'+new Date().toTimeString().slice(0,8)).toISOString().replace(/\.\d{3}Z$/,'Z');
-  const b64=zatcaBase64(s.co_name,s.vat_no,iso,t.total.toFixed(2),t.vat.toFixed(2));
-  const rows=taxLines.map((l,i)=>{const q=Number(l.qty)||0,p=Number(l.price)||0,ex=q*p,v=ex*0.15;return `<tr><td>${i+1}</td><td style="text-align:right">${(l.desc||'').replace(/</g,'&lt;')}</td><td>${fmt(q)}</td><td>${fmt(p)}</td><td>${fmt(ex)}</td><td>${fmt(v)}</td><td>${fmt(ex+v)}</td></tr>`;}).join('');
-  const html=`<div class="inv-head"><div><div class="inv-title">فاتورة ضريبية مبسّطة</div><div class="inv-sub">Simplified Tax Invoice</div></div><div class="inv-logo">${LOGO_SVG}</div></div>
+function invoiceHTML(inv){const s=SETTINGS||{};
+  const rows=(inv.lines||[]).map((l,i)=>{const q=Number(l.qty)||0,p=Number(l.price)||0,ex=q*p,v=ex*0.15;return `<tr><td>${i+1}</td><td style="text-align:right">${(l.desc||'').replace(/</g,'&lt;')}</td><td>${fmt(q)}</td><td>${fmt(p)}</td><td>${fmt(ex)}</td><td>${fmt(v)}</td><td>${fmt(ex+v)}</td></tr>`;}).join('');
+  return `<div class="inv-head"><div><div class="inv-title">فاتورة ضريبية مبسّطة</div><div class="inv-sub">Simplified Tax Invoice</div></div><div class="inv-logo">${LOGO_SVG}</div></div>
     <div class="inv-parties"><div><div class="inv-lbl">البائع</div><b>${s.co_name||''}</b><div>الرقم الضريبي: ${s.vat_no||''}</div>${s.cr_no?`<div>س.ت: ${s.cr_no}</div>`:''}${s.co_address?`<div>${s.co_address}</div>`:''}</div>
-    <div><div class="inv-lbl">المشتري</div><b>${buyer||'—'}</b>${buyerVat?`<div>الرقم الضريبي: ${buyerVat}</div>`:''}</div></div>
-    <div class="inv-meta"><span>رقم الفاتورة: <b>${no}</b></span><span>التاريخ: <b>${dateV}</b></span></div>
+    <div><div class="inv-lbl">المشتري</div><b>${inv.buyer||'—'}</b>${inv.buyer_vat?`<div>الرقم الضريبي: ${inv.buyer_vat}</div>`:''}</div></div>
+    <div class="inv-meta"><span>رقم الفاتورة: <b>${inv.number||''}</b></span><span>التاريخ: <b>${inv.invoice_date||''}</b></span></div>
     <table class="inv-tbl"><thead><tr><th>#</th><th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>غير شامل</th><th>الضريبة 15%</th><th>الإجمالي</th></tr></thead><tbody>${rows}</tbody></table>
     <div class="inv-foot"><div class="inv-qr"><canvas id="txQR"></canvas></div>
-    <div class="inv-tot"><div><span>الإجمالي غير شامل الضريبة</span><b>${fmt(t.sub)} ﷼</b></div><div><span>ضريبة القيمة المضافة 15%</span><b>${fmt(t.vat)} ﷼</b></div><div class="grand"><span>الإجمالي شامل الضريبة</span><b>${fmt(t.total)} ﷼</b></div></div></div>
+    <div class="inv-tot"><div><span>الإجمالي غير شامل الضريبة</span><b>${fmt(inv.subtotal)} ﷼</b></div><div><span>ضريبة القيمة المضافة 15%</span><b>${fmt(inv.vat)} ﷼</b></div><div class="grand"><span>الإجمالي شامل الضريبة</span><b>${fmt(inv.total)} ﷼</b></div></div></div>
     <div class="inv-note">هذه فاتورة ضريبية مبسّطة صادرة إلكترونياً وفق متطلبات هيئة الزكاة والضريبة والجمارك (المرحلة الأولى).</div>`;
-  const pa=document.getElementById('printArea');pa.querySelector('#printBody').innerHTML=html;pa.style.display='flex';
-  try{new QRious({element:document.getElementById('txQR'),value:b64,size:130,level:'M'});}catch(e){}
 }
+function showInvoice(inv){const pa=document.getElementById('printArea');pa.querySelector('#printBody').innerHTML=invoiceHTML(inv);pa.style.display='flex';
+  try{new QRious({element:document.getElementById('txQR'),value:inv.qr,size:130,level:'M'});}catch(e){}}
+async function previewTaxInvoice(){
+  const s=SETTINGS||{};const t=taxCalc();
+  if(t.sub<=0){toast('أضف بنداً واحداً على الأقل بسعر');return;}
+  const dateV=document.getElementById('tx_date').value||todayKey();
+  const iso=new Date(dateV+'T'+new Date().toTimeString().slice(0,8)).toISOString().replace(/\.\d{3}Z$/,'Z');
+  const inv={number:document.getElementById('tx_no').value.trim(),buyer:document.getElementById('tx_buyer').value.trim(),buyer_vat:document.getElementById('tx_buyer_vat').value.trim(),invoice_date:dateV,lines:taxLines.map(l=>({desc:l.desc||'',qty:Number(l.qty)||0,price:Number(l.price)||0})),subtotal:+t.sub.toFixed(2),vat:+t.vat.toFixed(2),total:+t.total.toFixed(2)};
+  inv.qr=zatcaBase64(s.co_name,s.vat_no,iso,inv.total.toFixed(2),inv.vat.toFixed(2));
+  const btn=event&&event.target;if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{await sb.from('tax_invoices').insert({number:inv.number,buyer:inv.buyer,buyer_vat:inv.buyer_vat,invoice_date:inv.invoice_date,subtotal:inv.subtotal,vat:inv.vat,total:inv.total,lines:inv.lines,qr:inv.qr,created_by:ME.id});}catch(e){toast('تعذّر حفظ الفاتورة: '+e.message);}
+  closeModal();showInvoice(inv);
+}
+async function openTaxInvoiceList(){
+  openModal('<h3 style="margin-bottom:12px">الفواتير الضريبية المحفوظة</h3><div id="txList" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+  const{data}=await sb.from('tax_invoices').select('*').order('created_at',{ascending:false}).limit(200);
+  window._txInvs=data||[];
+  document.getElementById('txList').innerHTML=(data&&data.length)?data.map((inv,i)=>`<div class="item"><div class="ic">🧾</div><div class="meta"><b>${inv.number||'—'}</b><small>${inv.buyer||'—'} · ${inv.invoice_date||''} · ${fmt(inv.total)} ﷼</small></div><button class="link" onclick="reprintTax(${i})">🖨️ عرض</button></div>`).join(''):'<div class="empty">لا توجد فواتير ضريبية محفوظة</div>';
+}
+function reprintTax(i){const inv=(window._txInvs||[])[i];if(!inv)return;closeModal();showInvoice(inv);}
 function closePrint(){document.getElementById('printArea').style.display='none';}
 function doPrint(){window.print();}
 
