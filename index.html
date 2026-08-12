@@ -67,13 +67,13 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sb-head b{font-size:16px}.sb-head span{font-size:12px;opacity:.85;display:block}
 .sb-menu{flex:1;overflow:auto;padding:10px}
 .sb-menu .grp{font-size:11px;color:var(--muted);font-weight:700;margin:14px 12px 6px}
-.sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
+.sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;margin-bottom:5px;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
 .sb-item svg{width:20px;height:20px;color:var(--green);flex:none;transition:color .22s ease}
 .sb-item.on{background:#e4efe9;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.55),0 6px 16px rgba(11,77,56,.28)}
 .sb-item:active{transform:scale(.975)}
 @media(hover:hover){.sb-item:hover{background:#eaf3ee;box-shadow:0 0 0 2px rgba(15,107,79,.45),0 6px 16px rgba(11,77,56,.26)}}
 /* أكورديون الإعدادات — فتح/طي ناعم */
-#setChildren{max-height:0;overflow:hidden;opacity:0;transition:max-height .34s cubic-bezier(.4,0,.2,1),opacity .3s ease}
+#setChildren{max-height:0;overflow:hidden;opacity:0;padding:2px 3px;transition:max-height .34s cubic-bezier(.4,0,.2,1),opacity .3s ease}
 #setChildren.open{opacity:1}
 #setChildren .sb-item{transition:background .22s ease,box-shadow .22s ease,color .22s ease}
 .view{display:none}.view.on{display:block;animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
@@ -110,7 +110,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 #map{height:230px;border-radius:14px;margin-bottom:13px;z-index:0}
 .locbar{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:11px;margin-bottom:12px}
 .locbar.ok2{background:#e6f6ed;color:var(--ok)}.locbar.wait{background:#eef2f0;color:var(--muted)}.locbar.bad2{background:#fbecea;color:var(--bad)}
-.seg{display:flex;background:#eef2f0;border-radius:11px;padding:3px;margin-bottom:14px}
+.seg{display:flex;gap:5px;background:#eef2f0;border-radius:11px;padding:4px;margin-bottom:14px}
 .seg button{flex:1;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
 .seg button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.45),0 4px 12px rgba(11,77,56,.22)}
 .seg button:active{transform:scale(.96)}
@@ -339,7 +339,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="0,0 34,0 0,34" fill="#b5732f"/><polygon points="100,100 66,100 100,66" fill="#b5732f"/><polygon points="58,8 30,54 48,54 40,92 74,40 54,40" fill="#b5732f"/><text x="50" y="66" font-size="34" font-weight="800" text-anchor="middle" fill="#182420" font-family="Cairo">N</text></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='49';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='50';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -750,8 +750,8 @@ async function delProject(id){
 
 /* ===== settings menu (accordion) ===== */
 function toggleSetMenu(){const c=document.getElementById('setChildren'),ch=document.getElementById('setChev');if(!c)return;const open=!c.classList.contains('open');
-  if(open){c.classList.add('open');c.style.maxHeight=c.scrollHeight+'px';}
-  else{c.style.maxHeight=c.scrollHeight+'px';requestAnimationFrame(()=>{requestAnimationFrame(()=>{c.style.maxHeight='0px';});});c.classList.remove('open');}
+  if(open){c.classList.add('open');c.style.overflow='hidden';c.style.maxHeight=c.scrollHeight+'px';setTimeout(()=>{if(c.classList.contains('open')){c.style.overflow='visible';c.style.maxHeight='none';}},370);}
+  else{c.style.overflow='hidden';c.style.maxHeight=c.scrollHeight+'px';requestAnimationFrame(()=>{requestAnimationFrame(()=>{c.style.maxHeight='0px';});});c.classList.remove('open');}
   if(ch)ch.style.transform=open?'rotate(180deg)':'';}
 async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
   document.getElementById('s_start').value=s.work_start||'06:00';
