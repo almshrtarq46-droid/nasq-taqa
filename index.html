@@ -280,6 +280,14 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="invList"></div>
     </div>
 
+    <div class="view" id="v-expenses">
+      <h2 class="section-title">المصروفات</h2>
+      <button class="btn" style="margin-bottom:12px" onclick="openExpense()">+ إضافة مصروف</button>
+      <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
+      <div id="exSummary"></div>
+      <div id="exList"></div>
+    </div>
+
     <div class="view" id="v-approvals">
       <h2 class="section-title">اعتماد الحسابات</h2>
       <div class="hint">العامل يسجّل بنفسه ثم يظهر هنا. اعتمده ليتمكن من الدخول.</div>
@@ -439,7 +447,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='75';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='76';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -654,6 +662,7 @@ const NAV_MAIN=[
   {v:'workorders',l:'أوامر العمل',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'hr',l:'الموارد البشرية',i:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
+  {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
   {v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'}
 ];
 const NAV_SET_CHILDREN=[
@@ -688,7 +697,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -699,13 +708,14 @@ async function loadOverview(){
   const today=todayKey();
   document.getElementById('ovDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   try{
-    const[wRes,aRes,eToday,eWeek,invRes,pendRes]=await Promise.all([
+    const[wRes,aRes,eToday,eWeek,invRes,pendRes,exRes]=await Promise.all([
       sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active'),
       sb.from('attendance').select('worker_id,check_in,check_out,is_late,in_lat,in_lng').eq('work_date',today),
       sb.from('entries').select('*, entry_finance(rate,amount)').eq('work_date',today).order('created_at',{ascending:false}),
       sb.from('entries').select('entry_finance(amount)').gte('work_date',daysAgo(7)),
       sb.from('invoices').select('kind,amount').gte('invoice_date',monthStart()),
-      sb.from('profiles').select('*',{count:'exact',head:true}).eq('status','pending')
+      sb.from('profiles').select('*',{count:'exact',head:true}).eq('status','pending'),
+      sb.from('expenses').select('amount').gte('expense_date',monthStart())
     ]);
     const workers=wRes.data||[];const wn={};workers.forEach(w=>wn[w.id]=w.full_name||'عامل');
     const att=aRes.data||[];const present=new Set(att.filter(a=>a.check_in).map(a=>a.worker_id));
@@ -714,7 +724,7 @@ async function loadOverview(){
     window._woRows=et;
     const prodDay=et.reduce((s,e)=>s+e.amount,0);
     const prodWeek=(eWeek.data||[]).reduce((s,e)=>s+(e.entry_finance?Number(e.entry_finance.amount):0),0);
-    const invs=invRes.data||[];const rev=invs.filter(i=>i.kind==='out').reduce((s,i)=>s+Number(i.amount),0);const exp=invs.filter(i=>i.kind==='in').reduce((s,i)=>s+Number(i.amount),0);
+    const invs=invRes.data||[];const rev=invs.filter(i=>i.kind==='out').reduce((s,i)=>s+Number(i.amount),0);const exp=(exRes.data||[]).reduce((s,i)=>s+Number(i.amount||0),0);
     const pendN=pendRes.count||0;
     const byP={};et.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
     const stKeys=Object.keys(byP);
@@ -733,7 +743,7 @@ async function loadOverview(){
     document.getElementById('ovFin').innerHTML=`<div class="card"><h3 style="font-size:15px;margin-bottom:10px">💰 المالية — هذا الشهر</h3>
       <table class="tbl"><tbody>
       <tr><td>الإيرادات (فواتير صادرة)</td><td style="text-align:left;color:var(--green);font-weight:700">${fmt(rev)} ﷼</td></tr>
-      <tr><td>المصروفات (فواتير واردة)</td><td style="text-align:left;color:var(--bad);font-weight:700">${fmt(exp)} ﷼</td></tr>
+      <tr><td>المصروفات</td><td style="text-align:left;color:var(--bad);font-weight:700">${fmt(exp)} ﷼</td></tr>
       <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:${rev-exp>=0?'var(--green)':'var(--bad)'}">${fmt(rev-exp)} ﷼</td></tr>
       </tbody></table><button class="link" style="margin-top:8px" onclick="goView('finance')">تفاصيل المالية ←</button></div>`;
     document.getElementById('ovAtt').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">🕐 متابعة الحضور</h3><button class="link" onclick="goView('hr');setTimeout(()=>document.querySelectorAll('#v-hr .seg button')[2]?.click(),100)">عرض الكل ←</button></div>
@@ -1217,6 +1227,46 @@ async function saveInvoice(){
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ الفاتورة';}}
 async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);document.getElementById('phwrap').innerHTML=`<img src="${data.signedUrl}" style="width:100%;border-radius:10px">`;}catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
+
+/* ===== المصروفات ===== */
+const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','أخرى'];
+let ALL_EXP=[],expPhoto=null;
+async function initExpenses(){
+  document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data}=await sb.from('expenses').select('*').order('expense_date',{ascending:false});
+  ALL_EXP=data||[];
+  const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
+  const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
+  document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+  renderExpenses();
+}
+function renderExpenses(){
+  const m=document.getElementById('ex_month').value,c=document.getElementById('ex_cat').value;
+  let list=ALL_EXP;if(m)list=list.filter(e=>(e.expense_date||'').slice(0,7)===m);if(c)list=list.filter(e=>e.category===c);
+  const total=list.reduce((s,e)=>s+Number(e.amount||0),0);const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0);});
+  document.getElementById('exSummary').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">إجمالي المصروفات ${m||'(الكل)'}</h3><b style="color:var(--bad);font-size:17px">${fmt(total)} ﷼</b></div>
+    <table class="tbl"><tbody>${EXP_CATS.filter(k=>byCat[k]).map(k=>`<tr><td>${k}</td><td style="text-align:left;font-weight:700">${fmt(byCat[k])} ﷼</td></tr>`).join('')||'<tr><td style="text-align:center;color:var(--muted)">لا مصروفات</td></tr>'}</tbody></table></div>`;
+  document.getElementById('exList').innerHTML=list.length?list.map(e=>`<div class="item"><div class="ic" style="background:#fbecea;color:var(--bad)">💸</div><div class="meta"><b>${e.category}</b><small>${e.expense_date}${e.description?' · '+e.description:''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill susp" style="background:#fbecea;color:var(--bad)">${fmt(e.amount)} ﷼</span>${e.photo?`<button class="link" onclick="viewInvPhoto('${e.photo}','صورة الإيصال')">📷</button>`:''}<button class="link" onclick='openExpense(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`).join(''):'<div class="empty">لا مصروفات في هذا التصنيف/الشهر</div>';
+}
+function openExpense(e){expPhoto=null;openModal(`<h3 style="margin-bottom:14px">${e?'تعديل مصروف':'مصروف جديد'}</h3>
+  <div class="row"><div class="field"><label>التاريخ</label><input type="date" id="ex_date" value="${e?e.expense_date:todayKey()}"></div><div class="field"><label>التصنيف</label><select id="ex_category">${EXP_CATS.map(c=>`<option ${e&&e.category===c?'selected':''}>${c}</option>`).join('')}</select></div></div>
+  <div class="field"><label>المبلغ (﷼)</label><input id="ex_amount" type="number" inputmode="decimal" value="${e?e.amount:''}"></div>
+  <div class="field"><label>الوصف / البيان</label><input id="ex_desc" value="${e?(e.description||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: راتب شهر أغسطس"></div>
+  <div class="field"><label>صورة الإيصال (اختياري)</label><div class="photobox" id="pb_exp" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الإيصال<input type="file" accept="image/*" onchange="pickExpPhoto(this)"></div></div>
+  <button class="btn" id="exSave" onclick="saveExpense('${e?e.id:''}')">حفظ</button>
+  ${e?`<button class="btn danger" style="margin-top:9px" onclick="deleteExpense('${e.id}')">حذف</button>`:''}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+function pickExpPhoto(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{expPhoto=d;const b=document.getElementById('pb_exp');const im=b.querySelector('img');if(im)im.remove();const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
+async function saveExpense(id){const amount=parseFloat(document.getElementById('ex_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
+  const rec={expense_date:document.getElementById('ex_date').value||todayKey(),category:document.getElementById('ex_category').value,amount,description:document.getElementById('ex_desc').value.trim()};
+  const btn=document.getElementById('exSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(expPhoto)rec.photo=await uploadPhoto(expPhoto,'exp');
+    if(id){const{error}=await sb.from('expenses').update(rec).eq('id',id);if(error)throw error;}
+    else{rec.created_by=ME.id;const{error}=await sb.from('expenses').insert(rec);if(error)throw error;}
+    closeModal();toast('تم الحفظ ✓');initExpenses();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
+async function deleteExpense(id){const{error}=await sb.from('expenses').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');initExpenses();}
 
 /* ===== فاتورة ضريبية (ZATCA — المرحلة الأولى) ===== */
 let taxLines=[];
