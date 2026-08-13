@@ -447,18 +447,22 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='78';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='80';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
 (function(){var el=document.getElementById('intro');if(!el)return;if(location.search){if(el.parentNode)el.parentNode.removeChild(el);return;}setTimeout(function(){el.classList.add('hide');setTimeout(function(){if(el&&el.parentNode)el.parentNode.removeChild(el);},650);},3000);})();
 /* تثبيت كتطبيق: تسجيل service worker (بدون تخزين للصفحة) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
-/* auto-update: يجيب أحدث نسخة تلقائياً على نفس الرابط */
-(async()=>{try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
-  if(m&&m[1]!==APP_VER&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);}
-  else if(location.search){history.replaceState(null,'',base);}
-}catch(e){}})();
+/* auto-update: يفحص أحدث نسخة تلقائياً ويحدّث نفسه خلال ثوانٍ من نشر التحديث — بدون تحديث يدوي متكرر */
+async function _checkUpdate(){try{const base=location.href.split('?')[0];const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
+  if(m&&Number(m[1])>Number(APP_VER)&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]);return true;}
+}catch(e){}return false;}
+if(location.search){history.replaceState(null,'',location.href.split('?')[0]);}
+_checkUpdate();
+setTimeout(_checkUpdate,10000);setTimeout(_checkUpdate,30000);
+setInterval(_checkUpdate,120000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden)_checkUpdate();});
 const CFG={url:'https://mxkqutblaygesmtieptp.supabase.co',key:'sb_publishable_EYBZGpR4UaZwSdIhncdThA_Wgd1vDPe'};
 let sb=null, ME=null, PROFILE=null, PROJECTS=[], ZONES=[], SETTINGS=null, MY_CREW_LED=[], MY_CREW_MEMBER=false, CATALOG=[], ASSIGNMENTS=[];
 function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));document.getElementById('screen-boot').style.display='none';document.getElementById(id).classList.add('on');}
@@ -1222,6 +1226,7 @@ function openInvoice(){invPhoto=null;openModal(`<h3 style="margin-bottom:14px">�
   <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number"></div></div>
   <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal"></div></div>
   <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${todayKey()}"></div>
+  <label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" checked style="width:18px;height:18px;accent-color:var(--brand)"> تسجيلها كمصروف (مشتريات) تلقائيًا — بقيمتها قبل الضريبة</label>
   <div class="field"><label>صورة الفاتورة (مطلوبة للضريبة)</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الفاتورة<input type="file" accept="image/*" onchange="pickInvPhoto(this)"></div></div>
   <div class="field"><label>ملاحظات</label><textarea id="iv_note" rows="2"></textarea></div>
   <button class="btn" id="ivSave" onclick="saveInvoice()">حفظ الفاتورة</button>
@@ -1233,8 +1238,19 @@ async function saveInvoice(){
   const amount=parseFloat(document.getElementById('iv_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
   const btn=document.getElementById('ivSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{let photo='';if(invPhoto)photo=await uploadPhoto(invPhoto,'inv');
-    const{error}=await sb.from('invoices').insert({kind:invKind,number:document.getElementById('iv_number').value.trim(),party:document.getElementById('iv_party').value.trim(),amount,vat:parseFloat(document.getElementById('iv_vat').value)||0,invoice_date:document.getElementById('iv_date').value||todayKey(),note:document.getElementById('iv_note').value.trim(),photo,created_by:ME.id});
-    if(error)throw error;closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
+    const vat=parseFloat(document.getElementById('iv_vat').value)||0;
+    const party=document.getElementById('iv_party').value.trim();
+    const num=document.getElementById('iv_number').value.trim();
+    const idate=document.getElementById('iv_date').value||todayKey();
+    const{data:ins,error}=await sb.from('invoices').insert({kind:invKind,number:num,party,amount,vat,invoice_date:idate,note:document.getElementById('iv_note').value.trim(),photo,created_by:ME.id}).select().single();
+    if(error)throw error;
+    const asExp=document.getElementById('iv_asexp');
+    if(asExp&&asExp.checked){
+      const net=+(amount-vat).toFixed(2);
+      const{error:e2}=await sb.from('expenses').insert({expense_date:idate,category:'مشتريات',amount:net,description:'فاتورة واردة'+(num?' رقم '+num:'')+(party?' — '+party:''),invoice_id:ins.id,created_by:ME.id});
+      if(e2){closeModal();toast('حُفظت الفاتورة، لكن ربطها بالمصروفات يحتاج تنفيذ كود الربط (SQL)');loadInvoices();return;}
+    }
+    closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ الفاتورة';}}
 async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);document.getElementById('phwrap').innerHTML=`<img src="${data.signedUrl}" style="width:100%;border-radius:10px">`;}catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
