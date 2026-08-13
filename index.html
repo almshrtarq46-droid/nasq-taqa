@@ -127,8 +127,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sb-head b{font-size:16px}.sb-head span{font-size:12px;opacity:.85;display:block}
 .sb-menu{flex:1;overflow:auto;padding:10px}
 .sb-foot{border-top:1px solid var(--line);padding:10px}
-.sb-logout{background:var(--bad);color:#fff;justify-content:center}.sb-logout svg{color:#fff}
-@media(hover:hover){.sb-logout:hover{background:#a5321f;box-shadow:0 4px 14px rgba(192,57,43,.4)}}
+.sb-logout{background:none;color:var(--bad)}.sb-logout svg{color:var(--bad)}
+@media(hover:hover){.sb-logout:hover{background:#fbecea;box-shadow:inset 0 0 0 2px rgba(192,57,43,.5)}}
 .sb-ver{text-align:center;color:#9aa6a0;font-size:11px;margin-top:8px}
 .sb-menu .grp{font-size:11px;color:var(--muted);font-weight:700;margin:14px 12px 6px}
 .sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;margin-bottom:5px;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
@@ -434,7 +434,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='65';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='66';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
