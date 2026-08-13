@@ -3,7 +3,20 @@
    2) استقبال إشعارات Push وإظهارها على شاشة الجوال خارج التطبيق */
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
+/* المكتبات الخارجية والخطوط: تُخزّن مؤقتاً (cache-first) لتسريع الفتح.
+   صفحة التطبيق نفسها: تبقى من الشبكة دائماً (أحدث نسخة). */
+const CDN = /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/;
 self.addEventListener('fetch', e => {
+  const url = e.request.url;
+  if (e.request.method === 'GET' && CDN.test(url)) {
+    e.respondWith(caches.open('nasq-cdn-v1').then(c =>
+      c.match(e.request).then(hit => hit || fetch(e.request).then(resp => {
+        try { c.put(e.request, resp.clone()); } catch (_) {}
+        return resp;
+      }))
+    ));
+    return;
+  }
   e.respondWith(fetch(e.request).catch(() => Response.error()));
 });
 
