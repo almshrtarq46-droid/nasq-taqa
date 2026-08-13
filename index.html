@@ -242,7 +242,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-workorders">
       <h2 class="section-title">أوامر العمل</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر لك أنت فقط.</div>
-      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر ٧ أيام</option><option value="30">آخر ٣٠ يوم</option></select></div></div>
+      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div></div>
+      <input id="wo_search" placeholder="بحث برقم المحطة…" inputmode="numeric" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div>
       <div id="woList"></div>
     </div>
@@ -346,6 +347,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-my-works">
       <h2 class="section-title">أعمالي المسجّلة</h2>
       <div class="seg"><button class="on" onclick="myWorksTab('today',this)">اليوم</button><button onclick="myWorksTab('7',this)">آخر 7 أيام</button><button onclick="myWorksTab('30',this)">آخر 30 يوم</button></div>
+      <input id="myw_search" placeholder="بحث برقم المحطة…" inputmode="numeric" oninput="renderMyWorks()" style="margin-bottom:12px">
       <div id="myWorksBody"></div>
     </div>
     <div class="view" id="v-field">
@@ -425,7 +427,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='62';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='63';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -852,7 +854,7 @@ async function loadAttAdmin(){
     const sOut=a.out_photo?`<button class="link" onclick="viewInvPhoto('${a.out_photo}','صورة الانصراف')">📷 صورة الانصراف</button>`:'';
     return `<div class="item" style="align-items:flex-start"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}</small><div style="margin-top:5px">${b}</div>${map?`<div style="margin-top:10px">${map}</div>`:''}${sIn?`<div style="margin-top:10px">${sIn}</div>`:''}${sOut?`<div style="margin-top:8px">${sOut}</div>`:''}</div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
-function hm(ts){return new Date(ts).toLocaleTimeString('ar-SA',{hour:'2-digit',minute:'2-digit'});}
+function hm(ts){return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
 function hoursBetween(a,b){return((new Date(b)-new Date(a))/3600000).toFixed(1);}
 function drawMap(rows,pm){const el=document.getElementById('map');const pts=rows.filter(a=>a.in_lat!=null);if(!window.L){el.style.display='none';return;}el.style.display='block';
   if(leafMap){leafMap.remove();leafMap=null;}const c=pts.length?[pts[0].in_lat,pts[0].in_lng]:[24.7136,46.6753];
@@ -1029,11 +1031,15 @@ async function loadWorkOrders(){
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
   <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`;
-  // group by project
+  renderWOList();
+}
+function renderWOList(){
+  const rows=window._woRows||[];const box=document.getElementById('woList');if(!box)return;
+  const term=(document.getElementById('wo_search')?.value||'').trim();
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
-  const box=document.getElementById('woList');
-  const keys=Object.keys(byP);
-  if(!keys.length){box.innerHTML='<div class="empty">لا توجد أعمال في هذه الفترة</div>';return;}
+  let keys=Object.keys(byP);
+  if(term)keys=keys.filter(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};return String(p.code||'').includes(term);});
+  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';return;}
   box.innerHTML=keys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const es=byP[pid];const tot=es.reduce((s,e)=>s+e.amount,0);
     const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
     const stage=p.wo_stage||'قيد التنفيذ';
@@ -1238,9 +1244,15 @@ async function loadMyWorks(){
   const{data:ents}=await q;
   const pids=[...new Set((ents||[]).map(e=>e.project_id))];const pm={};
   if(pids.length){const{data:prs}=await sb.from('projects').select('id,name,code,station_type').in('id',pids);(prs||[]).forEach(p=>pm[p.id]=p);}
-  const byP={};(ents||[]).forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
-  const keys=Object.keys(byP);
-  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}</div>`;}).join(''):'<div class="empty">لا توجد أعمال في هذه الفترة</div>';
+  window._myEnts=ents||[];window._myPm=pm;renderMyWorks();
+}
+function renderMyWorks(){
+  const box=document.getElementById('myWorksBody');if(!box)return;const ents=window._myEnts||[],pm=window._myPm||{};
+  const term=(document.getElementById('myw_search')?.value||'').trim();
+  const byP={};ents.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
+  let keys=Object.keys(byP);
+  if(term)keys=keys.filter(pid=>String((pm[pid]||{}).code||'').includes(term));
+  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
 }
 async function loadWorkerNotifs(){
   const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(20);
