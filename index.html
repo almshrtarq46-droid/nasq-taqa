@@ -126,6 +126,11 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sb-head .lg{width:44px;height:44px;background:#fff;border-radius:11px;display:grid;place-items:center;margin-bottom:8px}.sb-head .lg svg{width:30px;height:30px}
 .sb-head b{font-size:16px}.sb-head span{font-size:12px;opacity:.85;display:block}
 .sb-menu{flex:1;overflow:auto;padding:10px}
+.sb-foot{border-top:1px solid var(--line);padding:10px}
+.sb-logout{color:var(--bad)}.sb-logout svg{color:var(--bad)}
+.sb-logout.on,.sb-logout{background:none}
+@media(hover:hover){.sb-logout:hover{background:#fbecea;box-shadow:inset 0 0 0 2px rgba(192,57,43,.5)}}
+.sb-ver{text-align:center;color:#9aa6a0;font-size:11px;margin-top:8px}
 .sb-menu .grp{font-size:11px;color:var(--muted);font-weight:700;margin:14px 12px 6px}
 .sb-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-weight:700;font-size:14.5px;color:var(--ink);width:100%;background:none;text-align:right;margin-bottom:5px;transition:background .22s ease,box-shadow .22s ease,color .22s ease,transform .12s ease}
 .sb-item svg{width:20px;height:20px;color:var(--green);flex:none;transition:color .22s ease}
@@ -225,7 +230,6 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <button class="btn ghost sm" onclick="refreshApp()" title="تحديث" aria-label="تحديث"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></button>
-      <button class="btn ghost sm" onclick="logout()">خروج</button>
     </div>
   </header>
   <main>
@@ -380,8 +384,12 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <!-- sidebar -->
 <div id="backdrop" onclick="toggleSidebar(false)"></div>
 <aside id="sidebar">
-  <div class="sb-head"><div class="lg">LOGO</div><b id="sb_name"></b><span>مدير النظام</span></div>
+  <div class="sb-head"><div class="lg">LOGO</div><b id="sb_name"></b><span id="sb_role">مدير النظام</span></div>
   <div class="sb-menu" id="sbMenu"></div>
+  <div class="sb-foot">
+    <button class="sb-item sb-logout" onclick="logout()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>تسجيل الخروج</button>
+    <div class="sb-ver">الإصدار <span id="sbVer">—</span></div>
+  </div>
 </aside>
 
 <style>
@@ -427,7 +435,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='63';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='64';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -581,6 +589,7 @@ async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
   document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
+  const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   await loadProjectsCache();await loadZonesCache();await loadSettingsCache();await loadMyCrew();await loadCatalog();await loadAssignments();buildNav(role);show('screen-app');
   if(role!=='admin')startLiveTracking();
   syncPush();
