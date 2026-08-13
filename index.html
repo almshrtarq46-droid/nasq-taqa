@@ -203,7 +203,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="msg" id="auth_msg"></div>
     <div id="reg_fields"><div class="field" style="margin-bottom:0"><label>الاسم الكامل</label><input id="a_name" placeholder="مثال: خالد العتيبي"></div></div>
     <div class="field"><label>رقم الجوال</label><input id="a_phone" inputmode="tel" placeholder="05xxxxxxxx"></div>
-    <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="٦ أحرف على الأقل"></div>
+    <div class="field"><label>كلمة المرور</label><input id="a_pass" type="password" placeholder="6 أحرف على الأقل"></div>
     <button class="btn" id="auth_btn" onclick="doAuth()">دخول</button>
   </div>
   <p style="text-align:center;color:#9aa6a0;font-size:11px;margin-top:16px">الإصدار <span id="verTag">—</span></p>
@@ -434,7 +434,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='67';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='68';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -573,7 +573,7 @@ async function doAuth(){
     }else{const{error}=await sb.auth.signInWithPassword({email,password:pass});if(error)throw error;await afterLogin();}
   }catch(e){msg(m,translateErr(e.message),'err');}finally{btn.disabled=false;btn.textContent=old;}
 }
-function translateErr(s){if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';if(/already registered/i.test(s))return'هذا الرقم مسجّل مسبقاً';if(/at least 6/i.test(s))return'كلمة المرور ٦ أحرف على الأقل';if(/Email not confirmed/i.test(s))return'الحساب غير مُفعّل بعد';return s;}
+function translateErr(s){if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';if(/already registered/i.test(s))return'هذا الرقم مسجّل مسبقاً';if(/at least 6/i.test(s))return'كلمة المرور 6 أحرف على الأقل';if(/Email not confirmed/i.test(s))return'الحساب غير مُفعّل بعد';return s;}
 async function logout(){stopLiveTracking();if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
 function routeFor(p){if(!p)return'missing';if(p.status==='suspended')return'suspended';if(p.status==='pending')return'pending';return p.role==='admin'?'admin':'worker';}
 async function afterLogin(){const{data:{user}}=await sb.auth.getUser();if(!user){show('screen-auth');return;}ME=user;
@@ -942,7 +942,7 @@ async function loadCatalogAdmin(){await loadCatalog();document.getElementById('c
 function renderCatalog(){const q=(document.getElementById('catSearch').value||'').trim();
   const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('catCount').textContent=`${CATALOG.length} بند${q?` · ${list.length} مطابق`:''}`;
-  document.getElementById('catList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="font-size:11px">${i.code||'—'}</div><div class="meta"><b>${i.name}</b><small>${i.unit} · ${Number(i.rate).toLocaleString()} ﷼</small>${i.name_full?`<small style="color:var(--muted)">📄 ${i.name_full}</small>`:'<small style="color:var(--copper)">⚠ أضف الاسم المفصل</small>'}</div><button class="link" onclick='openCatalogItem(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد بنود — أضف أول بند</div>';}
+  document.getElementById('catList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="font-size:11px">${i.code||'—'}</div><div class="meta"><b>${i.name}</b><small>${i.unit} · ${Number(i.rate).toLocaleString('en-US')} ﷼</small>${i.name_full?`<small style="color:var(--muted)">📄 ${i.name_full}</small>`:'<small style="color:var(--copper)">⚠ أضف الاسم المفصل</small>'}</div><button class="link" onclick='openCatalogItem(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></div>`).join(''):'<div class="empty">لا توجد بنود — أضف أول بند</div>';}
 function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'تعديل بند':'بند جديد'}</h3>
   <div class="row"><div class="field"><label>رقم البند</label><input id="ci_code" value="${it?(it.code||''):''}"></div><div class="field"><label>الوحدة</label><input id="ci_unit" value="${it?it.unit:''}" placeholder="M2 / EA / متر طولي"></div></div>
   <div class="field"><label>الاسم المختصر (يظهر للعامل بالجوال)</label><input id="ci_name" value="${it?it.name:''}" placeholder="دهان جدران"></div>
@@ -987,7 +987,7 @@ function openZone(z){
     <label>حدّد المنطقة على الخريطة</label>
     <div class="hint">اضغط على الخريطة لتحديد مركز المنطقة، وغيّر نصف القطر ليكبّر الدائرة حتى تغطي المنطقة كاملة.</div>
     <div id="zmap" style="height:280px;border-radius:12px;margin-bottom:10px;z-index:0"></div>
-    <div class="field"><label>نصف القطر (متر)</label><input id="z_rad" type="number" value="${z?z.radius:8000}" oninput="updateZoneCircle()"><small style="color:var(--muted);display:block;margin-top:4px">مثال: 8000 = ٨ كم · 15000 = ١٥ كم</small></div>
+    <div class="field"><label>نصف القطر (متر)</label><input id="z_rad" type="number" value="${z?z.radius:8000}" oninput="updateZoneCircle()"><small style="color:var(--muted);display:block;margin-top:4px">مثال: 8000 = 8 كم · 15000 = 15 كم</small></div>
     <button class="btn ghost sm" style="width:100%;margin-bottom:12px" onclick="zoneUseMyLoc()">📍 اجعل موقعي الحالي مركز المنطقة</button>
     <button class="btn" id="zSave" onclick="saveZone('${z?z.id:''}')">حفظ المنطقة</button>
     ${z?`<button class="btn danger" style="margin-top:9px" onclick="delZone('${z.id}')">حذف</button>`:''}
