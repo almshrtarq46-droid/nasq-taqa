@@ -447,7 +447,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='76';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='77';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1229,7 +1229,7 @@ async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);document.getElementById('phwrap').innerHTML=`<img src="${data.signedUrl}" style="width:100%;border-radius:10px">`;}catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
 
 /* ===== المصروفات ===== */
-const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','أخرى'];
+const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','مسحوبات شخصية','أخرى'];
 let ALL_EXP=[],expPhoto=null;
 async function initExpenses(){
   document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
