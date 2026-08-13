@@ -439,7 +439,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='72';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='73';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -739,7 +739,7 @@ async function loadOverview(){
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><span class="pill ok">حاضر ${present.size}</span><span class="pill pend">متأخر ${lateCount}</span><span class="pill susp">غائب ${absent.length}</span></div>
       ${absent.length?`<div style="font-size:12px;color:var(--muted);margin-bottom:4px">لم يسجّلوا الحضور:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${absent.map(w=>`<span class="pill susp" style="background:#fbecea;color:var(--bad)">${wn[w.id]}</span>`).join('')}</div>`:'<div style="color:var(--ok);font-size:13px">الجميع سجّل حضوره ✓</div>'}</div>`;
     document.getElementById('ovStations').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">🏗️ محطات اليوم (${stKeys.length})</h3><button class="link" onclick="goView('workorders')">أوامر العمل ←</button></div>
-      ${stKeys.length?stKeys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};const d=byP[pid];const wk=[...d.workers].map(id=>wn[id]).filter(Boolean).join('، ');return `<div class="item" style="padding:11px"><div class="ic" style="font-size:11px">${p.code||'—'}</div><div class="meta"><b>${p.name||'محطة'}${p.station_type?' · '+p.station_type:''}</b><small>${d.items} بند · ${wk||'—'}</small></div><div style="text-align:left"><div class="pill role">${fmt(d.val)} ﷼</div><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button></div></div>`;}).join(''):'<div class="empty">لم تُرفع محطات اليوم بعد</div>'}</div>`;
+      ${stKeys.length?stKeys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};const d=byP[pid];const wk=[...d.workers].map(id=>wn[id]).filter(Boolean).join('، ');return `<div class="item" style="padding:11px;cursor:pointer" onclick="viewStationDetail('${pid}')"><div class="ic" style="font-size:11px">${p.code||'—'}</div><div class="meta"><b>${p.name||'محطة'}${p.station_type?' · '+p.station_type:''}</b><small>${d.items} بند · ${wk||'—'}</small></div><div style="text-align:left"><div class="pill role">${fmt(d.val)} ﷼</div><button class="link" onclick="event.stopPropagation();viewStationPhotos('${pid}')">📷 الصور</button></div></div>`;}).join(''):'<div class="empty">لم تُرفع محطات اليوم بعد</div>'}</div>`;
     document.getElementById('ovActions').innerHTML=pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:'';
   }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل المتابعة: '+e.message+'</div>';}
   mountLiveMap('ovLiveMap','ovLiveList');startLiveLoop();
@@ -1146,6 +1146,16 @@ function exportMostakhlas(){
 }
 
 /* admin: edit/delete individual entries in a station */
+async function viewStationDetail(pid){
+  const p=PROJECTS.find(x=>x.id===pid)||{};
+  openModal(`<h3 style="margin-bottom:4px">${p.name||'محطة'}</h3><small style="color:var(--muted);display:block;margin-bottom:12px">رقم ${p.code||'—'}${p.station_type?' · '+p.station_type:''}</small><div id="stdet" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>`);
+  const{data}=await sb.from('entries').select('*, entry_finance(amount,rate)').eq('project_id',pid).order('created_at');
+  const es=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
+  const tot=es.reduce((s,e)=>s+e.amount,0);const el=document.getElementById('stdet');if(!el)return;
+  el.innerHTML=es.length?`<table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">السعر</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit}</td><td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td></tr>`).join('')}<tr><td style="font-weight:800">الإجمالي</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
+    <div style="font-size:12.5px;margin:10px 2px;color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)} ﷼</b> <small>(غير شامل الضريبة)</small></div>
+    <button class="btn ghost sm" style="width:100%;margin-top:6px" onclick="viewStationPhotos('${pid}')">📷 عرض الصور</button>`:'<div class="empty">لا توجد بنود</div>';
+}
 function openStationEntries(pid){
   const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
   openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
