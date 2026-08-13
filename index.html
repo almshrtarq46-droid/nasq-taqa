@@ -89,6 +89,8 @@ label{display:block;font-size:13px;color:var(--muted);margin:0 2px 5px;font-weig
 .btn{background:var(--green);color:#fff;padding:13px;border-radius:12px;font-weight:700;font-size:15px;width:100%;display:flex;align-items:center;justify-content:center;gap:7px;transition:transform .13s ease,box-shadow .22s ease,background .22s ease,opacity .2s ease}
 .btn:active{transform:scale(.97)}.btn.copper{background:var(--copper)}.btn.ghost{background:#eef2f0;color:var(--green)}
 @media(hover:hover){.btn:hover{box-shadow:0 9px 24px rgba(11,77,56,.36);transform:translateY(-1px)}.btn.copper:hover{box-shadow:0 9px 24px rgba(181,115,47,.40)}.btn.ghost:hover{background:#e0eae5;box-shadow:0 6px 20px rgba(11,77,56,.24)}.btn.danger:hover{box-shadow:0 6px 20px rgba(192,57,43,.28)}}
+.btn.wbig{flex-direction:column;gap:12px;padding:30px 16px;font-size:18px;border-radius:18px;margin-bottom:14px}
+.btn.wbig svg{width:40px;height:40px}
 .btn.sm{width:auto;padding:8px 13px;font-size:13px;border-radius:10px}.btn.danger{background:#fbecea;color:var(--bad)}
 .btn:disabled{opacity:.55}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:13px;box-shadow:var(--shadow);transition:box-shadow .22s ease,transform .13s ease}
@@ -326,16 +328,25 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
     <!-- ===== WORKER VIEWS ===== -->
     <div class="view" id="v-home">
-      <div class="grid2" id="workerKpis"></div>
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
-      <div class="row"><button class="btn" onclick="goView('field')">رفع محطة جديدة</button><button class="btn copper" onclick="goView('att-worker')">حضور / انصراف</button></div>
-      <button class="btn ghost" id="pushBtn" style="display:none;margin-top:10px" onclick="enablePush()">🔔 تفعيل إشعارات الجوال</button>
-      <div id="workerNotifs" style="margin-top:13px"></div>
+      <button class="btn wbig" onclick="goView('field')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M2 12h20"/></svg>رفع محطة جديدة</button>
+      <button class="btn copper wbig" onclick="goView('att-worker')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v5l3 2"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>الحضور والانصراف</button>
+      <button class="btn ghost" id="pushBtn" style="display:none;margin-top:12px" onclick="enablePush()">🔔 تفعيل إشعارات الجوال</button>
+      <div id="workerNotifs" style="margin-top:14px"></div>
     </div>
     <div class="view" id="v-att-worker">
       <h2 class="section-title">الحضور والانصراف</h2>
       <div id="attBody"></div>
       <div id="att_history"></div>
+    </div>
+    <div class="view" id="v-my-att">
+      <h2 class="section-title">أيام حضوري هذا الشهر</h2>
+      <div id="myAttBody"></div>
+    </div>
+    <div class="view" id="v-my-works">
+      <h2 class="section-title">أعمالي المسجّلة</h2>
+      <div class="seg"><button class="on" onclick="myWorksTab('today',this)">اليوم</button><button onclick="myWorksTab('7',this)">آخر 7 أيام</button><button onclick="myWorksTab('30',this)">آخر 30 يوم</button></div>
+      <div id="myWorksBody"></div>
     </div>
     <div class="view" id="v-field">
       <h2 class="section-title">رفع محطة جديدة</h2>
@@ -414,7 +425,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='61';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
+const APP_VER='62';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -631,21 +642,23 @@ const NAV_SET_CHILDREN=[
   {v:'zones',l:'مناطق الحضور',i:'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z M12 8a2 2 0 1 0 0 4 2 2 0 0 0 0-4'},
   {v:'approvals',l:'اعتماد الحسابات',i:'M9 12l2 2 4-4 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'}
 ];
+const NAV_WORKER=[
+  {v:'home',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'}
+];
+const NAV_WORKER_SET=[
+  {v:'my-att',l:'أيام حضوري هذا الشهر',i:'M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'},
+  {v:'my-works',l:'أعمالي المسجّلة',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'}
+];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
-  if(role==='admin'){
-    hamb.style.display='grid';nav.style.display='none';
-    let html=NAV_MAIN.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
-    html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
-    html+=`<div id="setChildren">`+NAV_SET_CHILDREN.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
-    document.getElementById('sbMenu').innerHTML=html;
-    goView('overview');
-  }else{
-    hamb.style.display='none';nav.style.display='flex';
-    const items=[['home','الرئيسية','M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],['att-worker','الحضور','M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'],['field','رفع محطة','M12 2v20 M2 12h20']];
-    nav.innerHTML=items.map((it,i)=>`<button data-v="${it[0]}" class="${i===0?'on':''}" onclick="goView('${it[0]}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${it[2].split(' M').map((d,j)=>`<path d="${j?'M'+d:d}"/>`).join('')}</svg>${it[1]}</button>`).join('');
-    goView('home');
-  }
+  hamb.style.display='grid';nav.style.display='none';
+  const isAdmin=role==='admin';
+  const main=isAdmin?NAV_MAIN:NAV_WORKER, children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET, first=isAdmin?'overview':'home';
+  let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
+  html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
+  html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
+  document.getElementById('sbMenu').innerHTML=html;
+  goView(first);
 }
 function toggleSidebar(open){document.getElementById('sidebar').classList.toggle('on',open);document.getElementById('backdrop').classList.toggle('on',open);}
 function goView(v){
@@ -654,7 +667,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField}[v]||(()=>{}))();
+  ({overview:loadOverview,workorders:loadWorkOrders,hr:initHR,finance:initFinance,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -1206,10 +1219,28 @@ function doPrint(){window.print();}
 /* ===== WORKER: home ===== */
 async function loadWorkerHome(){
   document.getElementById('workerHi').textContent=`${PROFILE.full_name} — سجّل حضورك وأعمالك من الأزرار.`;
-  const{count:eCount}=await sb.from('entries').select('*',{count:'exact',head:true}).eq('worker_id',ME.id);
-  const{count:aCount}=await sb.from('attendance').select('*',{count:'exact',head:true}).eq('worker_id',ME.id).gte('work_date',monthStart());
-  document.getElementById('workerKpis').innerHTML=`<div class="kpi"><b>${eCount||0}</b><span>أعمالي المسجّلة</span></div><div class="kpi"><b>${aCount||0}</b><span>أيام حضوري هذا الشهر</span></div>`;
   updatePushBtn();loadWorkerNotifs();
+}
+const daysAgo=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
+async function loadMyAttendance(){
+  const box=document.getElementById('myAttBody');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data}=await sb.from('attendance').select('*').eq('worker_id',ME.id).gte('work_date',monthStart()).order('work_date',{ascending:false});
+  const days=(data||[]).filter(a=>a.check_in).length,late=(data||[]).filter(a=>a.is_late).length;
+  box.innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${days}</b><span>أيام الحضور</span></div><div class="kpi"><b>${late}</b><span>أيام التأخير</span></div></div>`+
+    ((data&&data.length)?data.map(a=>{const lt=a.is_late?` <span class="badge-att out">متأخر −${a.penalty_hours||1}س</span>`:'';const co=a.check_out?` ← ${hm(a.check_out)}`:'';return `<div class="item"><div class="ic" style="background:${a.check_in?'#e6f6ed':'#f0f0f0'};color:${a.check_in?'var(--ok)':'var(--muted)'}">${a.check_in?'✓':'—'}</div><div class="meta"><b>${a.work_date}</b><small>${a.check_in?('حضور '+hm(a.check_in)+co):'لم يُسجّل'}${lt}</small></div></div>`;}).join(''):'<div class="empty">لا يوجد حضور هذا الشهر</div>');
+}
+let myWorksPeriod='today';
+function myWorksTab(p,btn){myWorksPeriod=p;document.querySelectorAll('#v-my-works .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');loadMyWorks();}
+async function loadMyWorks(){
+  const box=document.getElementById('myWorksBody');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  let q=sb.from('entries').select('*').eq('worker_id',ME.id).order('created_at',{ascending:false});
+  if(myWorksPeriod==='today')q=q.eq('work_date',todayKey());else if(myWorksPeriod==='7')q=q.gte('work_date',daysAgo(7));else if(myWorksPeriod==='30')q=q.gte('work_date',daysAgo(30));
+  const{data:ents}=await q;
+  const pids=[...new Set((ents||[]).map(e=>e.project_id))];const pm={};
+  if(pids.length){const{data:prs}=await sb.from('projects').select('id,name,code,station_type').in('id',pids);(prs||[]).forEach(p=>pm[p.id]=p);}
+  const byP={};(ents||[]).forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
+  const keys=Object.keys(byP);
+  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}</div>`;}).join(''):'<div class="empty">لا توجد أعمال في هذه الفترة</div>';
 }
 async function loadWorkerNotifs(){
   const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(20);
