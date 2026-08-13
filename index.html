@@ -234,8 +234,13 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
   <main>
     <!-- ===== ADMIN VIEWS ===== -->
     <div class="view" id="v-overview">
-      <h2 class="section-title">نظرة عامة</h2>
+      <h2 class="section-title">المتابعة اليومية</h2>
+      <div id="ovDate" style="color:var(--muted);font-size:13px;margin:-8px 2px 12px"></div>
       <div class="grid2" id="ovKpis"></div>
+      <div id="ovProd"></div>
+      <div id="ovFin"></div>
+      <div id="ovAtt"></div>
+      <div id="ovStations"></div>
       <div id="ovActions"></div>
       <h3 class="section-title" style="font-size:16px;margin:20px 0 8px">🗺️ الخريطة المباشرة</h3>
       <div class="hint">مواقع الموظفين الآن (تظهر أثناء فتحهم للتطبيق). 🟢 محدّث الآن · ⚪ آخر موقع معروف.</div>
@@ -434,7 +439,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='71';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='72';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -691,25 +696,52 @@ function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}
 /* ===== overview ===== */
 async function loadOverview(){
   const box=document.getElementById('ovKpis');box.innerHTML='<div class="kpi"><b>…</b><span>جارٍ التحميل</span></div>';
+  const today=todayKey();
+  document.getElementById('ovDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   try{
-    const[pend,present,month,inv]=await Promise.all([
-      sb.from('profiles').select('*',{count:'exact',head:true}).eq('status','pending'),
-      sb.from('attendance').select('*',{count:'exact',head:true}).eq('work_date',todayKey()),
-      sb.from('entries').select('work_date, entry_finance(amount)').gte('work_date',monthStart()),
-      sb.from('invoices').select('kind,amount,vat').gte('invoice_date',monthStart())
+    const[wRes,aRes,eToday,eWeek,invRes,pendRes]=await Promise.all([
+      sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active'),
+      sb.from('attendance').select('worker_id,check_in,check_out,is_late,in_lat,in_lng').eq('work_date',today),
+      sb.from('entries').select('project_id,worker_id,entry_finance(amount)').eq('work_date',today),
+      sb.from('entries').select('entry_finance(amount)').gte('work_date',daysAgo(7)),
+      sb.from('invoices').select('kind,amount').gte('invoice_date',monthStart()),
+      sb.from('profiles').select('*',{count:'exact',head:true}).eq('status','pending')
     ]);
-    const monthVal=(month.data||[]).reduce((s,e)=>s+(e.entry_finance?Number(e.entry_finance.amount):0),0);
-    const invs=inv.data||[];const out=invs.filter(i=>i.kind==='out').reduce((s,i)=>s+Number(i.amount),0);
-    const pendN=pend.count||0;
+    const workers=wRes.data||[];const wn={};workers.forEach(w=>wn[w.id]=w.full_name||'عامل');
+    const att=aRes.data||[];const present=new Set(att.filter(a=>a.check_in).map(a=>a.worker_id));
+    const lateCount=att.filter(a=>a.is_late).length;const absent=workers.filter(w=>!present.has(w.id));
+    const et=(eToday.data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0}));
+    const prodDay=et.reduce((s,e)=>s+e.amount,0);
+    const prodWeek=(eWeek.data||[]).reduce((s,e)=>s+(e.entry_finance?Number(e.entry_finance.amount):0),0);
+    const invs=invRes.data||[];const rev=invs.filter(i=>i.kind==='out').reduce((s,i)=>s+Number(i.amount),0);const exp=invs.filter(i=>i.kind==='in').reduce((s,i)=>s+Number(i.amount),0);
+    const pendN=pendRes.count||0;
+    const byP={};et.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||{items:0,val:0,workers:new Set()});byP[e.project_id].items++;byP[e.project_id].val+=e.amount;byP[e.project_id].workers.add(e.worker_id);});
+    const stKeys=Object.keys(byP);
     box.innerHTML=`
-      <div class="kpi"><b>${PROJECTS.length}</b><span>المحطات</span></div>
-      <div class="kpi"><b>${present.count||0}</b><span>حضور اليوم</span></div>
-      <div class="kpi"><b>${fmt(monthVal)}</b><span>قيمة أعمال الشهر ﷼</span></div>
-      <div class="kpi"><b>${fmt(out)}</b><span>فواتير صادرة الشهر ﷼</span></div>`;
-    document.getElementById('ovActions').innerHTML=`
-      ${pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:''}
-      <div class="row"><button class="btn ghost" onclick="goView('workorders')">أوامر العمل</button><button class="btn ghost" onclick="goView('finance')">المالية</button></div>`;
-  }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل النظرة العامة: '+e.message+'</div>';}
+      <div class="kpi"><b>${present.size}/${workers.length}</b><span>حضور اليوم</span></div>
+      <div class="kpi"><b>${stKeys.length}</b><span>محطات اليوم</span></div>
+      <div class="kpi"><b>${fmt(prodDay)}</b><span>إنتاجية اليوم ﷼</span></div>
+      <div class="kpi"><b>${fmt(prodWeek)}</b><span>إنتاجية الأسبوع ﷼</span></div>`;
+    document.getElementById('ovProd').innerHTML=`<div class="card"><h3 style="font-size:15px;margin-bottom:10px">📈 قيمة الإنتاجية <small style="color:var(--muted);font-weight:600">(غير شاملة الضريبة)</small></h3>
+      <table class="tbl"><tbody>
+      <tr><td>إنتاجية اليوم — كامل</td><td style="text-align:left;font-weight:700">${fmt(prodDay)} ﷼</td></tr>
+      <tr><td>نصيبنا اليوم 75%</td><td style="text-align:left;color:var(--green);font-weight:700">${fmt(prodDay*0.75)} ﷼</td></tr>
+      <tr><td>إنتاجية الأسبوع — كامل</td><td style="text-align:left;font-weight:700">${fmt(prodWeek)} ﷼</td></tr>
+      <tr><td>نصيبنا الأسبوع 75%</td><td style="text-align:left;color:var(--green);font-weight:700">${fmt(prodWeek*0.75)} ﷼</td></tr>
+      </tbody></table></div>`;
+    document.getElementById('ovFin').innerHTML=`<div class="card"><h3 style="font-size:15px;margin-bottom:10px">💰 المالية — هذا الشهر</h3>
+      <table class="tbl"><tbody>
+      <tr><td>الإيرادات (فواتير صادرة)</td><td style="text-align:left;color:var(--green);font-weight:700">${fmt(rev)} ﷼</td></tr>
+      <tr><td>المصروفات (فواتير واردة)</td><td style="text-align:left;color:var(--bad);font-weight:700">${fmt(exp)} ﷼</td></tr>
+      <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:${rev-exp>=0?'var(--green)':'var(--bad)'}">${fmt(rev-exp)} ﷼</td></tr>
+      </tbody></table><button class="link" style="margin-top:8px" onclick="goView('finance')">تفاصيل المالية ←</button></div>`;
+    document.getElementById('ovAtt').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">🕐 متابعة الحضور</h3><button class="link" onclick="goView('hr');setTimeout(()=>document.querySelectorAll('#v-hr .seg button')[2]?.click(),100)">عرض الكل ←</button></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><span class="pill ok">حاضر ${present.size}</span><span class="pill pend">متأخر ${lateCount}</span><span class="pill susp">غائب ${absent.length}</span></div>
+      ${absent.length?`<div style="font-size:12px;color:var(--muted);margin-bottom:4px">لم يسجّلوا الحضور:</div><div style="display:flex;flex-wrap:wrap;gap:6px">${absent.map(w=>`<span class="pill susp" style="background:#fbecea;color:var(--bad)">${wn[w.id]}</span>`).join('')}</div>`:'<div style="color:var(--ok);font-size:13px">الجميع سجّل حضوره ✓</div>'}</div>`;
+    document.getElementById('ovStations').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">🏗️ محطات اليوم (${stKeys.length})</h3><button class="link" onclick="goView('workorders')">أوامر العمل ←</button></div>
+      ${stKeys.length?stKeys.map(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};const d=byP[pid];const wk=[...d.workers].map(id=>wn[id]).filter(Boolean).join('، ');return `<div class="item" style="padding:11px"><div class="ic" style="font-size:11px">${p.code||'—'}</div><div class="meta"><b>${p.name||'محطة'}${p.station_type?' · '+p.station_type:''}</b><small>${d.items} بند · ${wk||'—'}</small></div><div style="text-align:left"><div class="pill role">${fmt(d.val)} ﷼</div><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button></div></div>`;}).join(''):'<div class="empty">لم تُرفع محطات اليوم بعد</div>'}</div>`;
+    document.getElementById('ovActions').innerHTML=pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:'';
+  }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل المتابعة: '+e.message+'</div>';}
   mountLiveMap('ovLiveMap','ovLiveList');startLiveLoop();
 }
 
