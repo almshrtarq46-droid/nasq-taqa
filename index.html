@@ -19,6 +19,9 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <style>
@@ -258,8 +261,11 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
     <div class="view" id="v-hr">
       <h2 class="section-title">الموارد البشرية</h2>
-      <div class="seg"><button class="on" onclick="hrTab('emp',this)">الموظفين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
-      <div id="hr_emp" class="hrbox"><div id="empList"></div></div>
+      <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
+      <div id="hr_dir" class="hrbox">
+        <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1" onclick="openEmployee()">+ إضافة موظف</button><button class="btn copper sm" style="flex:1" onclick="exportEmployees()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportEmployeesPdf()">📄 PDF</button></div>
+        <div id="empDir"></div></div>
+      <div id="hr_emp" class="hrbox" style="display:none"><div id="empList"></div></div>
       <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
       <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
       <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الصافي = (أيام × الأجر اليومي) − خصم التأخير + أوفر تايم − خصومات وسلف. التأخير تلقائي، والباقي تضيفه يدوياً ويوصل إشعار للموظف.</div><button class="btn copper" style="margin-bottom:13px" onclick="exportPayroll()">تصدير كشف الرواتب Excel</button><div id="payList"></div></div>
@@ -281,9 +287,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title">المصروفات</h2>
       <button class="btn" style="margin-bottom:12px" onclick="openExpense()">+ إضافة مصروف</button>
       <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
-      <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير Excel لأي فترة</label>
+      <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير لأي فترة</label>
         <div class="row" style="margin-top:6px"><div class="field" style="margin:0"><label>من</label><input type="date" id="ex_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="ex_to"></div></div>
-        <button class="btn copper sm" style="width:100%;margin-top:8px" onclick="exportExpenses()">📊 تصدير Excel</button></div>
+        <div class="row" style="margin-top:8px;gap:8px"><button class="btn copper sm" style="flex:1" onclick="exportExpenses()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportExpensesPdf()">📄 PDF</button></div></div>
       <div id="exSummary"></div>
       <div id="exList"></div>
     </div>
@@ -447,7 +453,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='80';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='82';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -769,10 +775,125 @@ async function setStatus(id,s){const{error}=await sb.from('profiles').update({st
 async function setRole(id,r){const{error}=await sb.from('profiles').update({role:r}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم ✓');closeModal();if(document.getElementById('v-hr').classList.contains('on'))initHR();}
 
 /* ===== HR ===== */
-function initHR(){hrTab('emp',document.querySelector('#v-hr .seg button'));}
+/* ===== الموارد البشرية — دليل الموظفين ===== */
+let EMP_DIR=[],EMP_PROFILES=[];
+function _empDays(d){if(!d)return null;const t=new Date();t.setHours(0,0,0,0);const p=String(d).slice(0,10).split('-');const x=new Date(+p[0],+p[1]-1,+p[2]);return Math.round((x-t)/86400000);}
+function _empCol(n){if(n===null)return{bg:'',fg:'',xbg:null,xfg:null};if(n<=15)return{bg:'#FFC7CE',fg:'#9C0006',xbg:'FFFFC7CE',xfg:'FF9C0006'};if(n<=30)return{bg:'#FFEB9C',fg:'#9C6500',xbg:'FFFFEB9C',xfg:'FF9C6500'};return{bg:'#C6EFCE',fg:'#006100',xbg:'FFC6EFCE',xfg:'FF006100'};}
+function _empDate(s){if(!s)return null;const p=String(s).slice(0,10).split('-');return new Date(+p[0],+p[1]-1,+p[2],12,0,0);}
+async function loadEmpDir(){
+  const box=document.getElementById('empDir');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data}=await sb.from('employees').select('*').order('seq',{ascending:true});
+  EMP_DIR=data||[];
+  const{data:profs}=await sb.from('profiles').select('id,full_name');EMP_PROFILES=profs||[];
+  const pn={};EMP_PROFILES.forEach(p=>pn[p.id]=p.full_name);
+  if(!EMP_DIR.length){box.innerHTML='<div class="empty">لا يوجد موظفون — أضف أول موظف</div>';return;}
+  const TH='padding:9px 7px;border:1px solid #b98f18;background:#C9A227;color:#fff;font-weight:700;font-size:12px;white-space:nowrap;text-align:center';
+  const TD='padding:8px 7px;border:1px solid #d8dee9;font-size:12.5px;text-align:center;white-space:nowrap';
+  const dcell=d=>d?`<td style="${TD}">${String(d).slice(0,10)}</td>`:`<td style="${TD}">—</td>`;
+  const ncell=d=>{const n=_empDays(d);if(n===null)return `<td style="${TD}">—</td>`;const c=_empCol(n);return `<td style="${TD};background:${c.bg};color:${c.fg};font-weight:700">${n} يوم</td>`;};
+  const rows=EMP_DIR.map((e,i)=>`<tr>
+    <td style="${TD}">${e.seq||i+1}</td>
+    <td style="${TD};font-weight:700">${e.name||''}${e.user_id?'<div style="font-size:10px;color:var(--green);font-weight:600">مرتبط: '+(pn[e.user_id]||'حساب')+'</div>':''}</td>
+    <td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>
+    ${dcell(e.iqama_expiry)}${ncell(e.iqama_expiry)}${dcell(e.work_permit_expiry)}${ncell(e.work_permit_expiry)}
+    ${dcell(e.medical_expiry)}${ncell(e.medical_expiry)}${dcell(e.contract_expiry)}${ncell(e.contract_expiry)}
+    <td style="${TD}">${e.notes||''}</td>
+    <td style="${TD}"><button class="link" onclick='openEmployee(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></td></tr>`).join('');
+  box.innerHTML=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
+    <thead><tr><th style="${TH}">م</th><th style="${TH}">اسم الموظف</th><th style="${TH}">رقم الإقامة</th><th style="${TH}">الجنسية</th>
+      <th style="${TH}">انتهاء الإقامة</th><th style="${TH}">المتبقّي</th><th style="${TH}">انتهاء الرخصة</th><th style="${TH}">المتبقّي</th>
+      <th style="${TH}">انتهاء التأمين</th><th style="${TH}">المتبقّي</th><th style="${TH}">انتهاء العقد</th><th style="${TH}">المتبقّي</th>
+      <th style="${TH}">ملاحظات</th><th style="${TH}"></th></tr></thead><tbody>${rows}</tbody></table></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:11px;font-size:11.5px">
+      <span style="padding:4px 10px;border-radius:6px;background:#C6EFCE;color:#006100;font-weight:700">سارية (أكثر من 30 يوم)</span>
+      <span style="padding:4px 10px;border-radius:6px;background:#FFEB9C;color:#9C6500;font-weight:700">تحتاج متابعة (16-30 يوم)</span>
+      <span style="padding:4px 10px;border-radius:6px;background:#FFC7CE;color:#9C0006;font-weight:700">قريبة الانتهاء (15 يوم أو أقل)</span></div>`;
+}
+function openEmployee(e){
+  const opts='<option value="">— بدون ربط —</option>'+EMP_PROFILES.map(p=>`<option value="${p.id}" ${e&&e.user_id===p.id?'selected':''}>${p.full_name||'—'}</option>`).join('');
+  openModal(`<h3 style="margin-bottom:14px">${e?'تعديل موظف':'موظف جديد'}</h3>
+    <div class="row"><div class="field"><label>م (الترتيب)</label><input id="em_seq" type="number" inputmode="decimal" value="${e?(e.seq||''):''}"></div><div class="field"><label>الجنسية</label><input id="em_nat" value="${e?(e.nationality||''):''}"></div></div>
+    <div class="field"><label>اسم الموظف</label><input id="em_name" value="${e?(e.name||'').replace(/"/g,'&quot;'):''}"></div>
+    <div class="field"><label>رقم الإقامة</label><input id="em_iqama" inputmode="numeric" value="${e?(e.iqama_number||''):''}"></div>
+    <div class="row"><div class="field"><label>انتهاء الإقامة</label><input id="em_iqexp" type="date" value="${e?(e.iqama_expiry||''):''}"></div><div class="field"><label>انتهاء رخصة العمل</label><input id="em_wpexp" type="date" value="${e?(e.work_permit_expiry||''):''}"></div></div>
+    <div class="row"><div class="field"><label>انتهاء التأمين الطبي</label><input id="em_medexp" type="date" value="${e?(e.medical_expiry||''):''}"></div><div class="field"><label>انتهاء عقد العمل</label><input id="em_ctexp" type="date" value="${e?(e.contract_expiry||''):''}"></div></div>
+    <div class="field"><label>ربط بحساب دخول (اختياري)</label><select id="em_user">${opts}</select></div>
+    <div class="field"><label>ملاحظات</label><input id="em_notes" value="${e?(e.notes||'').replace(/"/g,'&quot;'):''}"></div>
+    <button class="btn" id="emSave" onclick="saveEmployee('${e?e.id:''}')">حفظ</button>
+    ${e?`<button class="btn danger" style="margin-top:9px" onclick="deleteEmployee('${e.id}')">حذف</button>`:''}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+}
+async function saveEmployee(id){
+  const g=x=>document.getElementById(x).value;const name=g('em_name').trim();if(!name){toast('أدخل اسم الموظف');return;}
+  const rec={seq:parseInt(g('em_seq'))||null,name,nationality:g('em_nat').trim(),iqama_number:g('em_iqama').trim(),
+    iqama_expiry:g('em_iqexp')||null,work_permit_expiry:g('em_wpexp')||null,medical_expiry:g('em_medexp')||null,contract_expiry:g('em_ctexp')||null,
+    user_id:g('em_user')||null,notes:g('em_notes').trim()};
+  const btn=document.getElementById('emSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('employees').update(rec).eq('id',id);if(error)throw error;}
+    else{rec.created_by=ME.id;const{error}=await sb.from('employees').insert(rec);if(error)throw error;}
+    closeModal();toast('تم الحفظ ✓');loadEmpDir();
+  }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}
+}
+async function deleteEmployee(id){const{error}=await sb.from('employees').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadEmpDir();}
+/* تصدير Excel لدليل الموظفين — مطابق للقالب 100% */
+function buildEmpWorkbook(list){
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('بيانات الموظفين',{views:[{rightToLeft:true}]});
+  ws.columns=[{width:4},{width:22},{width:16},{width:12},{width:18},{width:10},{width:20},{width:10.2},{width:20},{width:10.5},{width:16.5},{width:12},{width:26}];
+  const BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}},CEN={horizontal:'center',vertical:'center'};
+  ws.mergeCells('A1:M1');let t=ws.getCell('A1');t.value='متابعة بيانات الموظفين';t.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};t.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};t.alignment=CEN;ws.getRow(1).height=31.5;
+  const leg=[['A2:D2','سارية (أكثر من 30 يوم)','FFC6EFCE','FF006100'],['E2:G2','تحتاج متابعة (15-30 يوم)','FFFFEB9C','FF9C6500'],['H2:M2','قريبة من الانتهاء (15 يوم أو أقل)','FFFFC7CE','FF9C0006']];
+  for(let i=1;i<=13;i++)ws.getCell(2,i).border=BOX;
+  leg.forEach(([rng,txt,bg,fg])=>{ws.mergeCells(rng);const c=ws.getCell(rng.split(':')[0]);c.value=txt;c.font={name:'Arial',size:10,bold:true,color:{argb:fg}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};c.alignment=CEN;c.border=BOX;});
+  ws.getRow(2).height=21.75;
+  const H=['م','اسم الموظف','رقم الإقامة','الجنسية','تاريخ انتهاء الإقامة','الأيام المتبقية','تاريخ انتهاء رخصة العمل','الأيام المتبقية','تاريخ انتهاء التأمين الطبي','الأيام المتبقية','تاريخ انتهاء عقد العمل','الأيام المتبقية','ملاحظات'];
+  H.forEach((h,i)=>{const c=ws.getCell(3,i+1);c.value=h;c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC9A227'}};c.alignment={horizontal:'center',vertical:'center',wrapText:true};c.border=BOX;});
+  ws.getRow(3).height=39.75;
+  let r=4;
+  list.forEach((e,idx)=>{ws.getRow(r).height=21.75;
+    const set=(col,val,opt)=>{opt=opt||{};const c=ws.getCell(r,col);c.value=val;c.font={name:'Arial',size:10,bold:!!opt.bold,color:opt.color?{argb:opt.color}:undefined};c.alignment=CEN;c.border=BOX;if(opt.fill)c.fill={type:'pattern',pattern:'solid',fgColor:{argb:opt.fill}};if(opt.nf)c.numFmt=opt.nf;};
+    set(1,e.seq||idx+1);set(2,e.name||'');set(3,e.iqama_number||'');set(4,e.nationality||'');
+    [[5,6,e.iqama_expiry],[7,8,e.work_permit_expiry],[9,10,e.medical_expiry],[11,12,e.contract_expiry]].forEach(([dc,nc,v])=>{
+      if(v){set(dc,_empDate(v),{bold:true,color:'FF000000',nf:'yyyy\\-mm\\-dd'});const n=_empDays(v),c=_empCol(n);set(nc,n,{bold:true,nf:'0" يوم"',fill:c.xbg,color:c.xfg});}
+      else{set(dc,'');set(nc,'');}});
+    set(13,e.notes||'');r++;});
+  return wb;
+}
+async function exportEmployees(){
+  if(!EMP_DIR.length){toast('لا يوجد موظفون');return;}
+  try{const wb=buildEmpWorkbook(EMP_DIR);const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='بيانات_الموظفين_'+todayKey()+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast('تم تصدير Excel ✓');}catch(e){toast('خطأ: '+e.message);}
+}
+function _empHtmlTable(){
+  const TH='padding:8px 6px;border:1px solid #b98f18;background:#C9A227;color:#fff;font-weight:bold;font-size:12px;text-align:center';
+  const TD='padding:7px 6px;border:1px solid #cfd6e0;font-size:12px;text-align:center;font-family:Arial';
+  const dc=d=>d?`<td style="${TD}">${String(d).slice(0,10)}</td>`:`<td style="${TD}">—</td>`;
+  const nc=d=>{const n=_empDays(d);if(n===null)return `<td style="${TD}">—</td>`;const c=_empCol(n);return `<td style="${TD};background:${c.bg};color:${c.fg};font-weight:bold">${n} يوم</td>`;};
+  const rows=EMP_DIR.map((e,i)=>`<tr><td style="${TD}">${e.seq||i+1}</td><td style="${TD};font-weight:bold">${e.name||''}</td><td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>${dc(e.iqama_expiry)}${nc(e.iqama_expiry)}${dc(e.work_permit_expiry)}${nc(e.work_permit_expiry)}${dc(e.medical_expiry)}${nc(e.medical_expiry)}${dc(e.contract_expiry)}${nc(e.contract_expiry)}<td style="${TD}">${e.notes||''}</td></tr>`).join('');
+  const H=['م','اسم الموظف','رقم الإقامة','الجنسية','انتهاء الإقامة','المتبقّي','انتهاء الرخصة','المتبقّي','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','ملاحظات'];
+  return `<table style="border-collapse:collapse;width:100%;font-family:Arial">
+    <tr><td colspan="13" style="background:#1F3864;color:#fff;font-weight:bold;font-size:18px;text-align:center;padding:12px">متابعة بيانات الموظفين</td></tr>
+    <tr><td colspan="4" style="${TH};background:#C6EFCE;color:#006100">سارية (أكثر من 30 يوم)</td><td colspan="3" style="${TH};background:#FFEB9C;color:#9C6500">تحتاج متابعة (15-30 يوم)</td><td colspan="6" style="${TH};background:#FFC7CE;color:#9C0006">قريبة من الانتهاء (15 يوم أو أقل)</td></tr>
+    <tr>${H.map(h=>`<td style="${TH}">${h}</td>`).join('')}</tr>${rows}</table>`;
+}
+async function exportEmployeesPdf(){
+  if(!EMP_DIR.length){toast('لا يوجد موظفون');return;}
+  toast('جارٍ تجهيز PDF…');
+  try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1150px;background:#fff;padding:24px;direction:rtl';
+    wrap.innerHTML=_empHtmlTable();document.body.appendChild(wrap);
+    const canvas=await html2canvas(wrap,{scale:2,backgroundColor:'#ffffff'});document.body.removeChild(wrap);
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
+    const img=canvas.toDataURL('image/png');const iw=pw-16,ih=canvas.height*iw/canvas.width;let hl=ih,pos=8;
+    pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);
+    while(hl>0){pos-=(ph-16);pdf.addPage();pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);}
+    pdf.save('بيانات_الموظفين_'+todayKey()+'.pdf');toast('تم تصدير PDF ✓');
+  }catch(e){toast('خطأ: '+e.message);}
+}
+function initHR(){hrTab('dir',document.querySelector('#v-hr .seg button'));}
 function hrTab(t,btn){document.querySelectorAll('#v-hr .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  ['emp','crew','att','pay'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
-  if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
+  ['dir','emp','crew','att','pay'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
+  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
 async function loadCrews(){
   const{data:crews}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').order('created_at',{ascending:false});
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
@@ -1269,18 +1390,81 @@ async function initExpenses(){
   const f=document.getElementById('ex_from'),t=document.getElementById('ex_to');if(f&&!f.value)f.value=new Date().getFullYear()+'-01-01';if(t&&!t.value)t.value=todayKey();
   renderExpenses();
 }
-function exportExpenses(){
-  const from=document.getElementById('ex_from').value||'0000-01-01',to=document.getElementById('ex_to').value||'9999-12-31';
-  const list=ALL_EXP.filter(e=>e.expense_date>=from&&e.expense_date<=to).sort((a,b)=>a.expense_date<b.expense_date?-1:1);
-  if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
-  const aoa=[['تقرير المصروفات — شركة نسق الطاقة'],['من',from,'إلى',to],[],['التاريخ','التصنيف','البيان','المبلغ ﷼']];
-  list.forEach(e=>aoa.push([e.expense_date,e.category,e.description||'',Number(e.amount)]));
-  const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount);});
-  aoa.push([]);aoa.push(['ملخص التصنيفات','','','']);
-  EXP_CATS.forEach(c=>{if(byCat[c])aoa.push(['',c,'',byCat[c]]);});
-  const total=list.reduce((s,e)=>s+Number(e.amount),0);aoa.push([]);aoa.push(['','','الإجمالي',total]);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:13},{wch:18},{wch:40},{wch:14}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'المصروفات');XLSX.writeFile(wb,'مصروفات_'+from+'_'+to+'.xlsx');toast('تم التصدير ✓');
+const _ARMONTH=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function _expRange(){const from=document.getElementById('ex_from').value||'0000-01-01',to=document.getElementById('ex_to').value||'9999-12-31';
+  const list=ALL_EXP.filter(e=>e.expense_date>=from&&e.expense_date<=to).sort((a,b)=>a.expense_date<b.expense_date?-1:1);return{from,to,list};}
+function _money(n){return Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+/* بناء ملف إكسل مطابق 100% لقالب المصروفات: ورقة لكل شهر + ورقة ملخص السنة، بنفس الألوان والخطوط والأحجام */
+function buildExpWorkbook(list){
+  const F_TITLE={name:'Arial',size:14,bold:true,color:{argb:'FFFFFFFF'}},F_HEAD={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}},F_CELL={name:'Arial',size:11},F_TOT={name:'Arial',size:11,bold:true},F_TOT12={name:'Arial',size:12,bold:true};
+  const FILL_T={type:'pattern',pattern:'solid',fgColor:{argb:'FF2E75B6'}},FILL_H={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E78'}},FILL_S={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E1F2'}};
+  const CEN={horizontal:'center',vertical:'center'},BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+  const wb=new ExcelJS.Workbook();
+  const groups={};list.forEach(e=>{const k=(e.expense_date||'').slice(0,7);(groups[k]=groups[k]||[]).push(e);});
+  const keys=Object.keys(groups).sort();const multiYear=new Set(keys.map(k=>k.slice(0,4))).size>1;
+  const sum=wb.addWorksheet('ملخص السنة',{views:[{rightToLeft:true}]});sum.columns=[{width:22},{width:26}];
+  sum.mergeCells('A1:B1');let c=sum.getCell('A1');c.value='ملخص المصروفات السنوي';c.font=F_TITLE;c.fill=FILL_T;c.alignment=CEN;sum.getRow(1).height=25.5;
+  ['A3','B3'].forEach((a,i)=>{const x=sum.getCell(a);x.value=['الشهر','إجمالي المشتريات (ر.س)'][i];x.font=F_HEAD;x.fill=FILL_H;x.alignment=CEN;x.border=BOX;});
+  let r=4,grand=0;keys.forEach(k=>{const nm=_ARMONTH[Number(k.slice(5,7))-1]+(multiYear?' '+k.slice(0,4):'');const tot=groups[k].reduce((s,e)=>s+Number(e.amount||0),0);grand+=tot;
+    const a=sum.getCell('A'+r);a.value=nm;a.font=F_CELL;a.alignment=CEN;a.border=BOX;
+    const b=sum.getCell('B'+r);b.value=tot;b.font=F_CELL;b.alignment=CEN;b.border=BOX;b.numFmt='#,##0.00';r++;});
+  const ga=sum.getCell('A'+r);ga.value='إجمالي السنة';ga.font=F_TOT12;ga.fill=FILL_S;ga.alignment=CEN;ga.border=BOX;
+  const gb=sum.getCell('B'+r);gb.value=grand;gb.font=F_TOT12;gb.fill=FILL_S;gb.alignment=CEN;gb.border=BOX;gb.numFmt='#,##0.00';sum.getRow(r).height=15.5;
+  keys.forEach(k=>{const nm=_ARMONTH[Number(k.slice(5,7))-1];const tab=(nm+(multiYear?' '+k.slice(0,4):'')).slice(0,31);
+    const ws=wb.addWorksheet(tab,{views:[{rightToLeft:true}]});ws.columns=[{width:16},{width:40},{width:16}];
+    ws.mergeCells('A1:C1');const t=ws.getCell('A1');t.value='مصروفات الشركة — '+nm;t.font=F_TITLE;t.fill=FILL_T;t.alignment=CEN;ws.getRow(1).height=25.5;
+    ['A3','B3','C3'].forEach((a,i)=>{const x=ws.getCell(a);x.value=['التاريخ','الصنف','السعر (ر.س)'][i];x.font=F_HEAD;x.fill=FILL_H;x.alignment=CEN;x.border=BOX;});ws.getRow(3).height=21.75;
+    let rr=4,tot=0;groups[k].slice().sort((a,b)=>a.expense_date<b.expense_date?-1:1).forEach(e=>{const amt=Number(e.amount||0);tot+=amt;
+      const a=ws.getCell('A'+rr);a.value=e.expense_date;a.font=F_CELL;a.alignment=CEN;a.border=BOX;
+      const b=ws.getCell('B'+rr);b.value=e.description||e.category||'';b.font=F_CELL;b.alignment=CEN;b.border=BOX;
+      const cc=ws.getCell('C'+rr);cc.value=amt;cc.font=F_CELL;cc.alignment=CEN;cc.border=BOX;cc.numFmt='#,##0.00';rr++;});
+    ws.mergeCells('A'+rr+':B'+rr);const la=ws.getCell('A'+rr);la.value='الإجمالي';la.font=F_TOT;la.fill=FILL_S;la.alignment=CEN;la.border=BOX;
+    const lb=ws.getCell('B'+rr);lb.fill=FILL_S;lb.border=BOX;
+    const lc=ws.getCell('C'+rr);lc.value=tot;lc.font=F_TOT;lc.fill=FILL_S;lc.alignment=CEN;lc.border=BOX;lc.numFmt='#,##0.00';});
+  return wb;
+}
+async function exportExpenses(){
+  const{from,to,list}=_expRange();if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
+  try{const wb=buildExpWorkbook(list);const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='مصروفات_'+from+'_'+to+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast('تم تصدير Excel ✓');}catch(e){toast('خطأ في التصدير: '+e.message);}
+}
+/* PDF بنفس تصميم القالب — نبنيه HTML منسّق ونحوّله صورة عشان يطلع النص العربي سليم 100% */
+function _expHtmlBlocks(list){
+  const groups={};list.forEach(e=>{const k=(e.expense_date||'').slice(0,7);(groups[k]=groups[k]||[]).push(e);});
+  const keys=Object.keys(groups).sort();const multiYear=new Set(keys.map(k=>k.slice(0,4))).size>1;
+  const th='padding:8px 6px;border:1px solid #b7c3d6;text-align:center;font-size:13px';
+  let grand=0;let rows='';
+  keys.forEach(k=>{const nm=_ARMONTH[Number(k.slice(5,7))-1]+(multiYear?' '+k.slice(0,4):'');const tot=groups[k].reduce((s,e)=>s+Number(e.amount||0),0);grand+=tot;
+    rows+=`<tr><td style="${th}">${nm}</td><td style="${th}">${_money(tot)}</td></tr>`;});
+  let html=`<table style="border-collapse:collapse;width:100%;margin-bottom:22px;font-family:Arial,sans-serif">
+    <tr><td colspan="2" style="background:#2E75B6;color:#fff;font-weight:bold;font-size:16px;text-align:center;padding:11px;border:1px solid #2E75B6">ملخص المصروفات السنوي</td></tr>
+    <tr><td style="${th};background:#1F4E78;color:#fff;font-weight:bold">الشهر</td><td style="${th};background:#1F4E78;color:#fff;font-weight:bold">إجمالي المشتريات (ر.س)</td></tr>
+    ${rows}
+    <tr><td style="${th};background:#D9E1F2;font-weight:bold">إجمالي السنة</td><td style="${th};background:#D9E1F2;font-weight:bold">${_money(grand)}</td></tr></table>`;
+  keys.forEach(k=>{const nm=_ARMONTH[Number(k.slice(5,7))-1]+(multiYear?' '+k.slice(0,4):'');let body='',tot=0;
+    groups[k].slice().sort((a,b)=>a.expense_date<b.expense_date?-1:1).forEach(e=>{const amt=Number(e.amount||0);tot+=amt;
+      body+=`<tr><td style="${th}">${e.expense_date}</td><td style="${th}">${(e.description||e.category||'')}</td><td style="${th}">${_money(amt)}</td></tr>`;});
+    html+=`<table style="border-collapse:collapse;width:100%;margin-bottom:22px;font-family:Arial,sans-serif">
+      <tr><td colspan="3" style="background:#2E75B6;color:#fff;font-weight:bold;font-size:16px;text-align:center;padding:11px;border:1px solid #2E75B6">مصروفات الشركة — ${nm}</td></tr>
+      <tr><td style="${th};background:#1F4E78;color:#fff;font-weight:bold;width:20%">التاريخ</td><td style="${th};background:#1F4E78;color:#fff;font-weight:bold">الصنف</td><td style="${th};background:#1F4E78;color:#fff;font-weight:bold;width:20%">السعر (ر.س)</td></tr>
+      ${body}
+      <tr><td colspan="2" style="${th};background:#D9E1F2;font-weight:bold">الإجمالي</td><td style="${th};background:#D9E1F2;font-weight:bold">${_money(tot)}</td></tr></table>`;});
+  return html;
+}
+async function exportExpensesPdf(){
+  const{from,to,list}=_expRange();if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
+  toast('جارٍ تجهيز PDF…');
+  try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:780px;background:#fff;padding:24px;direction:rtl';
+    wrap.innerHTML=_expHtmlBlocks(list);document.body.appendChild(wrap);
+    const canvas=await html2canvas(wrap,{scale:2,backgroundColor:'#ffffff'});document.body.removeChild(wrap);
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4');const pw=210,ph=297;
+    const img=canvas.toDataURL('image/png');const iw=pw-16,ih=canvas.height*iw/canvas.width;const x=8;let hl=ih,pos=8;
+    pdf.addImage(img,'PNG',x,pos,iw,ih);hl-=(ph-16);
+    while(hl>0){pos=pos-(ph-16);pdf.addPage();pdf.addImage(img,'PNG',x,pos,iw,ih);hl-=(ph-16);}
+    pdf.save('مصروفات_'+from+'_'+to+'.pdf');toast('تم تصدير PDF ✓');
+  }catch(e){toast('خطأ في PDF: '+e.message);}
 }
 function renderExpenses(){
   const m=document.getElementById('ex_month').value,c=document.getElementById('ex_cat').value;
