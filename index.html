@@ -290,7 +290,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title">وقت الحضور والخصم</h2>
       <div class="hint">حدّد وقت بداية الدوام وفترة السماح والخصم على التأخير. تُطبّق على كل الموظفين.</div>
       <div class="card">
-        <div class="field"><label>بداية الدوام</label><input type="time" id="s_start"></div>
+        <div class="row"><div class="field"><label>ساعة بداية الدوام</label><select id="s_hour"></select></div><div class="field"><label>الدقيقة</label><select id="s_min"></select></div></div>
         <label>الشريحة الأولى للتأخير</label>
         <div class="row" style="margin-bottom:6px"><div class="field"><label>تأخير من (دقيقة)</label><input type="number" id="s_t1min"></div><div class="field"><label>خصم (ساعات)</label><input type="number" id="s_t1h" inputmode="decimal"></div></div>
         <label>الشريحة الثانية للتأخير</label>
@@ -434,7 +434,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='69';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='70';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -912,7 +912,9 @@ function toggleSetMenu(){const c=document.getElementById('setChildren'),ch=docum
   else{c.style.overflow='hidden';c.style.maxHeight=c.scrollHeight+'px';requestAnimationFrame(()=>{requestAnimationFrame(()=>{c.style.maxHeight='0px';});});c.classList.remove('open');}
   if(ch)ch.style.transform=open?'rotate(180deg)':'';}
 async function loadSettings(){await loadSettingsCache();const s=SETTINGS||DEF_SETTINGS;
-  document.getElementById('s_start').value=s.work_start||'06:00';
+  const[wh0,wm0]=(s.work_start||'06:00').split(':');
+  document.getElementById('s_hour').innerHTML=Array.from({length:24},(_,h)=>{const v=String(h).padStart(2,'0');return `<option value="${v}" ${v===wh0?'selected':''}>${v}</option>`;}).join('');
+  document.getElementById('s_min').innerHTML=Array.from({length:60},(_,m)=>{const v=String(m).padStart(2,'0');return `<option value="${v}" ${v===wm0?'selected':''}>${v}</option>`;}).join('');
   document.getElementById('s_t1min').value=s.late_t1_min??15;
   document.getElementById('s_t1h').value=s.late_t1_hours??1;
   document.getElementById('s_t2min').value=s.late_t2_min??30;
@@ -929,11 +931,12 @@ async function saveTaxInfo(){
   const btn=document.getElementById('tSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS=Object.assign(SETTINGS||{},rec);toast('تم حفظ بيانات الفاتورة ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ بيانات الفاتورة';}
 }
-function settingsPreview(){const g=v=>document.getElementById(v).value;
-  document.getElementById('s_preview').textContent=`النتيجة: بداية الدوام ${g('s_start')}. من يتأخر ${g('s_t1min')}+ دقيقة يُخصم ${g('s_t1h')} ساعة، ومن يتأخر ${g('s_t2min')}+ دقيقة يُخصم ${g('s_t2h')} ساعة — تلقائياً مع إشعار للموظف.`;}
-['s_start','s_t1min','s_t1h','s_t2min','s_t2h'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)settingsPreview();});});
+function settingsPreview(){const g=v=>document.getElementById(v).value;const hh=g('s_hour'),mm=g('s_min');
+  document.getElementById('s_preview').textContent=`النتيجة: بداية الدوام ${hh}:${mm}. من يتأخر ${g('s_t1min')}+ دقيقة يُخصم ${g('s_t1h')} ساعة، ومن يتأخر ${g('s_t2min')}+ دقيقة يُخصم ${g('s_t2h')} ساعة — تلقائياً مع إشعار للموظف.`;}
+['s_t1min','s_t1h','s_t2min','s_t2h'].forEach(id=>{document.addEventListener('input',e=>{if(e.target&&e.target.id===id)settingsPreview();});});
+document.addEventListener('change',e=>{if(e.target&&(e.target.id==='s_hour'||e.target.id==='s_min'))settingsPreview();});
 async function saveSettings(){
-  const rec={work_start:document.getElementById('s_start').value||'06:00',late_t1_min:parseInt(document.getElementById('s_t1min').value)||0,late_t1_hours:parseFloat(document.getElementById('s_t1h').value)||0,late_t2_min:parseInt(document.getElementById('s_t2min').value)||0,late_t2_hours:parseFloat(document.getElementById('s_t2h').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
+  const rec={work_start:(document.getElementById('s_hour').value||'06')+':'+(document.getElementById('s_min').value||'00'),late_t1_min:parseInt(document.getElementById('s_t1min').value)||0,late_t1_hours:parseFloat(document.getElementById('s_t1h').value)||0,late_t2_min:parseInt(document.getElementById('s_t2min').value)||0,late_t2_hours:parseFloat(document.getElementById('s_t2h').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
   const btn=document.getElementById('sSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
 }
