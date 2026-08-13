@@ -273,17 +273,17 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     </div>
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
-      <div id="finKpis" class="grid2" style="margin-bottom:13px"></div>
-      <div class="row" style="margin-bottom:9px"><button class="btn" onclick="openInvoice()">+ فاتورة جديدة</button><button class="btn copper" onclick="openTaxInvoice()">🧾 فاتورة ضريبية</button></div>
-      <button class="btn ghost" style="margin-bottom:13px" onclick="openTaxInvoiceList()">📋 الفواتير الضريبية المحفوظة</button>
-      <div class="seg"><button class="on" onclick="finTab('all',this)">الكل</button><button onclick="finTab('out',this)">صادرة</button><button onclick="finTab('in',this)">واردة</button></div>
-      <div id="invList"></div>
+      <div class="seg"><button class="on" onclick="finTab2('in',this)">الفواتير الواردة</button><button onclick="finTab2('tax',this)">إصدار فاتورة ضريبية</button></div>
+      <div id="finBody"></div>
     </div>
 
     <div class="view" id="v-expenses">
       <h2 class="section-title">المصروفات</h2>
       <button class="btn" style="margin-bottom:12px" onclick="openExpense()">+ إضافة مصروف</button>
       <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
+      <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير Excel لأي فترة</label>
+        <div class="row" style="margin-top:6px"><div class="field" style="margin:0"><label>من</label><input type="date" id="ex_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="ex_to"></div></div>
+        <button class="btn copper sm" style="width:100%;margin-top:8px" onclick="exportExpenses()">📊 تصدير Excel</button></div>
       <div id="exSummary"></div>
       <div id="exList"></div>
     </div>
@@ -447,7 +447,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='77';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='78';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1192,30 +1192,41 @@ async function deleteEntry(id){
 
 /* ===== FINANCE ===== */
 let finFilter='all';
-function initFinance(){finFilter='all';document.querySelectorAll('#v-finance .seg button').forEach((b,i)=>b.classList.toggle('on',i===0));loadInvoices();}
-function finTab(k,btn){finFilter=k;document.querySelectorAll('#v-finance .seg button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');loadInvoices();}
-async function loadInvoices(){
-  const{data}=await sb.from('invoices').select('*').order('invoice_date',{ascending:false});
-  const all=data||[];
-  const out=all.filter(i=>i.kind==='out'),inc=all.filter(i=>i.kind==='in');
-  const sum=a=>a.reduce((s,i)=>s+Number(i.amount),0),sv=a=>a.reduce((s,i)=>s+Number(i.vat),0);
-  document.getElementById('finKpis').innerHTML=`<div class="kpi"><b>${fmt(sum(out))}</b><span>فواتير صادرة ﷼</span></div><div class="kpi"><b>${fmt(sum(inc))}</b><span>فواتير واردة ﷼</span></div><div class="kpi"><b>${fmt(sv(out))}</b><span>ضريبة مخرجات ﷼</span></div><div class="kpi"><b>${fmt(sv(inc))}</b><span>ضريبة مدخلات ﷼</span></div>`;
-  const list=finFilter==='all'?all:all.filter(i=>i.kind===finFilter);
-  document.getElementById('invList').innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="background:${i.kind==='out'?'#e6f6ed':'#f6ecdf'};color:${i.kind==='out'?'var(--ok)':'var(--copper)'}">${i.kind==='out'?'↗':'↘'}</div>
-    <div class="meta"><b>${i.party||(i.kind==='out'?'فاتورة صادرة':'فاتورة واردة')}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · شامل ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left"><div class="pill role">${fmt(i.amount)} ﷼</div>${i.photo?`<div><button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷 الصورة</button></div>`:''}</div></div>`).join(''):'<div class="empty">لا توجد فواتير</div>';
+function initFinance(){finTab2('in');}
+function finTab2(tab,btn){
+  document.querySelectorAll('#v-finance .seg button').forEach((b,i)=>b.classList.toggle('on',btn?b===btn:i===0));
+  const body=document.getElementById('finBody');
+  if(tab==='tax'){
+    body.innerHTML=`<div class="hint">الفاتورة الضريبية تُصدرها لعملائك — الأسعار غير شاملة الضريبة ويُضاف 15% تلقائياً. تُحفظ كلها.</div>
+      <button class="btn copper" onclick="openTaxInvoice()">🧾 إصدار فاتورة ضريبية جديدة</button>
+      <button class="btn ghost" style="margin-top:10px" onclick="openTaxInvoiceList()">📋 الفواتير الضريبية المحفوظة</button>`;
+    enforceEnDates(body);return;
+  }
+  body.innerHTML=`<div class="hint">سجّل فواتير المشتريات الواردة من الموردين — لخصم ضريبة المدخلات في الإقرار الضريبي. أرفق صورة الفاتورة.</div>
+    <button class="btn" style="margin-bottom:12px" onclick="openInvoice()">+ إضافة فاتورة واردة</button>
+    <div class="grid2" id="finKpis" style="margin-bottom:13px"></div>
+    <div id="invList"></div>`;
+  loadInvoices();
 }
-function openInvoice(){invPhoto=null;openModal(`<h3 style="margin-bottom:14px">فاتورة جديدة</h3>
-  <div class="seg"><button class="on" id="ik_out" onclick="setInvKind('out')">صادرة</button><button id="ik_in" onclick="setInvKind('in')">واردة</button></div>
-  <div class="row"><div class="field"><label>الجهة</label><input id="iv_party" placeholder="اسم العميل/المورد"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number"></div></div>
+async function loadInvoices(){
+  const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
+  const inc=data||[];const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
+  const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>إجمالي المشتريات ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div>`;
+  const box=document.getElementById('invList');if(!box)return;
+  box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
+    <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
+    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷</button>`:''}<button class="link" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+}
+async function delInvoice(id){const{error}=await sb.from('invoices').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم الحذف');loadInvoices();}
+function openInvoice(){invPhoto=null;openModal(`<h3 style="margin-bottom:14px">فاتورة واردة (مشتريات)</h3>
+  <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number"></div></div>
   <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal"></div></div>
   <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${todayKey()}"></div>
-  <div class="field"><label>صورة الفاتورة (للضريبة)</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الفاتورة<input type="file" accept="image/*" onchange="pickInvPhoto(this)"></div></div>
+  <div class="field"><label>صورة الفاتورة (مطلوبة للضريبة)</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الفاتورة<input type="file" accept="image/*" onchange="pickInvPhoto(this)"></div></div>
   <div class="field"><label>ملاحظات</label><textarea id="iv_note" rows="2"></textarea></div>
   <button class="btn" id="ivSave" onclick="saveInvoice()">حفظ الفاتورة</button>
-  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);invKind='out';}
-let invKind='out',invPhoto=null;
-function setInvKind(k){invKind=k;document.getElementById('ik_out').classList.toggle('on',k==='out');document.getElementById('ik_in').classList.toggle('on',k==='in');}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);invKind='in';}
+let invKind='in',invPhoto=null;
 function autoVat(){const a=parseFloat(document.getElementById('iv_amount').value)||0;document.getElementById('iv_vat').value=(a-a/1.15).toFixed(2);}
 function pickInvPhoto(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{invPhoto=d;const b=document.getElementById('pb_inv');b.querySelector('img')?.remove();const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
 async function saveInvoice(){
@@ -1239,7 +1250,21 @@ async function initExpenses(){
   const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
   const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
   document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+  const f=document.getElementById('ex_from'),t=document.getElementById('ex_to');if(f&&!f.value)f.value=new Date().getFullYear()+'-01-01';if(t&&!t.value)t.value=todayKey();
   renderExpenses();
+}
+function exportExpenses(){
+  const from=document.getElementById('ex_from').value||'0000-01-01',to=document.getElementById('ex_to').value||'9999-12-31';
+  const list=ALL_EXP.filter(e=>e.expense_date>=from&&e.expense_date<=to).sort((a,b)=>a.expense_date<b.expense_date?-1:1);
+  if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
+  const aoa=[['تقرير المصروفات — شركة نسق الطاقة'],['من',from,'إلى',to],[],['التاريخ','التصنيف','البيان','المبلغ ﷼']];
+  list.forEach(e=>aoa.push([e.expense_date,e.category,e.description||'',Number(e.amount)]));
+  const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount);});
+  aoa.push([]);aoa.push(['ملخص التصنيفات','','','']);
+  EXP_CATS.forEach(c=>{if(byCat[c])aoa.push(['',c,'',byCat[c]]);});
+  const total=list.reduce((s,e)=>s+Number(e.amount),0);aoa.push([]);aoa.push(['','','الإجمالي',total]);
+  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:13},{wch:18},{wch:40},{wch:14}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:3}}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'المصروفات');XLSX.writeFile(wb,'مصروفات_'+from+'_'+to+'.xlsx');toast('تم التصدير ✓');
 }
 function renderExpenses(){
   const m=document.getElementById('ex_month').value,c=document.getElementById('ex_cat').value;
