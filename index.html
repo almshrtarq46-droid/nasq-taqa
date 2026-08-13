@@ -434,7 +434,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='70';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='71';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -458,6 +458,11 @@ const fmt=n=>(Number(n)||0).toLocaleString('en-US',{minimumFractionDigits:2,maxi
 /* توحيد الأرقام: أي رقم عربي/فارسي يُكتب يتحوّل فورًا لإنجليزي (1234567890) */
 function toLatinDigits(s){return String(s).replace(/[٠-٩]/g,d=>d.charCodeAt(0)-0x0660).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-0x06F0);}
 document.addEventListener('input',e=>{const t=e.target;if(!t||(t.tagName!=='INPUT'&&t.tagName!=='TEXTAREA'))return;const v=t.value;const c=toLatinDigits(v);if(c!==v){const p=t.selectionStart;t.value=c;try{t.setSelectionRange(p,p);}catch(_){}}} ,true);
+/* حارس عام: يحوّل أي رقم عربي/فارسي يظهر في أي نص بالموقع إلى إنجليزي تلقائياً */
+function _latinTextNode(t){const v=t.nodeValue;if(!v||!/[٠-٩۰-۹]/.test(v))return;t.nodeValue=toLatinDigits(v);}
+function normalizeDigits(root){if(!root)return;if(root.nodeType===3){_latinTextNode(root);return;}if(root.nodeType!==1)return;const tag=root.tagName;if(tag==='SCRIPT'||tag==='STYLE')return;const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=w.nextNode())_latinTextNode(n);}
+function startDigitGuard(){try{normalizeDigits(document.body);new MutationObserver(muts=>{for(const m of muts){if(m.type==='characterData')_latinTextNode(m.target);else m.addedNodes.forEach(nd=>normalizeDigits(nd));}}).observe(document.body,{childList:true,subtree:true,characterData:true});}catch(_){}}
+if(typeof document!=='undefined'&&document.body)startDigitGuard();
 /* منتقي تاريخ مخصّص (إنجليزي، أرقام لاتينية، سريع) يستبدل منتقي المتصفح */
 const _dp={input:null,view:null,open:false};
 const DP_M=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
