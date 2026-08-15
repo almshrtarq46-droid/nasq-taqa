@@ -261,7 +261,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
     <div class="view" id="v-hr">
       <h2 class="section-title">الموارد البشرية</h2>
-      <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('pay',this)">الأجور</button></div>
+      <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('pay',this)">الرواتب</button><button onclick="hrTab('dues',this)">ذمم الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button></div>
       <div id="hr_dir" class="hrbox">
         <div class="seg" id="empSubSeg" style="margin-bottom:12px"><button class="on" onclick="switchEmpSub('res',this)">المقيمين</button><button onclick="switchEmpSub('sau',this)">السعوديين</button></div>
         <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1" onclick="openEmployee()">+ إضافة موظف</button><button class="btn copper sm" style="flex:1" onclick="exportEmployees()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportEmployeesPdf()">📄 PDF</button></div>
@@ -269,7 +269,16 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="hr_emp" class="hrbox" style="display:none"><div id="empList"></div></div>
       <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
       <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
-      <div id="hr_pay" class="hrbox" style="display:none"><div class="hint">الصافي = (أيام × الأجر اليومي) − خصم التأخير + أوفر تايم − خصومات وسلف. التأخير تلقائي، والباقي تضيفه يدوياً ويوصل إشعار للموظف.</div><button class="btn copper" style="margin-bottom:13px" onclick="exportPayroll()">تصدير كشف الرواتب Excel</button><div id="payList"></div></div>
+      <div id="hr_pay" class="hrbox" style="display:none">
+        <div class="row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>شهر الرواتب</label><input type="month" id="pay_month"></div>
+          <div class="field" style="margin:0"><label>&nbsp;</label><button class="btn sm" style="width:100%" onclick="loadPayroll()">عرض</button></div></div>
+        <div class="hint">الصافي = الراتب − خصم الغياب − خصم التأخير − قسط الذمم − خصومات أخرى + أوفر تايم. خصم التأخير تلقائي للموظفين المحدّدين، وقسط الذمم يُخصم تلقائيًا من رصيد كل موظف.</div>
+        <div style="display:flex;gap:8px;margin:10px 0"><button class="btn" style="flex:1" onclick="savePayroll()">💾 اعتماد وحفظ كشف الشهر</button><button class="btn copper sm" style="flex:1" onclick="exportPayroll()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportPayrollPdf()">📄 PDF</button></div>
+        <div id="payList"></div></div>
+      <div id="hr_dues" class="hrbox" style="display:none">
+        <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري يُخصم من الراتب. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
+        <button class="btn" style="margin:11px 0" onclick="openDue()">+ إضافة ذمة</button>
+        <div id="duesList"></div></div>
     </div>
 
     <div class="view" id="v-livemap">
@@ -454,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='83';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='84';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -825,6 +834,8 @@ function openEmployee(e){
     <div class="row"><div class="field"><label>م (الترتيب)</label><input id="em_seq" type="number" inputmode="decimal" value="${e?(e.seq||''):''}"></div><div class="field"><label>الجنسية</label><input id="em_nat" value="${defNat}" oninput="onEmpNatInput()" placeholder="مثال: سعودي / مصر"></div></div>
     <div class="field"><label>اسم الموظف</label><input id="em_name" value="${e?(e.name||'').replace(/"/g,'&quot;'):''}"></div>
     <div class="field"><label id="em_idlabel">رقم الإقامة</label><input id="em_iqama" inputmode="numeric" value="${e?(e.iqama_number||''):''}"></div>
+    <div class="row"><div class="field"><label>الراتب الشهري (﷼)</label><input id="em_salary" type="number" inputmode="decimal" value="${e?(e.monthly_salary||''):''}"></div>
+      <div class="field"><label>خصم التأخير</label><label class="chk" style="display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="em_late" ${e&&e.late_deduction?'checked':''} style="width:18px;height:18px;accent-color:var(--brand)"> يخضع لخصم التأخير</label></div></div>
     <div id="em_resFields"><div class="row"><div class="field"><label>انتهاء الإقامة</label><input id="em_iqexp" type="date" value="${e?(e.iqama_expiry||''):''}"></div><div class="field"><label>انتهاء رخصة العمل</label><input id="em_wpexp" type="date" value="${e?(e.work_permit_expiry||''):''}"></div></div></div>
     <div class="row"><div class="field"><label>انتهاء التأمين الطبي</label><input id="em_medexp" type="date" value="${e?(e.medical_expiry||''):''}"></div><div class="field"><label>انتهاء عقد العمل</label><input id="em_ctexp" type="date" value="${e?(e.contract_expiry||''):''}"></div></div>
     <div class="field"><label>ربط بحساب دخول (اختياري)</label><select id="em_user">${opts}</select></div>
@@ -839,7 +850,8 @@ async function saveEmployee(id){
   const sa=/سعود/.test(g('em_nat'));
   const rec={seq:parseInt(g('em_seq'))||null,name,nationality:g('em_nat').trim(),iqama_number:g('em_iqama').trim(),
     iqama_expiry:sa?null:(g('em_iqexp')||null),work_permit_expiry:sa?null:(g('em_wpexp')||null),medical_expiry:g('em_medexp')||null,contract_expiry:g('em_ctexp')||null,
-    user_id:g('em_user')||null,notes:g('em_notes').trim()};
+    user_id:g('em_user')||null,notes:g('em_notes').trim(),
+    monthly_salary:parseFloat(g('em_salary'))||0,late_deduction:document.getElementById('em_late').checked};
   const btn=document.getElementById('emSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{if(id){const{error}=await sb.from('employees').update(rec).eq('id',id);if(error)throw error;}
     else{rec.created_by=ME.id;const{error}=await sb.from('employees').insert(rec);if(error)throw error;}
@@ -936,8 +948,8 @@ async function exportEmployeesPdf(){
 }
 function initHR(){hrTab('dir',document.querySelector('#v-hr>.seg button'));}
 function hrTab(t,btn){document.querySelectorAll('#v-hr>.seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  ['dir','emp','crew','att','pay'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
-  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();}
+  ['dir','pay','dues','emp','crew','att'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
+  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();if(t==='dues')loadDues();}
 async function loadCrews(){
   const{data:crews}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').order('created_at',{ascending:false});
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
@@ -1024,7 +1036,7 @@ async function saveEmpDocs(id){const btn=document.getElementById('edSave');btn.d
     if(rows.length){const{error}=await sb.from('documents').upsert(rows,{onConflict:'employee_id,type'});if(error)throw error;}
     closeModal();toast('تم حفظ المستندات ✓');loadEmployees();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المستندات';}}
-async function loadPayroll(){
+async function loadPayrollOLD(){
   const mk=monthKey();
   const{data:profs}=await sb.from('profiles').select('id,full_name,daily_wage').eq('role','worker');
   const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours').gte('work_date',monthStart());
@@ -1060,12 +1072,163 @@ async function saveAdjustment(id){const amount=parseFloat(document.getElementByI
 function viewAdjustments(id,name){const adj=(window._payAdj||[]).filter(a=>a.employee_id===id);
   openModal(`<h3 style="margin-bottom:12px">حركات ${name||''} — ${monthKey()}</h3>${adj.length?adj.map(a=>{const plus=(a.type==='overtime'||a.type==='bonus');const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[a.type];return `<div class="item"><div class="meta"><b>${lbl}${a.note?' — '+a.note:''}</b><small>${a.created_at?a.created_at.slice(0,10):''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill ${plus?'ok':'susp'}">${plus?'+':'−'} ${fmt(a.amount)}</span><button class="btn danger sm" style="flex:none;width:36px" onclick="delAdjustment('${a.id}')">✕</button></div></div>`;}).join(''):'<div class="empty">لا حركات هذا الشهر</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 async function delAdjustment(id){const{error}=await sb.from('payroll_adjustments').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadPayroll();}
-function exportPayroll(){const rows=window._payRows||[];if(!rows.length){toast('لا بيانات');return;}
+function exportPayrollOLD(){const rows=window._payRows||[];if(!rows.length){toast('لا بيانات');return;}
   const aoa=[['كشف الرواتب — شركة نسق الطاقة'],['الشهر',monthKey()],[],['الموظف','أيام الحضور','الأساسي','خصم التأخير','أوفر تايم/إضافات','خصومات وسلف','الصافي']];
   rows.forEach(r=>aoa.push([r.name,r.days,r.base,r.lateDed,r.add,r.sub,r.net]));
   aoa.push([],['','','','','','الإجمالي',rows.reduce((s,r)=>s+r.net,0)]);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:18},{wch:11},{wch:12},{wch:12},{wch:14},{wch:13},{wch:12}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الرواتب');XLSX.writeFile(wb,'رواتب_'+monthKey()+'.xlsx');toast('تم التصدير ✓');}
+/* ===== الرواتب (راتب شهري ثابت) ===== */
+let PAY_ROWS=[],PAY_PERIOD='',DUES_EMPS=[];
+function _payMonth(){const m=document.getElementById('pay_month');if(m&&!m.value)m.value=monthKey();return (m&&m.value)||monthKey();}
+function _payDay(s){return (Number(s)||0)/30;}
+function _payHour(s){return (Number(s)||0)/240;}
+function _payNet(r){return r.salary - r.absent*_payDay(r.salary) - r.lateH*_payHour(r.salary) - r.other - r.duesInstall + r.overtime;}
+async function loadPayroll(){
+  const period=_payMonth();PAY_PERIOD=period;
+  const box=document.getElementById('payList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data:emps}=await sb.from('employees').select('*').order('seq',{ascending:true});const list=emps||[];
+  const linked=list.filter(e=>e.user_id&&e.late_deduction).map(e=>e.user_id);
+  const penByUser={};
+  if(linked.length){const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours,work_date').gte('work_date',period+'-01').lte('work_date',period+'-31').in('worker_id',linked);
+    (att||[]).forEach(a=>{penByUser[a.worker_id]=(penByUser[a.worker_id]||0)+Number(a.penalty_hours||0);});}
+  const{data:dues}=await sb.from('employee_dues').select('*').eq('status','active');
+  const duesByEmp={};(dues||[]).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
+  const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
+  const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
+  PAY_ROWS=list.map(e=>{const salary=Number(e.monthly_salary||0);const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];
+    return {emp:e,salary,
+      lateH:slip?Number(slip.late_hours||0):(penByUser[e.user_id]||0),
+      absent:slip?Number(slip.absent_days||0):0,
+      overtime:slip?Number(slip.overtime||0):0,
+      other:slip?Number(slip.other_ded||0):0,
+      duesInstall:slip?Number(slip.dues_ded||0):dl.reduce((s,d)=>s+Math.max(0,Math.min(Number(d.installment||0),Number(d.total_amount||0)-Number(d.paid||0))),0),
+      posted:!!slip,duesList:dl};});
+  renderPayroll();
+}
+function payEdit(i,field,val){PAY_ROWS[i][field]=parseFloat(val)||0;const r=PAY_ROWS[i];
+  const g=id=>document.getElementById(id+i);
+  if(g('payabsded'))g('payabsded').textContent='− '+fmt(r.absent*_payDay(r.salary));
+  if(g('paylateded'))g('paylateded').textContent='− '+fmt(r.lateH*_payHour(r.salary));
+  const net=_payNet(r);if(g('paynet'))g('paynet').textContent=fmt(net)+' ﷼';if(g('paynet2'))g('paynet2').textContent=fmt(net)+' ﷼';
+  const t=document.getElementById('payTotal');if(t)t.textContent=fmt(PAY_ROWS.reduce((s,x)=>s+_payNet(x),0))+' ﷼';}
+function renderPayroll(){
+  const box=document.getElementById('payList');
+  if(!PAY_ROWS.length){box.innerHTML='<div class="empty">لا يوجد موظفون — أضف رواتبهم في «بيانات الموظفين»</div>';return;}
+  const inp='width:60px;padding:4px 6px;text-align:center;border:1px solid var(--line);border-radius:8px;font-size:13px';
+  box.innerHTML=PAY_ROWS.map((r,i)=>{const e=r.emp;const net=_payNet(r);
+    return `<div class="card" style="padding:13px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">${e.name||'—'}${r.posted?' <span class="pill ok" style="font-size:10px">محفوظ</span>':''}</b><div class="pill role" id="paynet${i}">${fmt(net)} ﷼</div></div>
+      <table class="tbl"><tbody>
+        <tr><td>الراتب الأساسي</td><td style="text-align:left">${fmt(r.salary)}</td></tr>
+        <tr><td>أيام الغياب <input type="number" inputmode="decimal" value="${r.absent||''}" oninput="payEdit(${i},'absent',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="payabsded${i}">− ${fmt(r.absent*_payDay(r.salary))}</td></tr>
+        <tr><td>ساعات التأخير <input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="payEdit(${i},'lateH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="paylateded${i}">− ${fmt(r.lateH*_payHour(r.salary))}</td></tr>
+        <tr><td>قسط الذمم${r.duesList&&r.duesList.length?' ('+r.duesList.length+')':''}</td><td style="text-align:left;color:var(--bad)">− ${fmt(r.duesInstall)}</td></tr>
+        <tr><td>خصومات أخرى <input type="number" inputmode="decimal" value="${r.other||''}" oninput="payEdit(${i},'other',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)"></td></tr>
+        <tr><td>أوفر تايم / إضافات <input type="number" inputmode="decimal" value="${r.overtime||''}" oninput="payEdit(${i},'overtime',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)"></td></tr>
+        <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:var(--green)" id="paynet2${i}">${fmt(net)} ﷼</td></tr>
+      </tbody></table></div>`;}).join('')+
+    `<div class="card" style="padding:14px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span id="payTotal">${fmt(PAY_ROWS.reduce((s,r)=>s+_payNet(r),0))} ﷼</span></div></div>`;
+}
+async function savePayroll(){
+  if(!PAY_ROWS.length){toast('لا بيانات');return;}
+  toast('جارٍ الحفظ…');
+  try{for(const r of PAY_ROWS){const e=r.emp;const absDed=r.absent*_payDay(r.salary),lateDed=r.lateH*_payHour(r.salary);
+    const rec={employee_id:e.id,period:PAY_PERIOD,base:r.salary,absent_days:r.absent,absence_ded:absDed,late_hours:r.lateH,late_ded:lateDed,overtime:r.overtime,other_ded:r.other,dues_ded:r.duesInstall,net:_payNet(r)};
+    const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
+    if(!r.posted){for(const d of (r.duesList||[])){const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0),rem));if(pay>0){const np=Number(d.paid||0)+pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}}
+  }
+  toast('تم اعتماد وحفظ كشف '+PAY_PERIOD+' ✓');loadPayroll();
+  }catch(e){toast('خطأ: '+e.message);}
+}
+function _payData(){return PAY_ROWS.map(r=>({name:r.emp.name||'',salary:r.salary,absent:r.absent,absDed:r.absent*_payDay(r.salary),lateH:r.lateH,lateDed:r.lateH*_payHour(r.salary),dues:r.duesInstall,other:r.other,ot:r.overtime,net:_payNet(r)}));}
+function buildPayrollWorkbook(rows,period){
+  const F_T={name:'Arial',size:14,bold:true,color:{argb:'FFFFFFFF'}},F_H={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}},F_C={name:'Arial',size:10},F_TT={name:'Arial',size:11,bold:true};
+  const FT={type:'pattern',pattern:'solid',fgColor:{argb:'FF2E75B6'}},FH={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E78'}},FS={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E1F2'}};
+  const CEN={horizontal:'center',vertical:'center'},BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('الرواتب',{views:[{rightToLeft:true}]});
+  ws.columns=[{width:22},{width:12},{width:9},{width:12},{width:10},{width:12},{width:12},{width:12},{width:11},{width:13}];
+  ws.mergeCells('A1:J1');let t=ws.getCell('A1');t.value='كشف الرواتب — '+period;t.font=F_T;t.fill=FT;t.alignment=CEN;ws.getRow(1).height=25.5;
+  const H=['الموظف','الراتب','أيام الغياب','خصم الغياب','ساعات التأخير','خصم التأخير','قسط الذمم','خصومات أخرى','أوفر تايم','الصافي'];
+  H.forEach((h,i)=>{const c=ws.getCell(3,i+1);c.value=h;c.font=F_H;c.fill=FH;c.alignment={horizontal:'center',vertical:'center',wrapText:true};c.border=BOX;});ws.getRow(3).height=30;
+  let r=4;rows.forEach(d=>{const vals=[d.name,d.salary,d.absent,d.absDed,d.lateH,d.lateDed,d.dues,d.other,d.ot,d.net];
+    vals.forEach((v,i)=>{const c=ws.getCell(r,i+1);c.value=v;c.font=F_C;c.alignment=CEN;c.border=BOX;if(i>0)c.numFmt='#,##0.00';});r++;});
+  const tot=rows.reduce((s,d)=>s+d.net,0);ws.mergeCells('A'+r+':I'+r);const la=ws.getCell('A'+r);la.value='إجمالي صافي الرواتب';la.font=F_TT;la.fill=FS;la.alignment=CEN;la.border=BOX;
+  for(let i=1;i<=9;i++)ws.getCell(r,i).border=BOX,ws.getCell(r,i).fill=FS;
+  const lc=ws.getCell(r,10);lc.value=tot;lc.font=F_TT;lc.fill=FS;lc.alignment=CEN;lc.border=BOX;lc.numFmt='#,##0.00';
+  return wb;
+}
+async function exportPayroll(){const rows=_payData();if(!rows.length){toast('لا بيانات');return;}
+  try{const wb=buildPayrollWorkbook(rows,PAY_PERIOD);const buf=await wb.xlsx.writeBuffer();
+    const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='رواتب_'+PAY_PERIOD+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    toast('تم تصدير Excel ✓');}catch(e){toast('خطأ: '+e.message);}}
+function _payHtml(rows,period){
+  const TH='padding:8px 6px;border:1px solid #b7c3d6;background:#1F4E78;color:#fff;font-weight:bold;font-size:12px;text-align:center';
+  const TD='padding:7px 6px;border:1px solid #cfd6e0;font-size:12px;text-align:center;font-family:Arial';
+  const H=['الموظف','الراتب','أيام الغياب','خصم الغياب','ساعات التأخير','خصم التأخير','قسط الذمم','خصومات أخرى','أوفر تايم','الصافي'];
+  const m=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const body=rows.map(d=>`<tr><td style="${TD}">${d.name}</td><td style="${TD}">${m(d.salary)}</td><td style="${TD}">${d.absent}</td><td style="${TD}">${m(d.absDed)}</td><td style="${TD}">${d.lateH}</td><td style="${TD}">${m(d.lateDed)}</td><td style="${TD}">${m(d.dues)}</td><td style="${TD}">${m(d.other)}</td><td style="${TD}">${m(d.ot)}</td><td style="${TD};font-weight:bold">${m(d.net)}</td></tr>`).join('');
+  const tot=rows.reduce((s,d)=>s+d.net,0);
+  return `<table style="border-collapse:collapse;width:100%;font-family:Arial">
+    <tr><td colspan="10" style="background:#2E75B6;color:#fff;font-weight:bold;font-size:17px;text-align:center;padding:11px">كشف الرواتب — ${period}</td></tr>
+    <tr>${H.map(h=>`<td style="${TH}">${h}</td>`).join('')}</tr>${body}
+    <tr><td colspan="9" style="${TD};background:#D9E1F2;font-weight:bold">إجمالي صافي الرواتب</td><td style="${TD};background:#D9E1F2;font-weight:bold">${m(tot)}</td></tr></table>`;
+}
+async function exportPayrollPdf(){const rows=_payData();if(!rows.length){toast('لا بيانات');return;}
+  toast('جارٍ تجهيز PDF…');
+  try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1050px;background:#fff;padding:24px;direction:rtl';
+    wrap.innerHTML=_payHtml(rows,PAY_PERIOD);document.body.appendChild(wrap);
+    const canvas=await html2canvas(wrap,{scale:2,backgroundColor:'#ffffff'});document.body.removeChild(wrap);
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
+    const img=canvas.toDataURL('image/png');const iw=pw-16,ih=canvas.height*iw/canvas.width;let hl=ih,pos=8;
+    pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);
+    while(hl>0){pos-=(ph-16);pdf.addPage();pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);}
+    pdf.save('رواتب_'+PAY_PERIOD+'.pdf');toast('تم تصدير PDF ✓');}catch(e){toast('خطأ: '+e.message);}}
+/* ===== ذمم الموظفين (حقوق الشركة) ===== */
+async function loadDues(){
+  const box=document.getElementById('duesList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data:emps}=await sb.from('employees').select('id,name').order('seq',{ascending:true});DUES_EMPS=emps||[];
+  const en={};DUES_EMPS.forEach(e=>en[e.id]=e.name);
+  const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const list=data||[];
+  if(!list.length){box.innerHTML='<div class="empty">لا ذمم مسجّلة — أضف أول ذمة</div>';return;}
+  box.innerHTML=list.map(d=>{const rem=Number(d.total_amount||0)-Number(d.paid||0);const settled=d.status==='settled'||rem<=0;
+    return `<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14.5px">${en[d.employee_id]||'—'}</b><span class="pill ${settled?'ok':'susp'}">${settled?'مسدّدة':'متبقّي '+fmt(rem)+' ﷼'}</span></div>
+      <small style="color:var(--muted);display:block;margin-top:3px">${d.category?d.category+' · ':''}${d.reason||''}</small>
+      <table class="tbl" style="margin-top:8px"><tbody>
+        <tr><td>المبلغ الكامل</td><td style="text-align:left">${fmt(d.total_amount)}</td></tr>
+        <tr><td>القسط الشهري</td><td style="text-align:left">${fmt(d.installment)}</td></tr>
+        <tr><td>المسدَّد</td><td style="text-align:left;color:var(--ok)">${fmt(d.paid)}</td></tr>
+        <tr><td style="font-weight:800">المتبقّي</td><td style="text-align:left;font-weight:800;color:${settled?'var(--green)':'var(--bad)'}">${fmt(rem)} ﷼</td></tr>
+      </tbody></table>
+      <div class="row" style="margin-top:8px;gap:10px"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button>${settled?'':`<button class="link" onclick="payDue('${d.id}')">تسديد قسط الآن</button>`}</div></div>`;}).join('');
+}
+function openDue(d){
+  const opts=DUES_EMPS.map(e=>`<option value="${e.id}" ${d&&d.employee_id===e.id?'selected':''}>${e.name}</option>`).join('');
+  const cats=['مخالفة مرورية','غياب','سلفة','تلف عهدة','أخرى'];
+  openModal(`<h3 style="margin-bottom:14px">${d?'تعديل ذمة':'ذمة جديدة'}</h3>
+    <div class="field"><label>الموظف</label><select id="du_emp">${opts}</select></div>
+    <div class="field"><label>النوع</label><select id="du_cat">${cats.map(c=>`<option ${d&&d.category===c?'selected':''}>${c}</option>`).join('')}</select></div>
+    <div class="field"><label>السبب / البيان</label><input id="du_reason" value="${d?(d.reason||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: مخالفة تجاوز سرعة"></div>
+    <div class="row"><div class="field"><label>المبلغ الكامل (﷼)</label><input id="du_total" type="number" inputmode="decimal" value="${d?d.total_amount:''}"></div><div class="field"><label>القسط الشهري (﷼)</label><input id="du_install" type="number" inputmode="decimal" value="${d?d.installment:''}"></div></div>
+    <div class="hint" style="margin:2px 0 10px">لخصمها كاملة المرة الجاية: اجعل القسط = المبلغ الكامل. اتركه فارغًا = يُخصم كامل دفعة واحدة.</div>
+    <div class="field"><label>المسدَّد سابقًا (﷼)</label><input id="du_paid" type="number" inputmode="decimal" value="${d?(d.paid||0):0}"></div>
+    <button class="btn" id="duSave" onclick="saveDue('${d?d.id:''}')">حفظ</button>
+    ${d?`<button class="btn danger" style="margin-top:9px" onclick="delDue('${d.id}')">حذف</button>`:''}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+}
+async function saveDue(id){const g=x=>document.getElementById(x).value;const total=parseFloat(g('du_total'))||0;if(!total){toast('أدخل المبلغ الكامل');return;}
+  let install=parseFloat(g('du_install'))||0;if(install<=0)install=total;const paid=parseFloat(g('du_paid'))||0;
+  const rec={employee_id:g('du_emp'),category:g('du_cat'),reason:g('du_reason').trim(),total_amount:total,installment:install,paid,status:paid>=total?'settled':'active'};
+  const btn=document.getElementById('duSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('employee_dues').update(rec).eq('id',id);if(error)throw error;}
+    else{const{error}=await sb.from('employee_dues').insert(rec);if(error)throw error;}
+    closeModal();toast('تم الحفظ ✓');loadDues();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
+async function payDue(id){const{data:d}=await sb.from('employee_dues').select('*').eq('id',id).single();if(!d)return;
+  const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0)||rem,rem));if(pay<=0){toast('مسدّدة بالكامل');return;}
+  const np=Number(d.paid||0)+pay;const{error}=await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',id);
+  if(error){toast('خطأ: '+error.message);return;}toast('تم تسديد قسط '+fmt(pay)+' ﷼');loadDues();}
+async function delDue(id){const{error}=await sb.from('employee_dues').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadDues();}
 let leafMap=null;
 async function loadAttAdmin(){
   const di=document.getElementById('att_date_admin');if(di&&!di.value)di.value=todayKey();const date=di?di.value:todayKey();
