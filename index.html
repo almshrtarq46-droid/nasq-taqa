@@ -276,7 +276,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div style="display:flex;gap:8px;margin:10px 0"><button class="btn" style="flex:1" onclick="savePayroll()">💾 اعتماد وحفظ كشف الشهر</button><button class="btn copper sm" style="flex:1" onclick="exportPayroll()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportPayrollPdf()">📄 PDF</button></div>
         <div id="payList"></div></div>
       <div id="hr_dues" class="hrbox" style="display:none">
-        <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري يُخصم من الراتب. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
+        <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري. الأقساط تُخصم <b>تلقائيًا من الراتب فقط</b> عند اعتماد كشف رواتب الشهر. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
         <div style="display:flex;gap:8px;margin:11px 0"><button class="btn" style="flex:1" onclick="openDue()">+ إضافة ذمة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('employee_dues','ذمم الموظفين',d=>(d.category||'')+' — '+fmt(d.total_amount)+' ﷼')">🗑 المحذوفات</button></div>
         <div id="duesList"></div></div>
     </div>
@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='88';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='89';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1311,7 +1311,7 @@ async function loadDues(){
       <td style="${TD};color:var(--ok)">${fmt(d.paid)}</td>
       <td style="${TD};font-weight:800;color:${settled?'var(--green)':'var(--bad)'}">${fmt(rem)}</td>
       <td style="${TD}"><span class="pill ${settled?'ok':'susp'}" style="font-size:10px">${settled?'مسدّدة':'نشطة'}</span></td>
-      <td style="${TD}"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button>${settled?'':`<br><button class="link" onclick="payDue('${d.id}')">تسديد قسط</button>`}</td></tr>`;}).join('');
+      <td style="${TD}"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button></td></tr>`;}).join('');
   box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
     <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">التصنيف</th><th style="${TH}">المبلغ الكامل</th><th style="${TH}">القسط</th><th style="${TH}">المسدَّد</th><th style="${TH}">المتبقّي</th><th style="${TH}">الحالة</th><th style="${TH}"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
