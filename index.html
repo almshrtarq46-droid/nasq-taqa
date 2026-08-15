@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='89';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='90';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1091,7 +1091,7 @@ function _pOtHr(b){return (Number(b)||0)/240*1.5;}
 function _pCalc(r){const b=Number(r.base)||0;const daily=_pDaily(b),lateHr=_pLateHr(b),otHr=_pOtHr(b);
   const absDed=(r.absent||0)*daily,lateDed=(r.lateH||0)*lateHr,otVal=r.saudi?0:(r.otH||0)*otHr;
   const gross=b+(r.housing||0)+(r.transport||0)+otVal;
-  const totalDed=(r.deductions||0)+(r.duesInstall||0);
+  const totalDed=(r.deductions||0)+(r.duesDeduct||0);
   const net=r.saudi?(gross-totalDed):(gross-totalDed-absDed-lateDed);
   return {daily,lateHr,otHr,absDed,lateDed,otVal,gross,totalDed,net};}
 async function loadPayroll(){
@@ -1106,7 +1106,7 @@ async function loadPayroll(){
   const duesByEmp={};(dues||[]).filter(x=>!x.deleted_at).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
   const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
   const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
-  PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];
+  PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];const activeRem=dl.reduce((s,d)=>s+Math.max(0,Number(d.total_amount||0)-Number(d.paid||0)),0);
     return {emp:e,saudi:_isSaudi(e),iban:e.iban||'',
       base:slip?Number(slip.base||0):Number(e.monthly_salary||0),
       housing:slip?Number(slip.housing||0):Number(e.housing_allowance||0),
@@ -1117,7 +1117,8 @@ async function loadPayroll(){
       deductions:slip?Number(slip.deductions||0):0,
       reason:slip?(slip.deduction_reason||''):'',
       rejeeh:slip?Number(slip.rejeeh||0):0,
-      duesInstall:slip?Number(slip.dues_ded||0):dl.reduce((s,d)=>s+Math.max(0,Math.min(Number(d.installment||0),Number(d.total_amount||0)-Number(d.paid||0))),0),
+      duesTotal:activeRem,
+      duesDeduct:slip?Number(slip.dues_ded||0):Math.min(dl.reduce((s,d)=>s+Number(d.installment||0),0),activeRem),
       duesList:dl,posted:!!slip};});
   renderPayroll();
 }
@@ -1135,15 +1136,17 @@ function renderPayroll(){
       <td style="${TD};color:var(--ok)">${fmt(allow+c.otVal)}</td>
       <td style="${TD};color:var(--bad)">${fmt(ded)}</td>
       <td style="${TD};font-weight:800;color:var(--green)">${fmt(c.net)}</td>
+      <td style="${TD};font-weight:700;color:var(--copper)">${r.duesTotal>0?fmt(r.duesTotal):'—'}</td>
       <td style="${TD}"><button class="link" onclick="event.stopPropagation();openPaySlip(${i})">تعديل</button></td></tr>`;}).join('');
   box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
-    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">الأساسي</th><th style="${TH}">الاستحقاقات</th><th style="${TH}">الخصومات</th><th style="${TH}">الصافي</th><th style="${TH}"></th></tr></thead>
+    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">الأساسي</th><th style="${TH}">الاستحقاقات</th><th style="${TH}">الخصومات</th><th style="${TH}">الصافي</th><th style="${TH}">ذمم مستحقة</th><th style="${TH}"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     <div class="card" style="padding:13px;margin-top:11px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span>${fmt(totNet)} ﷼</span></div></div>
     <div class="hint" style="margin-top:8px">اضغط على أي موظف لتعديل تفاصيل راتبه.</div>`;
 }
 function paySet(i,f,v){PAY_ROWS[i][f]=parseFloat(v)||0;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
 function paySetText(i,f,v){PAY_ROWS[i][f]=v;}
+function paySetDues(i,el){let v=parseFloat(el.value)||0;const mx=PAY_ROWS[i].duesTotal||0;if(v>mx){v=mx;el.value=mx;}if(v<0){v=0;el.value=0;}PAY_ROWS[i].duesDeduct=v;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
 function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
   const inp='width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px';
   openModal(`<h3 style="margin-bottom:2px">${r.emp.name||'—'}</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${sa?'سعودي':'مقيم'} · كشف ${PAY_PERIOD}</small>
@@ -1155,7 +1158,7 @@ function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
       <div class="field"><label>ساعات أوفر تايم</label><input type="number" inputmode="decimal" value="${r.otH||''}" oninput="paySet(${i},'otH',this.value)" style="${inp}"></div></div>`}
     <div class="field"><label>الخصومات اليدوية (سلف/مخالفات)</label><input type="number" inputmode="decimal" value="${r.deductions||''}" oninput="paySet(${i},'deductions',this.value)" style="${inp}"></div>
     <div class="field"><label>سبب الخصومات</label><input value="${(r.reason||'').replace(/"/g,'&quot;')}" oninput="paySetText(${i},'reason',this.value)" style="${inp}" placeholder="مثال: سلفة + مخالفة"></div>
-    ${r.duesInstall?`<div class="hint">قسط الذمم المستحق هذا الشهر: −${fmt(r.duesInstall)} ﷼ (يُخصم تلقائيًا)</div>`:''}
+    ${r.duesTotal>0?`<div class="card" style="padding:12px;background:#f6ecdf;box-shadow:none;margin-bottom:2px"><div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px"><span style="color:var(--copper)">إجمالي الذمم المستحقة</span><span style="color:var(--copper)">${fmt(r.duesTotal)} ﷼</span></div><label style="font-size:12.5px;color:var(--muted)">خصم من الذمم هذا الشهر</label><input type="number" inputmode="decimal" value="${r.duesDeduct||''}" oninput="paySetDues(${i},this)" style="${inp}"><div class="hint" style="margin-top:6px">يُخصم من المبلغ ويُنقص المتبقّي تلقائيًا عند اعتماد الكشف.</div></div>`:''}
     <div class="card" style="margin-top:10px;padding:12px;background:#eef6f2;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>الصافي</span><span id="pmNet" style="color:var(--green)">${fmt(c.net)} ﷼</span></div></div>
     <button class="btn" style="margin-top:12px" onclick="renderPayroll();closeModal()">تم</button>`);
 }
@@ -1166,11 +1169,12 @@ async function savePayroll(){
     const rec={employee_id:e.id,period:PAY_PERIOD,base:r.base,housing:r.housing,transport:r.transport,
       absent_days:r.absent,absence_ded:c.absDed,late_hours:r.lateH,late_ded:c.lateDed,
       overtime_hours:r.otH,overtime:c.otVal,deductions:r.deductions,deduction_reason:r.reason,other_ded:r.deductions,
-      dues_ded:r.duesInstall,rejeeh:r.rejeeh,net:c.net};
+      dues_ded:Math.max(0,Math.min(r.duesDeduct||0,r.duesTotal||0)),rejeeh:r.rejeeh,net:c.net};
     const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
     const upd={};if(Number(e.monthly_salary||0)!==r.base)upd.monthly_salary=r.base;if(Number(e.housing_allowance||0)!==r.housing)upd.housing_allowance=r.housing;if(Number(e.transport_allowance||0)!==r.transport)upd.transport_allowance=r.transport;
     if(Object.keys(upd).length){try{await sb.from('employees').update(upd).eq('id',e.id);Object.assign(e,upd);}catch(_){}}
-    if(!r.posted){for(const d of (r.duesList||[])){const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0),rem));if(pay>0){const np=Number(d.paid||0)+pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}}
+    if(!r.posted){let amt=Math.max(0,Math.min(r.duesDeduct||0,r.duesTotal||0));const sorted=(r.duesList||[]).slice().sort((a,b)=>(a.created_at||'')<(b.created_at||'')?-1:1);
+      for(const d of sorted){if(amt<=0)break;const rem=Number(d.total_amount||0)-Number(d.paid||0);if(rem<=0)continue;const pay=Math.min(amt,rem);const np=Number(d.paid||0)+pay;amt-=pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}
   }
   toast('تم اعتماد وحفظ كشف '+PAY_PERIOD+' ✓');loadPayroll();
   }catch(e){toast('خطأ: '+e.message);}
