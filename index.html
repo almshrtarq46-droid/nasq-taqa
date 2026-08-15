@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='84';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='85';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1096,7 +1096,7 @@ async function loadPayroll(){
   const duesByEmp={};(dues||[]).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
   const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
   const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
-  PAY_ROWS=list.map(e=>{const salary=Number(e.monthly_salary||0);const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];
+  PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];const salary=slip?Number(slip.base||0):Number(e.monthly_salary||0);
     return {emp:e,salary,
       lateH:slip?Number(slip.late_hours||0):(penByUser[e.user_id]||0),
       absent:slip?Number(slip.absent_days||0):0,
@@ -1108,6 +1108,7 @@ async function loadPayroll(){
 }
 function payEdit(i,field,val){PAY_ROWS[i][field]=parseFloat(val)||0;const r=PAY_ROWS[i];
   const g=id=>document.getElementById(id+i);
+  if(g('paybase'))g('paybase').textContent=fmt(r.salary);
   if(g('payabsded'))g('payabsded').textContent='− '+fmt(r.absent*_payDay(r.salary));
   if(g('paylateded'))g('paylateded').textContent='− '+fmt(r.lateH*_payHour(r.salary));
   const net=_payNet(r);if(g('paynet'))g('paynet').textContent=fmt(net)+' ﷼';if(g('paynet2'))g('paynet2').textContent=fmt(net)+' ﷼';
@@ -1120,7 +1121,7 @@ function renderPayroll(){
     return `<div class="card" style="padding:13px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">${e.name||'—'}${r.posted?' <span class="pill ok" style="font-size:10px">محفوظ</span>':''}</b><div class="pill role" id="paynet${i}">${fmt(net)} ﷼</div></div>
       <table class="tbl"><tbody>
-        <tr><td>الراتب الأساسي</td><td style="text-align:left">${fmt(r.salary)}</td></tr>
+        <tr><td>الراتب الأساسي <input type="number" inputmode="decimal" value="${r.salary||''}" oninput="payEdit(${i},'salary',this.value)" style="${inp}"></td><td style="text-align:left" id="paybase${i}">${fmt(r.salary)}</td></tr>
         <tr><td>أيام الغياب <input type="number" inputmode="decimal" value="${r.absent||''}" oninput="payEdit(${i},'absent',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="payabsded${i}">− ${fmt(r.absent*_payDay(r.salary))}</td></tr>
         <tr><td>ساعات التأخير <input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="payEdit(${i},'lateH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="paylateded${i}">− ${fmt(r.lateH*_payHour(r.salary))}</td></tr>
         <tr><td>قسط الذمم${r.duesList&&r.duesList.length?' ('+r.duesList.length+')':''}</td><td style="text-align:left;color:var(--bad)">− ${fmt(r.duesInstall)}</td></tr>
@@ -1136,6 +1137,7 @@ async function savePayroll(){
   try{for(const r of PAY_ROWS){const e=r.emp;const absDed=r.absent*_payDay(r.salary),lateDed=r.lateH*_payHour(r.salary);
     const rec={employee_id:e.id,period:PAY_PERIOD,base:r.salary,absent_days:r.absent,absence_ded:absDed,late_hours:r.lateH,late_ded:lateDed,overtime:r.overtime,other_ded:r.other,dues_ded:r.duesInstall,net:_payNet(r)};
     const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
+    if(Number(e.monthly_salary||0)!==r.salary){try{await sb.from('employees').update({monthly_salary:r.salary}).eq('id',e.id);e.monthly_salary=r.salary;}catch(_){}}
     if(!r.posted){for(const d of (r.duesList||[])){const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0),rem));if(pay>0){const np=Number(d.paid||0)+pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}}
   }
   toast('تم اعتماد وحفظ كشف '+PAY_PERIOD+' ✓');loadPayroll();
