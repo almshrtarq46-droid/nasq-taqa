@@ -464,7 +464,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='100';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='101';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -473,7 +473,7 @@ function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach
 if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}
 /* auto-update: يفحص أحدث نسخة تلقائياً ويحدّث نفسه خلال ثوانٍ من نشر التحديث — بدون تحديث يدوي متكرر */
 async function _checkUpdate(){try{const base=location.origin+location.pathname;const res=await fetch(base+'?_ck='+Date.now(),{cache:'no-store'});const txt=await res.text();const m=txt.match(/APP_VER='(\d+)'/);
-  if(m&&Number(m[1])>Number(APP_VER)&&!sessionStorage.getItem('ck'+m[1])){sessionStorage.setItem('ck'+m[1],'1');location.replace(base+'?v='+m[1]+location.hash);return true;}
+  if(m&&Number(m[1])>Number(APP_VER)){const k='ck'+m[1];const last=Number(sessionStorage.getItem(k)||0);if(Date.now()-last>45000){sessionStorage.setItem(k,String(Date.now()));location.replace(base+'?v='+m[1]+location.hash);return true;}}
 }catch(e){}return false;}
 if(location.search){history.replaceState(null,'',location.pathname+location.hash);}
 _checkUpdate();
