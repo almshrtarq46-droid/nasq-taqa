@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='87';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='88';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1121,37 +1121,43 @@ async function loadPayroll(){
       duesList:dl,posted:!!slip};});
   renderPayroll();
 }
-function payEdit(i,field,val){PAY_ROWS[i][field]=parseFloat(val)||0;_payRefresh(i);}
-function payEditText(i,field,val){PAY_ROWS[i][field]=val;}
-function _payRefresh(i){const r=PAY_ROWS[i],c=_pCalc(r),g=id=>document.getElementById(id+i);
-  if(g('paybase'))g('paybase').textContent=fmt(r.base);
-  if(g('absded'))g('absded').textContent='− '+fmt(c.absDed);
-  if(g('lateded'))g('lateded').textContent='− '+fmt(c.lateDed);
-  if(g('otval'))g('otval').textContent='+ '+fmt(c.otVal);
-  if(g('paynet'))g('paynet').textContent=fmt(c.net)+' ﷼';if(g('paynet2'))g('paynet2').textContent=fmt(c.net)+' ﷼';
-  const t=document.getElementById('payTotal');if(t)t.textContent=fmt(PAY_ROWS.reduce((s,x)=>s+_pCalc(x).net,0))+' ﷼';}
+const _TBLTH='padding:9px 8px;border:1px solid #0d5c44;background:#0f6b4f;color:#fff;font-weight:700;font-size:12px;white-space:nowrap;text-align:center';
+const _TBLTD='padding:8px;border:1px solid #dfe7e3;font-size:12.5px;text-align:center;white-space:nowrap';
 function renderPayroll(){
   const box=document.getElementById('payList');
   if(!PAY_ROWS.length){box.innerHTML='<div class="empty">لا يوجد موظفون — أضف رواتبهم في «بيانات الموظفين»</div>';return;}
-  const inp='width:66px;padding:4px 6px;text-align:center;border:1px solid var(--line);border-radius:8px;font-size:13px';
-  const tinp='width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px';
-  box.innerHTML=PAY_ROWS.map((r,i)=>{const e=r.emp,c=_pCalc(r),sa=r.saudi;
-    return `<div class="card" style="padding:13px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">${e.name||'—'} <span class="pill role" style="font-size:10px">${sa?'سعودي':'مقيم'}</span>${r.posted?' <span class="pill ok" style="font-size:10px">محفوظ</span>':''}</b><div class="pill role" id="paynet${i}">${fmt(c.net)} ﷼</div></div>
-      <table class="tbl"><tbody>
-        <tr><td>الراتب الأساسي <input type="number" inputmode="decimal" value="${r.base||''}" oninput="payEdit(${i},'base',this.value)" style="${inp}"></td><td style="text-align:left" id="paybase${i}">${fmt(r.base)}</td></tr>
-        <tr><td>بدل سكن <input type="number" inputmode="decimal" value="${r.housing||''}" oninput="payEdit(${i},'housing',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)">+</td></tr>
-        <tr><td>بدل نقل <input type="number" inputmode="decimal" value="${r.transport||''}" oninput="payEdit(${i},'transport',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)">+</td></tr>
-        ${sa?'':`<tr><td>أيام الغياب <input type="number" inputmode="decimal" value="${r.absent||''}" oninput="payEdit(${i},'absent',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="absded${i}">− ${fmt(c.absDed)}</td></tr>
-        <tr><td>ساعات التأخير <input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="payEdit(${i},'lateH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="lateded${i}">− ${fmt(c.lateDed)}</td></tr>
-        <tr><td>ساعات أوفر تايم <input type="number" inputmode="decimal" value="${r.otH||''}" oninput="payEdit(${i},'otH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)" id="otval${i}">+ ${fmt(c.otVal)}</td></tr>`}
-        ${r.duesInstall?`<tr><td>قسط الذمم${r.duesList&&r.duesList.length?' ('+r.duesList.length+')':''}</td><td style="text-align:left;color:var(--bad)">− ${fmt(r.duesInstall)}</td></tr>`:''}
-        <tr><td>الخصومات <input type="number" inputmode="decimal" value="${r.deductions||''}" oninput="payEdit(${i},'deductions',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)">−</td></tr>
-        <tr><td colspan="2">سبب الخصومات <input value="${(r.reason||'').replace(/"/g,'&quot;')}" oninput="payEditText(${i},'reason',this.value)" style="${tinp}" placeholder="مثال: سلفة + مخالفة"></td></tr>
-        ${sa?`<tr><td>الرجيع <input type="number" inputmode="decimal" value="${r.rejeeh||''}" oninput="payEdit(${i},'rejeeh',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--muted)">يُرجع للشركة</td></tr>`:''}
-        <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:var(--green)" id="paynet2${i}">${fmt(c.net)} ﷼</td></tr>
-      </tbody></table></div>`;}).join('')+
-    `<div class="card" style="padding:14px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span id="payTotal">${fmt(PAY_ROWS.reduce((s,r)=>s+_pCalc(r).net,0))} ﷼</span></div></div>`;
+  const TH=_TBLTH,TD=_TBLTD;let totNet=0;
+  const rows=PAY_ROWS.map((r,i)=>{const c=_pCalc(r);totNet+=c.net;const allow=(r.housing||0)+(r.transport||0);const ded=c.totalDed+c.absDed+c.lateDed;
+    return `<tr onclick="openPaySlip(${i})" style="cursor:pointer">
+      <td style="${TD}">${i+1}</td>
+      <td style="${TD};font-weight:700">${r.emp.name||'—'} <span class="pill role" style="font-size:9px">${r.saudi?'سعودي':'مقيم'}</span>${r.posted?' <span class="pill ok" style="font-size:9px">محفوظ</span>':''}</td>
+      <td style="${TD}">${fmt(r.base)}</td>
+      <td style="${TD};color:var(--ok)">${fmt(allow+c.otVal)}</td>
+      <td style="${TD};color:var(--bad)">${fmt(ded)}</td>
+      <td style="${TD};font-weight:800;color:var(--green)">${fmt(c.net)}</td>
+      <td style="${TD}"><button class="link" onclick="event.stopPropagation();openPaySlip(${i})">تعديل</button></td></tr>`;}).join('');
+  box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
+    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">الأساسي</th><th style="${TH}">الاستحقاقات</th><th style="${TH}">الخصومات</th><th style="${TH}">الصافي</th><th style="${TH}"></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="card" style="padding:13px;margin-top:11px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span>${fmt(totNet)} ﷼</span></div></div>
+    <div class="hint" style="margin-top:8px">اضغط على أي موظف لتعديل تفاصيل راتبه.</div>`;
+}
+function paySet(i,f,v){PAY_ROWS[i][f]=parseFloat(v)||0;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
+function paySetText(i,f,v){PAY_ROWS[i][f]=v;}
+function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
+  const inp='width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px';
+  openModal(`<h3 style="margin-bottom:2px">${r.emp.name||'—'}</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${sa?'سعودي':'مقيم'} · كشف ${PAY_PERIOD}</small>
+    <div class="row"><div class="field"><label>الراتب الأساسي</label><input type="number" inputmode="decimal" value="${r.base||''}" oninput="paySet(${i},'base',this.value)" style="${inp}"></div>
+      <div class="field"><label>بدل سكن</label><input type="number" inputmode="decimal" value="${r.housing||''}" oninput="paySet(${i},'housing',this.value)" style="${inp}"></div></div>
+    <div class="row"><div class="field"><label>بدل نقل</label><input type="number" inputmode="decimal" value="${r.transport||''}" oninput="paySet(${i},'transport',this.value)" style="${inp}"></div>
+      ${sa?`<div class="field"><label>الرجيع (يُرجع للشركة)</label><input type="number" inputmode="decimal" value="${r.rejeeh||''}" oninput="paySet(${i},'rejeeh',this.value)" style="${inp}"></div>`:`<div class="field"><label>أيام الغياب</label><input type="number" inputmode="decimal" value="${r.absent||''}" oninput="paySet(${i},'absent',this.value)" style="${inp}"></div>`}</div>
+    ${sa?'':`<div class="row"><div class="field"><label>ساعات التأخير</label><input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="paySet(${i},'lateH',this.value)" style="${inp}"></div>
+      <div class="field"><label>ساعات أوفر تايم</label><input type="number" inputmode="decimal" value="${r.otH||''}" oninput="paySet(${i},'otH',this.value)" style="${inp}"></div></div>`}
+    <div class="field"><label>الخصومات اليدوية (سلف/مخالفات)</label><input type="number" inputmode="decimal" value="${r.deductions||''}" oninput="paySet(${i},'deductions',this.value)" style="${inp}"></div>
+    <div class="field"><label>سبب الخصومات</label><input value="${(r.reason||'').replace(/"/g,'&quot;')}" oninput="paySetText(${i},'reason',this.value)" style="${inp}" placeholder="مثال: سلفة + مخالفة"></div>
+    ${r.duesInstall?`<div class="hint">قسط الذمم المستحق هذا الشهر: −${fmt(r.duesInstall)} ﷼ (يُخصم تلقائيًا)</div>`:''}
+    <div class="card" style="margin-top:10px;padding:12px;background:#eef6f2;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>الصافي</span><span id="pmNet" style="color:var(--green)">${fmt(c.net)} ﷼</span></div></div>
+    <button class="btn" style="margin-top:12px" onclick="renderPayroll();closeModal()">تم</button>`);
 }
 async function savePayroll(){
   if(!PAY_ROWS.length){toast('لا بيانات');return;}
@@ -1294,16 +1300,22 @@ async function loadDues(){
   const en={};DUES_EMPS.forEach(e=>en[e.id]=e.name);
   const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const list=(data||[]).filter(x=>!x.deleted_at);
   if(!list.length){box.innerHTML='<div class="empty">لا ذمم مسجّلة — أضف أول ذمة</div>';return;}
-  box.innerHTML=list.map(d=>{const rem=Number(d.total_amount||0)-Number(d.paid||0);const settled=d.status==='settled'||rem<=0;
-    return `<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14.5px">${en[d.employee_id]||'—'}</b><span class="pill ${settled?'ok':'susp'}">${settled?'مسدّدة':'متبقّي '+fmt(rem)+' ﷼'}</span></div>
-      <small style="color:var(--muted);display:block;margin-top:3px">${d.category?d.category+' · ':''}${d.reason||''}</small>
-      <table class="tbl" style="margin-top:8px"><tbody>
-        <tr><td>المبلغ الكامل</td><td style="text-align:left">${fmt(d.total_amount)}</td></tr>
-        <tr><td>القسط الشهري</td><td style="text-align:left">${fmt(d.installment)}</td></tr>
-        <tr><td>المسدَّد</td><td style="text-align:left;color:var(--ok)">${fmt(d.paid)}</td></tr>
-        <tr><td style="font-weight:800">المتبقّي</td><td style="text-align:left;font-weight:800;color:${settled?'var(--green)':'var(--bad)'}">${fmt(rem)} ﷼</td></tr>
-      </tbody></table>
-      <div class="row" style="margin-top:8px;gap:10px"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button>${settled?'':`<button class="link" onclick="payDue('${d.id}')">تسديد قسط الآن</button>`}</div></div>`;}).join('');
+  const TH=_TBLTH,TD=_TBLTD;let totRem=0;
+  const rows=list.map((d,i)=>{const rem=Number(d.total_amount||0)-Number(d.paid||0);const settled=d.status==='settled'||rem<=0;if(!settled)totRem+=rem;
+    return `<tr>
+      <td style="${TD}">${i+1}</td>
+      <td style="${TD};font-weight:700">${en[d.employee_id]||'—'}</td>
+      <td style="${TD}">${d.category||''}</td>
+      <td style="${TD}">${fmt(d.total_amount)}</td>
+      <td style="${TD}">${fmt(d.installment)}</td>
+      <td style="${TD};color:var(--ok)">${fmt(d.paid)}</td>
+      <td style="${TD};font-weight:800;color:${settled?'var(--green)':'var(--bad)'}">${fmt(rem)}</td>
+      <td style="${TD}"><span class="pill ${settled?'ok':'susp'}" style="font-size:10px">${settled?'مسدّدة':'نشطة'}</span></td>
+      <td style="${TD}"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button>${settled?'':`<br><button class="link" onclick="payDue('${d.id}')">تسديد قسط</button>`}</td></tr>`;}).join('');
+  box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
+    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">التصنيف</th><th style="${TH}">المبلغ الكامل</th><th style="${TH}">القسط</th><th style="${TH}">المسدَّد</th><th style="${TH}">المتبقّي</th><th style="${TH}">الحالة</th><th style="${TH}"></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>
+    <div class="card" style="padding:13px;margin-top:11px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي المتبقّي على الموظفين</span><span style="color:var(--bad)">${fmt(totRem)} ﷼</span></div></div>`;
 }
 function openDue(d){
   const opts=DUES_EMPS.map(e=>`<option value="${e.id}" ${d&&d.employee_id===e.id?'selected':''}>${e.name}</option>`).join('');
