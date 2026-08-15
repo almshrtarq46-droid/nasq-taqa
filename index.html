@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='85';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='86';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -836,6 +836,9 @@ function openEmployee(e){
     <div class="field"><label id="em_idlabel">رقم الإقامة</label><input id="em_iqama" inputmode="numeric" value="${e?(e.iqama_number||''):''}"></div>
     <div class="row"><div class="field"><label>الراتب الشهري (﷼)</label><input id="em_salary" type="number" inputmode="decimal" value="${e?(e.monthly_salary||''):''}"></div>
       <div class="field"><label>خصم التأخير</label><label class="chk" style="display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;font-size:13.5px"><input type="checkbox" id="em_late" ${e&&e.late_deduction?'checked':''} style="width:18px;height:18px;accent-color:var(--brand)"> يخضع لخصم التأخير</label></div></div>
+    <div class="row"><div class="field"><label>بدل سكن (﷼)</label><input id="em_housing" type="number" inputmode="decimal" value="${e?(e.housing_allowance||''):''}"></div>
+      <div class="field"><label>بدل نقل (﷼)</label><input id="em_transport" type="number" inputmode="decimal" value="${e?(e.transport_allowance||''):''}"></div></div>
+    <div class="field"><label>رقم الإيبان (IBAN)</label><input id="em_iban" value="${e?(e.iban||''):''}" placeholder="SA.........................."></div>
     <div id="em_resFields"><div class="row"><div class="field"><label>انتهاء الإقامة</label><input id="em_iqexp" type="date" value="${e?(e.iqama_expiry||''):''}"></div><div class="field"><label>انتهاء رخصة العمل</label><input id="em_wpexp" type="date" value="${e?(e.work_permit_expiry||''):''}"></div></div></div>
     <div class="row"><div class="field"><label>انتهاء التأمين الطبي</label><input id="em_medexp" type="date" value="${e?(e.medical_expiry||''):''}"></div><div class="field"><label>انتهاء عقد العمل</label><input id="em_ctexp" type="date" value="${e?(e.contract_expiry||''):''}"></div></div>
     <div class="field"><label>ربط بحساب دخول (اختياري)</label><select id="em_user">${opts}</select></div>
@@ -851,7 +854,8 @@ async function saveEmployee(id){
   const rec={seq:parseInt(g('em_seq'))||null,name,nationality:g('em_nat').trim(),iqama_number:g('em_iqama').trim(),
     iqama_expiry:sa?null:(g('em_iqexp')||null),work_permit_expiry:sa?null:(g('em_wpexp')||null),medical_expiry:g('em_medexp')||null,contract_expiry:g('em_ctexp')||null,
     user_id:g('em_user')||null,notes:g('em_notes').trim(),
-    monthly_salary:parseFloat(g('em_salary'))||0,late_deduction:document.getElementById('em_late').checked};
+    monthly_salary:parseFloat(g('em_salary'))||0,late_deduction:document.getElementById('em_late').checked,
+    housing_allowance:parseFloat(g('em_housing'))||0,transport_allowance:parseFloat(g('em_transport'))||0,iban:g('em_iban').trim()};
   const btn=document.getElementById('emSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{if(id){const{error}=await sb.from('employees').update(rec).eq('id',id);if(error)throw error;}
     else{rec.created_by=ME.id;const{error}=await sb.from('employees').insert(rec);if(error)throw error;}
@@ -1078,12 +1082,18 @@ function exportPayrollOLD(){const rows=window._payRows||[];if(!rows.length){toas
   aoa.push([],['','','','','','الإجمالي',rows.reduce((s,r)=>s+r.net,0)]);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:18},{wch:11},{wch:12},{wch:12},{wch:14},{wch:13},{wch:12}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الرواتب');XLSX.writeFile(wb,'رواتب_'+monthKey()+'.xlsx');toast('تم التصدير ✓');}
-/* ===== الرواتب (راتب شهري ثابت) ===== */
+/* ===== الرواتب — مطابق للقالب (ملخص + سعوديين + مقيمين) ===== */
 let PAY_ROWS=[],PAY_PERIOD='',DUES_EMPS=[];
 function _payMonth(){const m=document.getElementById('pay_month');if(m&&!m.value)m.value=monthKey();return (m&&m.value)||monthKey();}
-function _payDay(s){return (Number(s)||0)/30;}
-function _payHour(s){return (Number(s)||0)/240;}
-function _payNet(r){return r.salary - r.absent*_payDay(r.salary) - r.lateH*_payHour(r.salary) - r.other - r.duesInstall + r.overtime;}
+function _pDaily(b){return (Number(b)||0)/30;}
+function _pLateHr(b){return (Number(b)||0)/240;}
+function _pOtHr(b){return (Number(b)||0)/240*1.5;}
+function _pCalc(r){const b=Number(r.base)||0;const daily=_pDaily(b),lateHr=_pLateHr(b),otHr=_pOtHr(b);
+  const absDed=(r.absent||0)*daily,lateDed=(r.lateH||0)*lateHr,otVal=r.saudi?0:(r.otH||0)*otHr;
+  const gross=b+(r.housing||0)+(r.transport||0)+otVal;
+  const totalDed=(r.deductions||0)+(r.duesInstall||0);
+  const net=r.saudi?(gross-totalDed):(gross-totalDed-absDed-lateDed);
+  return {daily,lateHr,otHr,absDed,lateDed,otVal,gross,totalDed,net};}
 async function loadPayroll(){
   const period=_payMonth();PAY_PERIOD=period;
   const box=document.getElementById('payList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
@@ -1096,97 +1106,169 @@ async function loadPayroll(){
   const duesByEmp={};(dues||[]).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
   const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
   const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
-  PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];const salary=slip?Number(slip.base||0):Number(e.monthly_salary||0);
-    return {emp:e,salary,
-      lateH:slip?Number(slip.late_hours||0):(penByUser[e.user_id]||0),
+  PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];
+    return {emp:e,saudi:_isSaudi(e),iban:e.iban||'',
+      base:slip?Number(slip.base||0):Number(e.monthly_salary||0),
+      housing:slip?Number(slip.housing||0):Number(e.housing_allowance||0),
+      transport:slip?Number(slip.transport||0):Number(e.transport_allowance||0),
       absent:slip?Number(slip.absent_days||0):0,
-      overtime:slip?Number(slip.overtime||0):0,
-      other:slip?Number(slip.other_ded||0):0,
+      lateH:slip?Number(slip.late_hours||0):(penByUser[e.user_id]||0),
+      otH:slip?Number(slip.overtime_hours||0):0,
+      deductions:slip?Number(slip.deductions||0):0,
+      reason:slip?(slip.deduction_reason||''):'',
+      rejeeh:slip?Number(slip.rejeeh||0):0,
       duesInstall:slip?Number(slip.dues_ded||0):dl.reduce((s,d)=>s+Math.max(0,Math.min(Number(d.installment||0),Number(d.total_amount||0)-Number(d.paid||0))),0),
-      posted:!!slip,duesList:dl};});
+      duesList:dl,posted:!!slip};});
   renderPayroll();
 }
-function payEdit(i,field,val){PAY_ROWS[i][field]=parseFloat(val)||0;const r=PAY_ROWS[i];
-  const g=id=>document.getElementById(id+i);
-  if(g('paybase'))g('paybase').textContent=fmt(r.salary);
-  if(g('payabsded'))g('payabsded').textContent='− '+fmt(r.absent*_payDay(r.salary));
-  if(g('paylateded'))g('paylateded').textContent='− '+fmt(r.lateH*_payHour(r.salary));
-  const net=_payNet(r);if(g('paynet'))g('paynet').textContent=fmt(net)+' ﷼';if(g('paynet2'))g('paynet2').textContent=fmt(net)+' ﷼';
-  const t=document.getElementById('payTotal');if(t)t.textContent=fmt(PAY_ROWS.reduce((s,x)=>s+_payNet(x),0))+' ﷼';}
+function payEdit(i,field,val){PAY_ROWS[i][field]=parseFloat(val)||0;_payRefresh(i);}
+function payEditText(i,field,val){PAY_ROWS[i][field]=val;}
+function _payRefresh(i){const r=PAY_ROWS[i],c=_pCalc(r),g=id=>document.getElementById(id+i);
+  if(g('paybase'))g('paybase').textContent=fmt(r.base);
+  if(g('absded'))g('absded').textContent='− '+fmt(c.absDed);
+  if(g('lateded'))g('lateded').textContent='− '+fmt(c.lateDed);
+  if(g('otval'))g('otval').textContent='+ '+fmt(c.otVal);
+  if(g('paynet'))g('paynet').textContent=fmt(c.net)+' ﷼';if(g('paynet2'))g('paynet2').textContent=fmt(c.net)+' ﷼';
+  const t=document.getElementById('payTotal');if(t)t.textContent=fmt(PAY_ROWS.reduce((s,x)=>s+_pCalc(x).net,0))+' ﷼';}
 function renderPayroll(){
   const box=document.getElementById('payList');
   if(!PAY_ROWS.length){box.innerHTML='<div class="empty">لا يوجد موظفون — أضف رواتبهم في «بيانات الموظفين»</div>';return;}
-  const inp='width:60px;padding:4px 6px;text-align:center;border:1px solid var(--line);border-radius:8px;font-size:13px';
-  box.innerHTML=PAY_ROWS.map((r,i)=>{const e=r.emp;const net=_payNet(r);
+  const inp='width:66px;padding:4px 6px;text-align:center;border:1px solid var(--line);border-radius:8px;font-size:13px';
+  const tinp='width:100%;padding:5px 8px;border:1px solid var(--line);border-radius:8px;font-size:13px';
+  box.innerHTML=PAY_ROWS.map((r,i)=>{const e=r.emp,c=_pCalc(r),sa=r.saudi;
     return `<div class="card" style="padding:13px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">${e.name||'—'}${r.posted?' <span class="pill ok" style="font-size:10px">محفوظ</span>':''}</b><div class="pill role" id="paynet${i}">${fmt(net)} ﷼</div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">${e.name||'—'} <span class="pill role" style="font-size:10px">${sa?'سعودي':'مقيم'}</span>${r.posted?' <span class="pill ok" style="font-size:10px">محفوظ</span>':''}</b><div class="pill role" id="paynet${i}">${fmt(c.net)} ﷼</div></div>
       <table class="tbl"><tbody>
-        <tr><td>الراتب الأساسي <input type="number" inputmode="decimal" value="${r.salary||''}" oninput="payEdit(${i},'salary',this.value)" style="${inp}"></td><td style="text-align:left" id="paybase${i}">${fmt(r.salary)}</td></tr>
-        <tr><td>أيام الغياب <input type="number" inputmode="decimal" value="${r.absent||''}" oninput="payEdit(${i},'absent',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="payabsded${i}">− ${fmt(r.absent*_payDay(r.salary))}</td></tr>
-        <tr><td>ساعات التأخير <input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="payEdit(${i},'lateH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="paylateded${i}">− ${fmt(r.lateH*_payHour(r.salary))}</td></tr>
-        <tr><td>قسط الذمم${r.duesList&&r.duesList.length?' ('+r.duesList.length+')':''}</td><td style="text-align:left;color:var(--bad)">− ${fmt(r.duesInstall)}</td></tr>
-        <tr><td>خصومات أخرى <input type="number" inputmode="decimal" value="${r.other||''}" oninput="payEdit(${i},'other',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)"></td></tr>
-        <tr><td>أوفر تايم / إضافات <input type="number" inputmode="decimal" value="${r.overtime||''}" oninput="payEdit(${i},'overtime',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)"></td></tr>
-        <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:var(--green)" id="paynet2${i}">${fmt(net)} ﷼</td></tr>
+        <tr><td>الراتب الأساسي <input type="number" inputmode="decimal" value="${r.base||''}" oninput="payEdit(${i},'base',this.value)" style="${inp}"></td><td style="text-align:left" id="paybase${i}">${fmt(r.base)}</td></tr>
+        <tr><td>بدل سكن <input type="number" inputmode="decimal" value="${r.housing||''}" oninput="payEdit(${i},'housing',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)">+</td></tr>
+        <tr><td>بدل نقل <input type="number" inputmode="decimal" value="${r.transport||''}" oninput="payEdit(${i},'transport',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)">+</td></tr>
+        ${sa?'':`<tr><td>أيام الغياب <input type="number" inputmode="decimal" value="${r.absent||''}" oninput="payEdit(${i},'absent',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="absded${i}">− ${fmt(c.absDed)}</td></tr>
+        <tr><td>ساعات التأخير <input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="payEdit(${i},'lateH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)" id="lateded${i}">− ${fmt(c.lateDed)}</td></tr>
+        <tr><td>ساعات أوفر تايم <input type="number" inputmode="decimal" value="${r.otH||''}" oninput="payEdit(${i},'otH',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--ok)" id="otval${i}">+ ${fmt(c.otVal)}</td></tr>`}
+        ${r.duesInstall?`<tr><td>قسط الذمم${r.duesList&&r.duesList.length?' ('+r.duesList.length+')':''}</td><td style="text-align:left;color:var(--bad)">− ${fmt(r.duesInstall)}</td></tr>`:''}
+        <tr><td>الخصومات <input type="number" inputmode="decimal" value="${r.deductions||''}" oninput="payEdit(${i},'deductions',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--bad)">−</td></tr>
+        <tr><td colspan="2">سبب الخصومات <input value="${(r.reason||'').replace(/"/g,'&quot;')}" oninput="payEditText(${i},'reason',this.value)" style="${tinp}" placeholder="مثال: سلفة + مخالفة"></td></tr>
+        ${sa?`<tr><td>الرجيع <input type="number" inputmode="decimal" value="${r.rejeeh||''}" oninput="payEdit(${i},'rejeeh',this.value)" style="${inp}"></td><td style="text-align:left;color:var(--muted)">يُرجع للشركة</td></tr>`:''}
+        <tr><td style="font-weight:800">الصافي</td><td style="text-align:left;font-weight:800;color:var(--green)" id="paynet2${i}">${fmt(c.net)} ﷼</td></tr>
       </tbody></table></div>`;}).join('')+
-    `<div class="card" style="padding:14px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span id="payTotal">${fmt(PAY_ROWS.reduce((s,r)=>s+_payNet(r),0))} ﷼</span></div></div>`;
+    `<div class="card" style="padding:14px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span id="payTotal">${fmt(PAY_ROWS.reduce((s,r)=>s+_pCalc(r).net,0))} ﷼</span></div></div>`;
 }
 async function savePayroll(){
   if(!PAY_ROWS.length){toast('لا بيانات');return;}
   toast('جارٍ الحفظ…');
-  try{for(const r of PAY_ROWS){const e=r.emp;const absDed=r.absent*_payDay(r.salary),lateDed=r.lateH*_payHour(r.salary);
-    const rec={employee_id:e.id,period:PAY_PERIOD,base:r.salary,absent_days:r.absent,absence_ded:absDed,late_hours:r.lateH,late_ded:lateDed,overtime:r.overtime,other_ded:r.other,dues_ded:r.duesInstall,net:_payNet(r)};
+  try{for(const r of PAY_ROWS){const e=r.emp,c=_pCalc(r);
+    const rec={employee_id:e.id,period:PAY_PERIOD,base:r.base,housing:r.housing,transport:r.transport,
+      absent_days:r.absent,absence_ded:c.absDed,late_hours:r.lateH,late_ded:c.lateDed,
+      overtime_hours:r.otH,overtime:c.otVal,deductions:r.deductions,deduction_reason:r.reason,other_ded:r.deductions,
+      dues_ded:r.duesInstall,rejeeh:r.rejeeh,net:c.net};
     const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
-    if(Number(e.monthly_salary||0)!==r.salary){try{await sb.from('employees').update({monthly_salary:r.salary}).eq('id',e.id);e.monthly_salary=r.salary;}catch(_){}}
+    const upd={};if(Number(e.monthly_salary||0)!==r.base)upd.monthly_salary=r.base;if(Number(e.housing_allowance||0)!==r.housing)upd.housing_allowance=r.housing;if(Number(e.transport_allowance||0)!==r.transport)upd.transport_allowance=r.transport;
+    if(Object.keys(upd).length){try{await sb.from('employees').update(upd).eq('id',e.id);Object.assign(e,upd);}catch(_){}}
     if(!r.posted){for(const d of (r.duesList||[])){const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0),rem));if(pay>0){const np=Number(d.paid||0)+pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}}
   }
   toast('تم اعتماد وحفظ كشف '+PAY_PERIOD+' ✓');loadPayroll();
   }catch(e){toast('خطأ: '+e.message);}
 }
-function _payData(){return PAY_ROWS.map(r=>({name:r.emp.name||'',salary:r.salary,absent:r.absent,absDed:r.absent*_payDay(r.salary),lateH:r.lateH,lateDed:r.lateH*_payHour(r.salary),dues:r.duesInstall,other:r.other,ot:r.overtime,net:_payNet(r)}));}
-function buildPayrollWorkbook(rows,period){
-  const F_T={name:'Arial',size:14,bold:true,color:{argb:'FFFFFFFF'}},F_H={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}},F_C={name:'Arial',size:10},F_TT={name:'Arial',size:11,bold:true};
-  const FT={type:'pattern',pattern:'solid',fgColor:{argb:'FF2E75B6'}},FH={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F4E78'}},FS={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E1F2'}};
-  const CEN={horizontal:'center',vertical:'center'},BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}};
-  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('الرواتب',{views:[{rightToLeft:true}]});
-  ws.columns=[{width:22},{width:12},{width:9},{width:12},{width:10},{width:12},{width:12},{width:12},{width:11},{width:13}];
-  ws.mergeCells('A1:J1');let t=ws.getCell('A1');t.value='كشف الرواتب — '+period;t.font=F_T;t.fill=FT;t.alignment=CEN;ws.getRow(1).height=25.5;
-  const H=['الموظف','الراتب','أيام الغياب','خصم الغياب','ساعات التأخير','خصم التأخير','قسط الذمم','خصومات أخرى','أوفر تايم','الصافي'];
-  H.forEach((h,i)=>{const c=ws.getCell(3,i+1);c.value=h;c.font=F_H;c.fill=FH;c.alignment={horizontal:'center',vertical:'center',wrapText:true};c.border=BOX;});ws.getRow(3).height=30;
-  let r=4;rows.forEach(d=>{const vals=[d.name,d.salary,d.absent,d.absDed,d.lateH,d.lateDed,d.dues,d.other,d.ot,d.net];
-    vals.forEach((v,i)=>{const c=ws.getCell(r,i+1);c.value=v;c.font=F_C;c.alignment=CEN;c.border=BOX;if(i>0)c.numFmt='#,##0.00';});r++;});
-  const tot=rows.reduce((s,d)=>s+d.net,0);ws.mergeCells('A'+r+':I'+r);const la=ws.getCell('A'+r);la.value='إجمالي صافي الرواتب';la.font=F_TT;la.fill=FS;la.alignment=CEN;la.border=BOX;
-  for(let i=1;i<=9;i++)ws.getCell(r,i).border=BOX,ws.getCell(r,i).fill=FS;
-  const lc=ws.getCell(r,10);lc.value=tot;lc.font=F_TT;lc.fill=FS;lc.alignment=CEN;lc.border=BOX;lc.numFmt='#,##0.00';
+function _payExport(){const mn=Number((PAY_PERIOD||'').slice(5,7))||'';const R=[],S=[];
+  PAY_ROWS.forEach(r=>{const c=_pCalc(r),e=r.emp;const reason=[r.reason,...(r.duesList||[]).map(d=>d.reason)].filter(Boolean).join(' + ');
+    if(r.saudi)S.push({name:e.name||'',iqama:e.iqama_number||'',nat:e.nationality||'',base:r.base,housing:r.housing,transport:r.transport,total:c.gross,ded:c.totalDed,reason,net:c.net,rejeeh:r.rejeeh});
+    else R.push({name:e.name||'',iqama:e.iqama_number||'',nat:e.nationality||'',base:r.base,daily:c.daily,absent:r.absent,absDed:c.absDed,lateHr:c.lateHr,lateH:r.lateH,lateDed:c.lateDed,housing:r.housing,transport:r.transport,otHr:c.otHr,otH:r.otH,otVal:c.otVal,total:c.gross,ded:c.totalDed,reason,net:c.net,iban:r.iban});});
+  return {mn,R,S};}
+const _PCOL='ABCDEFGHIJKLMNOPQRSTU';
+function _paySheet(wb,name,title2,headers,widths,dataRows,moneyCols,netCol,sumCols,count){
+  const BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}},CEN={horizontal:'center',vertical:'center'};
+  const ws=wb.addWorksheet(name,{views:[{rightToLeft:true}]});ws.columns=widths.map(w=>w?{width:w}:{});
+  const N=headers.length,last=_PCOL[N-1];
+  ws.mergeCells('A1:'+last+'1');let a1=ws.getCell('A1');a1.value='نسق الطاقة';a1.font={name:'Arial',size:20,bold:true,color:{argb:'FFFFFFFF'}};a1.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2A4A'}};a1.alignment=CEN;ws.getRow(1).height=32;
+  ws.mergeCells('A2:'+last+'2');let a2=ws.getCell('A2');a2.value=title2;a2.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};a2.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};a2.alignment=CEN;ws.getRow(2).height=31.5;
+  headers.forEach((h,i)=>{const c=ws.getCell(3,i+1);c.value=h;c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC9A227'}};c.alignment={horizontal:'center',vertical:'center',wrapText:true};c.border=BOX;});ws.getRow(3).height=37.5;
+  let r=4;dataRows.forEach(vals=>{ws.getRow(r).height=21.75;vals.forEach((v,i)=>{const col=i+1;const c=ws.getCell(r,col);c.value=v;c.alignment=CEN;c.border=BOX;
+    if(col===netCol){c.font={name:'Arial',size:10,bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE2EFDA'}};}else c.font={name:'Arial',size:10};
+    if(moneyCols.has(col))c.numFmt='#,##0.00" ر.س"';});r++;});
+  ws.mergeCells('A'+r+':D'+r);
+  const TF={name:'Arial',size:11,bold:true,color:{argb:'FF1F3864'}},TFILL={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9E1F2'}};
+  for(let i=1;i<=N;i++){const c=ws.getCell(r,i);c.fill=TFILL;c.border=BOX;c.font=TF;c.alignment=CEN;}
+  ws.getCell('A'+r).value='الإجمالي  (عدد الموظفين: '+count+')';
+  sumCols.forEach(col=>{if(col<=4)return;const sum=dataRows.reduce((s,v)=>s+(Number(v[col-1])||0),0);const c=ws.getCell(r,col);c.value=sum;if(moneyCols.has(col))c.numFmt='#,##0.00" ر.س"';});
+  ws.getRow(r).height=25.5;
+}
+function buildPayrollWorkbook(){
+  const{mn,R,S}=_payExport();const wb=new ExcelJS.Workbook();
+  const BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}},CEN={horizontal:'center',vertical:'center'};
+  // 1) الملخص العام
+  const sm=wb.addWorksheet('الملخص العام',{views:[{rightToLeft:true}]});sm.columns=[{width:42},{width:24}];
+  sm.mergeCells('A1:B1');let st=sm.getCell('A1');st.value='الملخص العام - كشف راتب شهر '+mn;st.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};st.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};st.alignment=CEN;sm.getRow(1).height=31.5;
+  const sBase=S.reduce((s,x)=>s+x.base,0),rBase=R.reduce((s,x)=>s+x.base,0),sDed=S.reduce((s,x)=>s+x.ded,0),rDed=R.reduce((s,x)=>s+x.ded,0),sNet=S.reduce((s,x)=>s+x.net,0),rNet=R.reduce((s,x)=>s+x.net,0),sRej=S.reduce((s,x)=>s+(x.rejeeh||0),0);
+  const smrows=[['عدد الموظفين السعوديين',S.length,0],['عدد الموظفين المقيمين',R.length,0],['إجمالي عدد الموظفين',S.length+R.length,0],
+    ['إجمالي الرواتب الأساسية - السعوديين',sBase,1],['إجمالي الرواتب الأساسية - المقيمين',rBase,1],
+    ['إجمالي الخصومات - السعوديين',sDed,1],['إجمالي الخصومات - المقيمين',rDed,1],
+    ['إجمالي صافي رواتب السعوديين',sNet,1],['إجمالي صافي رواتب المقيمين',rNet,1],
+    ['إجمالي الرجيع - السعوديين (يُرجع للشركة)',sRej,1]];
+  let rr=3;smrows.forEach(([lab,val,money])=>{const a=sm.getCell('A'+rr);a.value=lab;a.font={name:'Arial',size:12,bold:true,color:{argb:'FF1F3864'}};a.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFD9D2E9'}};a.alignment=CEN;a.border=BOX;
+    const b=sm.getCell('B'+rr);b.value=val;b.font={name:'Arial',size:12,bold:true,color:{argb:'FF1F3864'}};b.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};b.alignment=CEN;b.border=BOX;if(money)b.numFmt='#,##0.00" ر.س"';sm.getRow(rr).height=24;rr++;});
+  const fa=sm.getCell('A13');fa.value='صافي المبلغ المستحق للصرف (بعد خصم الرجيع)';fa.font={name:'Arial',size:13,bold:true,color:{argb:'FFFFFFFF'}};fa.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};fa.alignment=CEN;fa.border=BOX;
+  const fb=sm.getCell('B13');fb.value=sNet+rNet-sRej;fb.font={name:'Arial',size:13,bold:true,color:{argb:'FFFFFFFF'}};fb.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};fb.alignment=CEN;fb.border=BOX;fb.numFmt='#,##0.00" ر.س"';sm.getRow(13).height=24;
+  // 2) رواتب السعوديين
+  const sH=['م','الاسم','رقم الهوية','الجنسية','الراتب الأساسي','بدل سكن','بدل نقل','إجمالي الراتب','الخصومات','سبب الخصومات','صافي الراتب','الرجيع'];
+  const sW=[4,22,14,11,14,11,0,14,12.3,26,14,14.8];
+  const sData=S.map((x,i)=>[i+1,x.name,x.iqama,x.nat,x.base,x.housing,x.transport,x.total,x.ded,x.reason,x.net,x.rejeeh]);
+  _paySheet(wb,'رواتب السعوديين','كشف راتب شهر '+mn,sH,sW,sData,new Set([5,6,7,8,9,11,12]),11,new Set([5,6,7,8,9,11,12]),S.length);
+  // 3) رواتب المقيمين
+  const rH=['م','الاسم','رقم الإقامة','الجنسية','الراتب الأساسي','المستحق لليوم الواحد','عدد أيام الغياب','قيمة خصم الغياب','التأخير للساعة الواحدة','عدد ساعات التأخير','قيمة خصم التأخير','بدل سكن','بدل نقل','أجر الساعة','عدد ساعات العمل الإضافي','قيمة العمل الإضافي','إجمالي الراتب','الخصومات','سبب الخصومات','صافي الراتب','رقم الإيبان'];
+  const rW=[4,22,14,11,14,16,0,0,0,0,0,11,0,0,0,0,14,13.6,26,14,27.8];
+  const rData=R.map((x,i)=>[i+1,x.name,x.iqama,x.nat,x.base,x.daily,x.absent,x.absDed,x.lateHr,x.lateH,x.lateDed,x.housing,x.transport,x.otHr,x.otH,x.otVal,x.total,x.ded,x.reason,x.net,x.iban]);
+  _paySheet(wb,'رواتب المقيمين','كشف راتب شهر '+mn,rH,rW,rData,new Set([5,6,8,9,11,12,13,14,16,17,18,20]),20,new Set([5,8,11,12,13,16,17,18,20]),R.length);
   return wb;
 }
-async function exportPayroll(){const rows=_payData();if(!rows.length){toast('لا بيانات');return;}
-  try{const wb=buildPayrollWorkbook(rows,PAY_PERIOD);const buf=await wb.xlsx.writeBuffer();
+async function exportPayroll(){if(!PAY_ROWS.length){toast('لا بيانات');return;}
+  try{const wb=buildPayrollWorkbook();const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='رواتب_'+PAY_PERIOD+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='كشف_رواتب_'+PAY_PERIOD+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
     toast('تم تصدير Excel ✓');}catch(e){toast('خطأ: '+e.message);}}
-function _payHtml(rows,period){
-  const TH='padding:8px 6px;border:1px solid #b7c3d6;background:#1F4E78;color:#fff;font-weight:bold;font-size:12px;text-align:center';
-  const TD='padding:7px 6px;border:1px solid #cfd6e0;font-size:12px;text-align:center;font-family:Arial';
-  const H=['الموظف','الراتب','أيام الغياب','خصم الغياب','ساعات التأخير','خصم التأخير','قسط الذمم','خصومات أخرى','أوفر تايم','الصافي'];
-  const m=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const body=rows.map(d=>`<tr><td style="${TD}">${d.name}</td><td style="${TD}">${m(d.salary)}</td><td style="${TD}">${d.absent}</td><td style="${TD}">${m(d.absDed)}</td><td style="${TD}">${d.lateH}</td><td style="${TD}">${m(d.lateDed)}</td><td style="${TD}">${m(d.dues)}</td><td style="${TD}">${m(d.other)}</td><td style="${TD}">${m(d.ot)}</td><td style="${TD};font-weight:bold">${m(d.net)}</td></tr>`).join('');
-  const tot=rows.reduce((s,d)=>s+d.net,0);
-  return `<table style="border-collapse:collapse;width:100%;font-family:Arial">
-    <tr><td colspan="10" style="background:#2E75B6;color:#fff;font-weight:bold;font-size:17px;text-align:center;padding:11px">كشف الرواتب — ${period}</td></tr>
-    <tr>${H.map(h=>`<td style="${TH}">${h}</td>`).join('')}</tr>${body}
-    <tr><td colspan="9" style="${TD};background:#D9E1F2;font-weight:bold">إجمالي صافي الرواتب</td><td style="${TD};background:#D9E1F2;font-weight:bold">${m(tot)}</td></tr></table>`;
+function _payHtml(){
+  const{mn,R,S}=_payExport();const m=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const NAVY='#1F3864',GOLD='#C9A227';
+  const TH=c=>`padding:7px 5px;border:1px solid #b98f18;background:${GOLD};color:#fff;font-weight:bold;font-size:11px;text-align:center`;
+  const TD='padding:6px 5px;border:1px solid #cfd6e0;font-size:11px;text-align:center;font-family:Arial';
+  const TDN=TD+';background:#E2EFDA;font-weight:bold';
+  const TOT='padding:7px 5px;border:1px solid #b7c3d6;background:#D9E1F2;color:#1F3864;font-weight:bold;font-size:11px;text-align:center';
+  function tbl(title,headers,rows,netIdx,totCells){
+    return `<table style="border-collapse:collapse;width:100%;font-family:Arial;margin-bottom:26px">
+      <tr><td colspan="${headers.length}" style="background:#0F2A4A;color:#fff;font-weight:bold;font-size:17px;text-align:center;padding:9px">نسق الطاقة</td></tr>
+      <tr><td colspan="${headers.length}" style="background:${NAVY};color:#fff;font-weight:bold;font-size:14px;text-align:center;padding:8px">${title}</td></tr>
+      <tr>${headers.map(h=>`<td style="${TH()}">${h}</td>`).join('')}</tr>
+      ${rows.map(cells=>`<tr>${cells.map((v,i)=>`<td style="${i===netIdx?TDN:TD}">${v}</td>`).join('')}</tr>`).join('')}
+      <tr>${totCells.map(v=>`<td style="${TOT}">${v}</td>`).join('')}</tr></table>`;
+  }
+  // summary
+  const sBase=S.reduce((s,x)=>s+x.base,0),rBase=R.reduce((s,x)=>s+x.base,0),sDed=S.reduce((s,x)=>s+x.ded,0),rDed=R.reduce((s,x)=>s+x.ded,0),sNet=S.reduce((s,x)=>s+x.net,0),rNet=R.reduce((s,x)=>s+x.net,0),sRej=S.reduce((s,x)=>s+(x.rejeeh||0),0);
+  const sumRows=[['عدد الموظفين السعوديين',S.length],['عدد الموظفين المقيمين',R.length],['إجمالي عدد الموظفين',S.length+R.length],['إجمالي الرواتب الأساسية - السعوديين',m(sBase)],['إجمالي الرواتب الأساسية - المقيمين',m(rBase)],['إجمالي الخصومات - السعوديين',m(sDed)],['إجمالي الخصومات - المقيمين',m(rDed)],['إجمالي صافي رواتب السعوديين',m(sNet)],['إجمالي صافي رواتب المقيمين',m(rNet)],['إجمالي الرجيع - السعوديين',m(sRej)]];
+  let html=`<table style="border-collapse:collapse;width:100%;font-family:Arial;margin-bottom:26px">
+    <tr><td colspan="2" style="background:${NAVY};color:#fff;font-weight:bold;font-size:15px;text-align:center;padding:9px">الملخص العام - كشف راتب شهر ${mn}</td></tr>
+    ${sumRows.map(([l,v])=>`<tr><td style="${TD};background:#D9D2E9;color:#1F3864;font-weight:bold;text-align:right;padding:7px 10px">${l}</td><td style="${TD};color:#1F3864;font-weight:bold">${v}</td></tr>`).join('')}
+    <tr><td style="${TD};background:${NAVY};color:#fff;font-weight:bold;text-align:right;padding:8px 10px">صافي المبلغ المستحق للصرف (بعد خصم الرجيع)</td><td style="${TD};background:${NAVY};color:#fff;font-weight:bold">${m(sNet+rNet-sRej)}</td></tr></table>`;
+  // saudis
+  if(S.length){const H=['م','الاسم','رقم الهوية','الجنسية','الراتب الأساسي','بدل سكن','بدل نقل','إجمالي الراتب','الخصومات','سبب الخصومات','صافي الراتب','الرجيع'];
+    const rows=S.map((x,i)=>[i+1,x.name,x.iqama,x.nat,m(x.base),m(x.housing),m(x.transport),m(x.total),m(x.ded),x.reason,m(x.net),m(x.rejeeh)]);
+    const tot=['الإجمالي: '+S.length,'','','',m(sBase),m(S.reduce((s,x)=>s+x.housing,0)),m(S.reduce((s,x)=>s+x.transport,0)),m(S.reduce((s,x)=>s+x.total,0)),m(sDed),'',m(sNet),m(sRej)];
+    html+=tbl('كشف راتب شهر '+mn+' — السعوديين',H,rows,10,tot);}
+  // residents
+  if(R.length){const H=['م','الاسم','رقم الإقامة','الجنسية','الراتب الأساسي','المستحق لليوم','أيام الغياب','خصم الغياب','التأخير/ساعة','ساعات التأخير','خصم التأخير','بدل سكن','بدل نقل','أجر الساعة','ساعات إضافي','قيمة الإضافي','إجمالي الراتب','الخصومات','سبب الخصومات','صافي الراتب','رقم الإيبان'];
+    const rows=R.map((x,i)=>[i+1,x.name,x.iqama,x.nat,m(x.base),m(x.daily),x.absent,m(x.absDed),m(x.lateHr),x.lateH,m(x.lateDed),m(x.housing),m(x.transport),m(x.otHr),x.otH,m(x.otVal),m(x.total),m(x.ded),x.reason,m(x.net),x.iban]);
+    const tot=['الإجمالي: '+R.length,'','','',m(rBase),'','',m(R.reduce((s,x)=>s+x.absDed,0)),'','',m(R.reduce((s,x)=>s+x.lateDed,0)),m(R.reduce((s,x)=>s+x.housing,0)),m(R.reduce((s,x)=>s+x.transport,0)),'','',m(R.reduce((s,x)=>s+x.otVal,0)),m(R.reduce((s,x)=>s+x.total,0)),m(rDed),'',m(rNet),''];
+    html+=tbl('كشف راتب شهر '+mn+' — المقيمين',H,rows,19,tot);}
+  return html;
 }
-async function exportPayrollPdf(){const rows=_payData();if(!rows.length){toast('لا بيانات');return;}
+async function exportPayrollPdf(){if(!PAY_ROWS.length){toast('لا بيانات');return;}
   toast('جارٍ تجهيز PDF…');
-  try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1050px;background:#fff;padding:24px;direction:rtl';
-    wrap.innerHTML=_payHtml(rows,PAY_PERIOD);document.body.appendChild(wrap);
+  try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1500px;background:#fff;padding:24px;direction:rtl';
+    wrap.innerHTML=_payHtml();document.body.appendChild(wrap);
     const canvas=await html2canvas(wrap,{scale:2,backgroundColor:'#ffffff'});document.body.removeChild(wrap);
     const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
     const img=canvas.toDataURL('image/png');const iw=pw-16,ih=canvas.height*iw/canvas.width;let hl=ih,pos=8;
     pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);
     while(hl>0){pos-=(ph-16);pdf.addPage();pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);}
-    pdf.save('رواتب_'+PAY_PERIOD+'.pdf');toast('تم تصدير PDF ✓');}catch(e){toast('خطأ: '+e.message);}}
+    pdf.save('كشف_رواتب_'+PAY_PERIOD+'.pdf');toast('تم تصدير PDF ✓');}catch(e){toast('خطأ: '+e.message);}}
 /* ===== ذمم الموظفين (حقوق الشركة) ===== */
 async function loadDues(){
   const box=document.getElementById('duesList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
