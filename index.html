@@ -278,6 +278,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="hr_dues" class="hrbox" style="display:none">
         <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري. الأقساط تُخصم <b>تلقائيًا من الراتب فقط</b> عند اعتماد كشف رواتب الشهر. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
         <div style="display:flex;gap:8px;margin:11px 0"><button class="btn" style="flex:1" onclick="openDue()">+ إضافة ذمة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('employee_dues','ذمم الموظفين',d=>(d.category||'')+' — '+fmt(d.total_amount)+' ﷼')">🗑 المحذوفات</button></div>
+        <div class="seg" id="duesSeg" style="margin-bottom:10px"><button class="on" onclick="switchDuesView('active',this)">المستحقة</button><button onclick="switchDuesView('settled',this)">المسدّدة (سجل)</button></div>
         <div id="duesList"></div></div>
     </div>
 
@@ -463,7 +464,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='90';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='93';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -786,7 +787,8 @@ async function setRole(id,r){const{error}=await sb.from('profiles').update({role
 
 /* ===== HR ===== */
 /* ===== الموارد البشرية — دليل الموظفين ===== */
-let EMP_DIR=[],EMP_PROFILES=[],EMP_SUB='res';
+let EMP_DIR=[],EMP_PROFILES=[],EMP_SUB='res',DUES_VIEW='active';
+function switchDuesView(v,btn){DUES_VIEW=v;document.querySelectorAll('#duesSeg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');loadDues();}
 function _isSaudi(e){return /سعود/.test(e&&e.nationality||'');}
 function _empDays(d){if(!d)return null;const t=new Date();t.setHours(0,0,0,0);const p=String(d).slice(0,10).split('-');const x=new Date(+p[0],+p[1]-1,+p[2]);return Math.round((x-t)/86400000);}
 function _empCol(n){if(n===null)return{bg:'',fg:'',xbg:null,xfg:null};if(n<=15)return{bg:'#FFC7CE',fg:'#9C0006',xbg:'FFFFC7CE',xfg:'FF9C0006'};if(n<=30)return{bg:'#FFEB9C',fg:'#9C6500',xbg:'FFFFEB9C',xfg:'FF9C6500'};return{bg:'#C6EFCE',fg:'#006100',xbg:'FFC6EFCE',xfg:'FF006100'};}
@@ -1102,7 +1104,7 @@ async function loadPayroll(){
   const penByUser={};
   if(linked.length){const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours,work_date').gte('work_date',period+'-01').lte('work_date',period+'-31').in('worker_id',linked);
     (att||[]).forEach(a=>{penByUser[a.worker_id]=(penByUser[a.worker_id]||0)+Number(a.penalty_hours||0);});}
-  const{data:dues}=await sb.from('employee_dues').select('*').eq('status','active');
+  const{data:dues}=await sb.from('employee_dues').select('*');
   const duesByEmp={};(dues||[]).filter(x=>!x.deleted_at).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
   const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
   const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
@@ -1118,7 +1120,8 @@ async function loadPayroll(){
       reason:slip?(slip.deduction_reason||''):'',
       rejeeh:slip?Number(slip.rejeeh||0):0,
       duesTotal:activeRem,
-      duesDeduct:slip?Number(slip.dues_ded||0):Math.min(dl.reduce((s,d)=>s+Number(d.installment||0),0),activeRem),
+      duesApplied:slip?Number(slip.dues_ded||0):0,
+      duesDeduct:slip?Number(slip.dues_ded||0):Math.min(dl.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).reduce((s,d)=>s+Number(d.installment||0),0),activeRem),
       duesList:dl,posted:!!slip};});
   renderPayroll();
 }
@@ -1146,7 +1149,7 @@ function renderPayroll(){
 }
 function paySet(i,f,v){PAY_ROWS[i][f]=parseFloat(v)||0;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
 function paySetText(i,f,v){PAY_ROWS[i][f]=v;}
-function paySetDues(i,el){let v=parseFloat(el.value)||0;const mx=PAY_ROWS[i].duesTotal||0;if(v>mx){v=mx;el.value=mx;}if(v<0){v=0;el.value=0;}PAY_ROWS[i].duesDeduct=v;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
+function paySetDues(i,el){let v=parseFloat(el.value)||0;const mx=(PAY_ROWS[i].duesApplied||0)+(PAY_ROWS[i].duesTotal||0);if(v>mx){v=mx;el.value=mx;}if(v<0){v=0;el.value=0;}PAY_ROWS[i].duesDeduct=v;const c=_pCalc(PAY_ROWS[i]);const n=document.getElementById('pmNet');if(n)n.textContent=fmt(c.net)+' ﷼';}
 function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
   const inp='width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:10px;font-size:14px';
   openModal(`<h3 style="margin-bottom:2px">${r.emp.name||'—'}</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${sa?'سعودي':'مقيم'} · كشف ${PAY_PERIOD}</small>
@@ -1166,15 +1169,18 @@ async function savePayroll(){
   if(!PAY_ROWS.length){toast('لا بيانات');return;}
   toast('جارٍ الحفظ…');
   try{for(const r of PAY_ROWS){const e=r.emp,c=_pCalc(r);
+    const newDed=Math.max(0,Math.min(r.duesDeduct||0,(r.duesApplied||0)+(r.duesTotal||0)));
     const rec={employee_id:e.id,period:PAY_PERIOD,base:r.base,housing:r.housing,transport:r.transport,
       absent_days:r.absent,absence_ded:c.absDed,late_hours:r.lateH,late_ded:c.lateDed,
       overtime_hours:r.otH,overtime:c.otVal,deductions:r.deductions,deduction_reason:r.reason,other_ded:r.deductions,
-      dues_ded:Math.max(0,Math.min(r.duesDeduct||0,r.duesTotal||0)),rejeeh:r.rejeeh,net:c.net};
+      dues_ded:newDed,rejeeh:r.rejeeh,net:c.net};
     const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
     const upd={};if(Number(e.monthly_salary||0)!==r.base)upd.monthly_salary=r.base;if(Number(e.housing_allowance||0)!==r.housing)upd.housing_allowance=r.housing;if(Number(e.transport_allowance||0)!==r.transport)upd.transport_allowance=r.transport;
     if(Object.keys(upd).length){try{await sb.from('employees').update(upd).eq('id',e.id);Object.assign(e,upd);}catch(_){}}
-    if(!r.posted){let amt=Math.max(0,Math.min(r.duesDeduct||0,r.duesTotal||0));const sorted=(r.duesList||[]).slice().sort((a,b)=>(a.created_at||'')<(b.created_at||'')?-1:1);
-      for(const d of sorted){if(amt<=0)break;const rem=Number(d.total_amount||0)-Number(d.paid||0);if(rem<=0)continue;const pay=Math.min(amt,rem);const np=Number(d.paid||0)+pay;amt-=pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);}}
+    // مزامنة الذمم بالفرق: أي خصم (جزئي/كامل، زيادة/تقليل) يُحدّث الذمة فورًا
+    let delta=newDed-(r.duesApplied||0);const byOld=(r.duesList||[]).slice().sort((a,b)=>(a.created_at||'')<(b.created_at||'')?-1:1);
+    if(delta>0){let amt=delta;for(const d of byOld){if(amt<=0)break;const rem=Number(d.total_amount||0)-Number(d.paid||0);if(rem<=0)continue;const pay=Math.min(amt,rem);const np=Number(d.paid||0)+pay;amt-=pay;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);try{await sb.from('due_payments').insert({due_id:d.id,amount:pay,period:PAY_PERIOD});}catch(_){}}}
+    else if(delta<0){let amt=-delta;for(const d of byOld.slice().reverse()){if(amt<=0)break;const pd=Number(d.paid||0);if(pd<=0)continue;const rf=Math.min(amt,pd);const np=pd-rf;amt-=rf;await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',d.id);try{await sb.from('due_payments').insert({due_id:d.id,amount:-rf,period:PAY_PERIOD});}catch(_){}}}
   }
   toast('تم اعتماد وحفظ كشف '+PAY_PERIOD+' ✓');loadPayroll();
   }catch(e){toast('خطأ: '+e.message);}
@@ -1297,15 +1303,26 @@ async function openTrash(table,title,labelFn){
   const list=data||[];
   openModal(`<h3 style="margin-bottom:12px">🗑 المحذوفات — ${title}</h3>${list.length?list.map(x=>`<div class="item"><div class="meta"><b>${labelFn(x)}</b><small>حُذف ${(x.deleted_at||'').slice(0,16).replace('T',' ')}</small></div><button class="link" onclick="restoreItem('${table}','${x.id}');closeModal()">↩ استرجاع</button></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
 }
+async function openDuePayments(id,label){
+  const{data,error}=await sb.from('due_payments').select('*').eq('due_id',id).order('created_at',{ascending:true});
+  if(error){toast('نفّذ كود سجل التسديد (SQL) أولًا');return;}
+  const list=data||[];const tot=list.reduce((s,p)=>s+Number(p.amount||0),0);
+  openModal(`<h3 style="margin-bottom:4px">📋 سجل التسديد</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${label||''}</small>
+    ${list.length?list.map(p=>{const neg=Number(p.amount)<0;return `<div class="item"><div class="meta"><b>${neg?'إرجاع/تعديل':'تسديد'} ${fmt(Math.abs(p.amount))} ﷼</b><small>شهر ${p.period||''}${p.created_at?' · '+p.created_at.slice(0,10):''}</small></div><span class="pill ${neg?'susp':'ok'}">${neg?'−':'+'}${fmt(Math.abs(p.amount))}</span></div>`;}).join('')+`<div class="card" style="padding:11px;margin-top:8px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800"><span>إجمالي المسدَّد</span><span style="color:var(--ok)">${fmt(tot)} ﷼</span></div></div>`:'<div class="empty">لا تسديدات على هذه الذمة بعد</div>'}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+}
 /* ===== ذمم الموظفين (حقوق الشركة) ===== */
 async function loadDues(){
   const box=document.getElementById('duesList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data:emps}=await sb.from('employees').select('id,name,deleted_at').order('seq',{ascending:true});DUES_EMPS=(emps||[]).filter(x=>!x.deleted_at);
   const en={};DUES_EMPS.forEach(e=>en[e.id]=e.name);
-  const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const list=(data||[]).filter(x=>!x.deleted_at);
-  if(!list.length){box.innerHTML='<div class="empty">لا ذمم مسجّلة — أضف أول ذمة</div>';return;}
+  const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const all=(data||[]).filter(x=>!x.deleted_at);
+  const isSettled=d=>d.status==='settled'||(Number(d.total_amount||0)-Number(d.paid||0))<=0;
+  const list=DUES_VIEW==='settled'?all.filter(isSettled):all.filter(d=>!isSettled(d));
+  if(!list.length){box.innerHTML='<div class="empty">'+(DUES_VIEW==='settled'?'لا ذمم مسدّدة بعد':'لا ذمم مستحقة حاليًا')+'</div>';return;}
   const TH=_TBLTH,TD=_TBLTD;let totRem=0;
   const rows=list.map((d,i)=>{const rem=Number(d.total_amount||0)-Number(d.paid||0);const settled=d.status==='settled'||rem<=0;if(!settled)totRem+=rem;
+    const lbl=((en[d.employee_id]||'—')+' — '+(d.category||'')).replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return `<tr>
       <td style="${TD}">${i+1}</td>
       <td style="${TD};font-weight:700">${en[d.employee_id]||'—'}</td>
@@ -1315,7 +1332,7 @@ async function loadDues(){
       <td style="${TD};color:var(--ok)">${fmt(d.paid)}</td>
       <td style="${TD};font-weight:800;color:${settled?'var(--green)':'var(--bad)'}">${fmt(rem)}</td>
       <td style="${TD}"><span class="pill ${settled?'ok':'susp'}" style="font-size:10px">${settled?'مسدّدة':'نشطة'}</span></td>
-      <td style="${TD}"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button></td></tr>`;}).join('');
+      <td style="${TD}"><button class="link" onclick='openDue(${JSON.stringify(d).replace(/'/g,"&#39;")})'>تعديل</button><br><button class="link" onclick="openDuePayments('${d.id}','${lbl}')">📋 سجل</button></td></tr>`;}).join('');
   box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
     <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">التصنيف</th><th style="${TH}">المبلغ الكامل</th><th style="${TH}">القسط</th><th style="${TH}">المسدَّد</th><th style="${TH}">المتبقّي</th><th style="${TH}">الحالة</th><th style="${TH}"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
