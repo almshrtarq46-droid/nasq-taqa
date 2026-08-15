@@ -264,7 +264,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('pay',this)">الرواتب</button><button onclick="hrTab('dues',this)">ذمم الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button></div>
       <div id="hr_dir" class="hrbox">
         <div class="seg" id="empSubSeg" style="margin-bottom:12px"><button class="on" onclick="switchEmpSub('res',this)">المقيمين</button><button onclick="switchEmpSub('sau',this)">السعوديين</button></div>
-        <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1" onclick="openEmployee()">+ إضافة موظف</button><button class="btn copper sm" style="flex:1" onclick="exportEmployees()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportEmployeesPdf()">📄 PDF</button></div>
+        <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1" onclick="openEmployee()">+ إضافة موظف</button><button class="btn copper sm" style="flex:1" onclick="exportEmployees()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportEmployeesPdf()">📄 PDF</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('employees','الموظفين',e=>e.name||'—')">🗑</button></div>
         <div id="empDir"></div></div>
       <div id="hr_emp" class="hrbox" style="display:none"><div id="empList"></div></div>
       <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
@@ -277,7 +277,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div id="payList"></div></div>
       <div id="hr_dues" class="hrbox" style="display:none">
         <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري يُخصم من الراتب. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
-        <button class="btn" style="margin:11px 0" onclick="openDue()">+ إضافة ذمة</button>
+        <div style="display:flex;gap:8px;margin:11px 0"><button class="btn" style="flex:1" onclick="openDue()">+ إضافة ذمة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('employee_dues','ذمم الموظفين',d=>(d.category||'')+' — '+fmt(d.total_amount)+' ﷼')">🗑 المحذوفات</button></div>
         <div id="duesList"></div></div>
     </div>
 
@@ -295,7 +295,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
     <div class="view" id="v-expenses">
       <h2 class="section-title">المصروفات</h2>
-      <button class="btn" style="margin-bottom:12px" onclick="openExpense()">+ إضافة مصروف</button>
+      <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" style="flex:1" onclick="openExpense()">+ إضافة مصروف</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('expenses','المصروفات',e=>(e.category||'')+' — '+fmt(e.amount)+' ﷼')">🗑 المحذوفات</button></div>
       <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
       <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير لأي فترة</label>
         <div class="row" style="margin-top:6px"><div class="field" style="margin:0"><label>من</label><input type="date" id="ex_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="ex_to"></div></div>
@@ -463,7 +463,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='86';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='87';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -793,7 +793,7 @@ function _empCol(n){if(n===null)return{bg:'',fg:'',xbg:null,xfg:null};if(n<=15)r
 function _empDate(s){if(!s)return null;const p=String(s).slice(0,10).split('-');return new Date(+p[0],+p[1]-1,+p[2],12,0,0);}
 async function loadEmpDir(){
   document.getElementById('empDir').innerHTML='<div class="empty">جارٍ التحميل…</div>';
-  const{data}=await sb.from('employees').select('*').order('seq',{ascending:true});EMP_DIR=data||[];
+  const{data}=await sb.from('employees').select('*').order('seq',{ascending:true});EMP_DIR=(data||[]).filter(x=>!x.deleted_at);
   const{data:profs}=await sb.from('profiles').select('id,full_name');EMP_PROFILES=profs||[];
   renderEmpDir();
 }
@@ -862,7 +862,7 @@ async function saveEmployee(id){
     closeModal();toast('تم الحفظ ✓');loadEmpDir();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}
 }
-async function deleteEmployee(id){const{error}=await sb.from('employees').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadEmpDir();}
+async function deleteEmployee(id){closeModal();await softDelete('employees',id);}
 /* تصدير Excel لدليل الموظفين — مطابق للقالب 100% */
 function buildEmpWorkbook(list){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('بيانات الموظفين',{views:[{rightToLeft:true}]});
@@ -1097,13 +1097,13 @@ function _pCalc(r){const b=Number(r.base)||0;const daily=_pDaily(b),lateHr=_pLat
 async function loadPayroll(){
   const period=_payMonth();PAY_PERIOD=period;
   const box=document.getElementById('payList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
-  const{data:emps}=await sb.from('employees').select('*').order('seq',{ascending:true});const list=emps||[];
+  const{data:emps}=await sb.from('employees').select('*').order('seq',{ascending:true});const list=(emps||[]).filter(x=>!x.deleted_at);
   const linked=list.filter(e=>e.user_id&&e.late_deduction).map(e=>e.user_id);
   const penByUser={};
   if(linked.length){const{data:att}=await sb.from('attendance').select('worker_id,penalty_hours,work_date').gte('work_date',period+'-01').lte('work_date',period+'-31').in('worker_id',linked);
     (att||[]).forEach(a=>{penByUser[a.worker_id]=(penByUser[a.worker_id]||0)+Number(a.penalty_hours||0);});}
   const{data:dues}=await sb.from('employee_dues').select('*').eq('status','active');
-  const duesByEmp={};(dues||[]).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
+  const duesByEmp={};(dues||[]).filter(x=>!x.deleted_at).forEach(d=>{(duesByEmp[d.employee_id]=duesByEmp[d.employee_id]||[]).push(d);});
   const{data:slips}=await sb.from('payslips').select('*').eq('period',period);
   const slipByEmp={};(slips||[]).forEach(s=>slipByEmp[s.employee_id]=s);
   PAY_ROWS=list.map(e=>{const slip=slipByEmp[e.id];const dl=duesByEmp[e.id]||[];
@@ -1269,12 +1269,30 @@ async function exportPayrollPdf(){if(!PAY_ROWS.length){toast('لا بيانات'
     pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);
     while(hl>0){pos-=(ph-16);pdf.addPage();pdf.addImage(img,'PNG',8,pos,iw,ih);hl-=(ph-16);}
     pdf.save('كشف_رواتب_'+PAY_PERIOD+'.pdf');toast('تم تصدير PDF ✓');}catch(e){toast('خطأ: '+e.message);}}
+/* ===== سلة المحذوفات (حذف قابل للاسترجاع) ===== */
+const RELOADERS={employees:()=>loadEmpDir(),employee_dues:()=>loadDues(),expenses:()=>initExpenses(),invoices:()=>loadInvoices()};
+function toastUndo(msg,cb){let el=document.getElementById('undoToast');
+  if(!el){el=document.createElement('div');el.id='undoToast';el.style.cssText='position:fixed;bottom:82px;left:50%;transform:translateX(-50%);background:#182420;color:#fff;padding:10px 16px;border-radius:30px;font-size:13.5px;font-weight:600;z-index:135;display:flex;align-items:center;gap:14px;box-shadow:0 10px 28px rgba(0,0,0,.34);opacity:0;transition:.25s;pointer-events:auto;max-width:90%';document.body.appendChild(el);}
+  el.innerHTML=`<span>${msg}</span><button style="background:none;border:none;color:#6fd3a3;font-weight:800;cursor:pointer;font-size:13.5px;padding:0">↩ تراجع</button>`;
+  el.querySelector('button').onclick=()=>{el.style.opacity='0';cb&&cb();};
+  el.style.opacity='1';clearTimeout(el._t);el._t=setTimeout(()=>{el.style.opacity='0';},6000);}
+async function softDelete(table,id){const{error}=await sb.from(table).update({deleted_at:new Date().toISOString()}).eq('id',id);
+  if(error){toast('تعذّر الحذف — نفّذ كود سلة المحذوفات (SQL) أولًا');return false;}
+  const rl=RELOADERS[table];if(rl)rl();toastUndo('تم الحذف',()=>restoreItem(table,id));return true;}
+async function restoreItem(table,id){const{error}=await sb.from(table).update({deleted_at:null}).eq('id',id);
+  if(error){toast('خطأ: '+error.message);return;}toast('تم الاسترجاع ✓');const rl=RELOADERS[table];if(rl)rl();}
+async function openTrash(table,title,labelFn){
+  const{data,error}=await sb.from(table).select('*').not('deleted_at','is',null).order('deleted_at',{ascending:false});
+  if(error){toast('نفّذ كود سلة المحذوفات (SQL) أولًا');return;}
+  const list=data||[];
+  openModal(`<h3 style="margin-bottom:12px">🗑 المحذوفات — ${title}</h3>${list.length?list.map(x=>`<div class="item"><div class="meta"><b>${labelFn(x)}</b><small>حُذف ${(x.deleted_at||'').slice(0,16).replace('T',' ')}</small></div><button class="link" onclick="restoreItem('${table}','${x.id}');closeModal()">↩ استرجاع</button></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+}
 /* ===== ذمم الموظفين (حقوق الشركة) ===== */
 async function loadDues(){
   const box=document.getElementById('duesList');box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
-  const{data:emps}=await sb.from('employees').select('id,name').order('seq',{ascending:true});DUES_EMPS=emps||[];
+  const{data:emps}=await sb.from('employees').select('id,name,deleted_at').order('seq',{ascending:true});DUES_EMPS=(emps||[]).filter(x=>!x.deleted_at);
   const en={};DUES_EMPS.forEach(e=>en[e.id]=e.name);
-  const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const list=data||[];
+  const{data}=await sb.from('employee_dues').select('*').order('created_at',{ascending:false});const list=(data||[]).filter(x=>!x.deleted_at);
   if(!list.length){box.innerHTML='<div class="empty">لا ذمم مسجّلة — أضف أول ذمة</div>';return;}
   box.innerHTML=list.map(d=>{const rem=Number(d.total_amount||0)-Number(d.paid||0);const settled=d.status==='settled'||rem<=0;
     return `<div class="card" style="padding:13px;margin-bottom:9px"><div style="display:flex;justify-content:space-between;align-items:center"><b style="font-size:14.5px">${en[d.employee_id]||'—'}</b><span class="pill ${settled?'ok':'susp'}">${settled?'مسدّدة':'متبقّي '+fmt(rem)+' ﷼'}</span></div>
@@ -1312,7 +1330,7 @@ async function payDue(id){const{data:d}=await sb.from('employee_dues').select('*
   const rem=Number(d.total_amount||0)-Number(d.paid||0);const pay=Math.max(0,Math.min(Number(d.installment||0)||rem,rem));if(pay<=0){toast('مسدّدة بالكامل');return;}
   const np=Number(d.paid||0)+pay;const{error}=await sb.from('employee_dues').update({paid:np,status:np>=Number(d.total_amount||0)?'settled':'active'}).eq('id',id);
   if(error){toast('خطأ: '+error.message);return;}toast('تم تسديد قسط '+fmt(pay)+' ﷼');loadDues();}
-async function delDue(id){const{error}=await sb.from('employee_dues').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadDues();}
+async function delDue(id){closeModal();await softDelete('employee_dues',id);}
 let leafMap=null;
 async function loadAttAdmin(){
   const di=document.getElementById('att_date_admin');if(di&&!di.value)di.value=todayKey();const date=di?di.value:todayKey();
@@ -1619,21 +1637,21 @@ function finTab2(tab,btn){
     enforceEnDates(body);return;
   }
   body.innerHTML=`<div class="hint">سجّل فواتير المشتريات الواردة من الموردين — لخصم ضريبة المدخلات في الإقرار الضريبي. أرفق صورة الفاتورة.</div>
-    <button class="btn" style="margin-bottom:12px" onclick="openInvoice()">+ إضافة فاتورة واردة</button>
+    <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" style="flex:1" onclick="openInvoice()">+ إضافة فاتورة واردة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('invoices','الفواتير',i=>(i.party||'مورّد')+' — '+fmt(i.amount)+' ﷼')">🗑 المحذوفات</button></div>
     <div class="grid2" id="finKpis" style="margin-bottom:13px"></div>
     <div id="invList"></div>`;
   loadInvoices();
 }
 async function loadInvoices(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  const inc=data||[];const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
+  const inc=(data||[]).filter(x=>!x.deleted_at);const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
   const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>إجمالي المشتريات ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div>`;
   const box=document.getElementById('invList');if(!box)return;
   box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
     <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷</button>`:''}<button class="link" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
 }
-async function delInvoice(id){const{error}=await sb.from('invoices').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم الحذف');loadInvoices();}
+async function delInvoice(id){await softDelete('invoices',id);}
 function openInvoice(){invPhoto=null;openModal(`<h3 style="margin-bottom:14px">فاتورة واردة (مشتريات)</h3>
   <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number"></div></div>
   <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal"></div></div>
@@ -1674,7 +1692,7 @@ async function initExpenses(){
   document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
   document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data}=await sb.from('expenses').select('*').order('expense_date',{ascending:false});
-  ALL_EXP=data||[];
+  ALL_EXP=(data||[]).filter(x=>!x.deleted_at);
   const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
   const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
   document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
@@ -1782,7 +1800,7 @@ async function saveExpense(id){const amount=parseFloat(document.getElementById('
     else{rec.created_by=ME.id;const{error}=await sb.from('expenses').insert(rec);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');initExpenses();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
-async function deleteExpense(id){const{error}=await sb.from('expenses').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');initExpenses();}
+async function deleteExpense(id){closeModal();await softDelete('expenses',id);}
 
 /* ===== فاتورة ضريبية (ZATCA — المرحلة الأولى) ===== */
 let taxLines=[];
