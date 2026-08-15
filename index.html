@@ -709,10 +709,13 @@ function buildNav(role){
   html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   document.getElementById('sbMenu').innerHTML=html;
-  goView(first);
+  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','livemap','catalog','assignments','settings','zones','approvals','projects']:['home','att-worker','field','my-att','my-works'];
+  const _want=(location.hash||'').replace(/^#/,'');
+  goView(_valid.indexOf(_want)>=0?_want:first);
 }
 function toggleSidebar(open){document.getElementById('sidebar').classList.toggle('on',open);document.getElementById('backdrop').classList.toggle('on',open);}
 function goView(v){
+  try{if((location.hash||'').slice(1)!==v)history.replaceState(null,'',location.pathname+location.search+'#'+v);}catch(e){}
   if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}
   document.querySelectorAll('#screen-app .view').forEach(e=>e.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
