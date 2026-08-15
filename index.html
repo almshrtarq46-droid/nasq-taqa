@@ -464,7 +464,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='97';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='98';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1683,19 +1683,21 @@ async function loadInvoices(){
   const box=document.getElementById('invList');if(!box)return;
   box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷</button>`:''}<button class="link" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
 }
-async function delInvoice(id){await softDelete('invoices',id);}
-function openInvoice(){invPhoto=null;invFile=null;invIsPdf=false;openModal(`<h3 style="margin-bottom:14px">فاتورة واردة (مشتريات)</h3>
-  <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number"></div></div>
-  <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal"></div></div>
-  <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${todayKey()}"></div>
-  <label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" checked style="width:18px;height:18px;accent-color:var(--brand)"> تسجيلها كمصروف (مشتريات) تلقائيًا — بقيمتها قبل الضريبة</label>
-  <div class="field"><label>صورة الفاتورة (مطلوبة للضريبة)</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة/ملف الفاتورة (صورة أو PDF)<input type="file" accept="image/*,application/pdf" onchange="pickInvPhoto(this)"></div></div>
-  <div class="field"><label>ملاحظات</label><textarea id="iv_note" rows="2"></textarea></div>
-  <button class="btn" id="ivSave" onclick="saveInvoice()">حفظ الفاتورة</button>
+function openConfirm(title,msg,onYes,yesLabel){openModal(`<h3 style="margin-bottom:10px">${title}</h3><p style="color:var(--muted);font-size:14px;line-height:1.85;margin-bottom:16px">${msg}</p><button class="btn danger" id="cfmYes">${yesLabel||'نعم، احذف'}</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);const y=document.getElementById('cfmYes');if(y)y.onclick=()=>{closeModal();onYes&&onYes();};}
+function delInvoice(id){openConfirm('تأكيد حذف الفاتورة','هل أنت متأكد من حذف هذه الفاتورة؟ تقدر تسترجعها لاحقًا من سلة المحذوفات.',()=>softDelete('invoices',id));}
+function openInvoice(inv){invPhoto=null;invFile=null;invIsPdf=false;invEditId=inv&&inv.id?inv.id:null;invExistingPhoto=inv?(inv.photo||''):'';
+  openModal(`<h3 style="margin-bottom:14px">${invEditId?'تعديل فاتورة واردة':'فاتورة واردة (مشتريات)'}</h3>
+  <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد" value="${inv?(inv.party||'').replace(/"/g,'&quot;'):''}"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number" value="${inv?String(inv.number||'').replace(/"/g,'&quot;'):''}"></div></div>
+  <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()" value="${inv?(inv.amount||''):''}"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal" value="${inv?(inv.vat||''):''}"></div></div>
+  <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${inv?(inv.invoice_date||todayKey()):todayKey()}"></div>
+  ${invEditId?'':`<label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" checked style="width:18px;height:18px;accent-color:var(--brand)"> تسجيلها كمصروف (مشتريات) تلقائيًا — بقيمتها قبل الضريبة</label>`}
+  <div class="field"><label>صورة/ملف الفاتورة${invEditId&&invExistingPhoto?' (مرفقة — اختر ملفًا لاستبدالها)':' (صورة أو PDF)'}</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>${invEditId&&invExistingPhoto?'ملف مرفق ✓':'اختر صورة أو PDF'}<input type="file" accept="image/*,application/pdf" onchange="pickInvPhoto(this)"></div></div>
+  <div class="field"><label>ملاحظات</label><textarea id="iv_note" rows="2">${inv?(inv.note||''):''}</textarea></div>
+  <button class="btn" id="ivSave" onclick="saveInvoice()">${invEditId?'حفظ التعديل':'حفظ الفاتورة'}</button>
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);invKind='in';}
-let invKind='in',invPhoto=null,invFile=null,invIsPdf=false;
+let invKind='in',invPhoto=null,invFile=null,invIsPdf=false,invEditId=null,invExistingPhoto='';
 function autoVat(){const a=parseFloat(document.getElementById('iv_amount').value)||0;document.getElementById('iv_vat').value=(a-a/1.15).toFixed(2);}
 function pickInvPhoto(input){const f=input.files[0];if(!f)return;const b=document.getElementById('pb_inv');b.querySelectorAll('img,.pdftag').forEach(x=>x.remove());
   if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){invIsPdf=true;invFile=f;invPhoto='pdf';const t=document.createElement('div');t.className='pdftag';t.textContent='📄 '+f.name;t.style.cssText='margin-top:6px;font-size:12px;color:var(--green);font-weight:700';b.appendChild(t);return;}
@@ -1704,13 +1706,23 @@ function _fileToBlob(file){return new Promise((res,rej)=>{const r=new FileReader
 async function uploadFileDoc(file,tag){const ext=((file.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,''))||'pdf';const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.${ext}`;const blob=await _fileToBlob(file);if(!blob||!blob.size)throw new Error('الملف فارغ — أعد اختياره');const{error}=await sb.storage.from('photos').upload(path,blob,{contentType:file.type||'application/pdf',upsert:true});if(error)throw error;return path;}
 async function saveInvoice(){
   const amount=parseFloat(document.getElementById('iv_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
-  const btn=document.getElementById('ivSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{let photo='';if(invIsPdf&&invFile)photo=await uploadFileDoc(invFile,'inv');else if(invPhoto&&invPhoto!=='pdf')photo=await uploadPhoto(invPhoto,'inv');
+  const btn=document.getElementById('ivSave');const oldLbl=btn.textContent;btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{let photo=invEditId?(invExistingPhoto||''):'';
+    if(invIsPdf&&invFile)photo=await uploadFileDoc(invFile,'inv');else if(invPhoto&&invPhoto!=='pdf')photo=await uploadPhoto(invPhoto,'inv');
     const vat=parseFloat(document.getElementById('iv_vat').value)||0;
     const party=document.getElementById('iv_party').value.trim();
     const num=document.getElementById('iv_number').value.trim();
     const idate=document.getElementById('iv_date').value||todayKey();
-    const{data:ins,error}=await sb.from('invoices').insert({kind:invKind,number:num,party,amount,vat,invoice_date:idate,note:document.getElementById('iv_note').value.trim(),photo,created_by:ME.id}).select().single();
+    const note=document.getElementById('iv_note').value.trim();
+    const rec={kind:invKind,number:num,party,amount,vat,invoice_date:idate,note,photo};
+    if(invEditId){
+      const{error}=await sb.from('invoices').update(rec).eq('id',invEditId);if(error)throw error;
+      const net=+(amount-vat).toFixed(2);
+      try{await sb.from('expenses').update({amount:net,expense_date:idate,description:'فاتورة واردة'+(num?' رقم '+num:'')+(party?' — '+party:'')}).eq('invoice_id',invEditId);}catch(_){}
+      closeModal();toast('تم تعديل الفاتورة ✓');loadInvoices();return;
+    }
+    rec.created_by=ME.id;
+    const{data:ins,error}=await sb.from('invoices').insert(rec).select().single();
     if(error)throw error;
     const asExp=document.getElementById('iv_asexp');
     if(asExp&&asExp.checked){
@@ -1719,7 +1731,7 @@ async function saveInvoice(){
       if(e2){closeModal();toast('حُفظت الفاتورة، لكن ربطها بالمصروفات يحتاج تنفيذ كود الربط (SQL)');loadInvoices();return;}
     }
     closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
-  }catch(e){console.error('saveInvoice',e);const m=(e&&e.message)||String(e);alert('⚠️ لم تُحفظ الفاتورة:\n\n'+m);btn.disabled=false;btn.textContent='حفظ الفاتورة';}}
+  }catch(e){console.error('saveInvoice',e);const m=(e&&e.message)||String(e);alert('⚠️ لم تُحفظ الفاتورة:\n\n'+m);btn.disabled=false;btn.textContent=oldLbl||'حفظ الفاتورة';}}
 async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);const url=data.signedUrl;
     document.getElementById('phwrap').innerHTML=/\.pdf($|\?)/i.test(p)?`<iframe src="${url}" style="width:100%;height:70vh;border:none;border-radius:10px"></iframe><a href="${url}" target="_blank" class="link" style="display:block;margin-top:8px;text-align:center">فتح الـ PDF في نافذة جديدة</a>`:`<img src="${url}" style="width:100%;border-radius:10px">`;
