@@ -464,7 +464,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='98';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='99';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.href.split('?')[0];location.replace(b+'?_r='+Date.now());}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1683,7 +1683,7 @@ async function loadInvoices(){
   const box=document.getElementById('invList');if(!box)return;
   box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','صورة الفاتورة')">📷</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
 }
 function openConfirm(title,msg,onYes,yesLabel){openModal(`<h3 style="margin-bottom:10px">${title}</h3><p style="color:var(--muted);font-size:14px;line-height:1.85;margin-bottom:16px">${msg}</p><button class="btn danger" id="cfmYes">${yesLabel||'نعم، احذف'}</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);const y=document.getElementById('cfmYes');if(y)y.onclick=()=>{closeModal();onYes&&onYes();};}
 function delInvoice(id){openConfirm('تأكيد حذف الفاتورة','هل أنت متأكد من حذف هذه الفاتورة؟ تقدر تسترجعها لاحقًا من سلة المحذوفات.',()=>softDelete('invoices',id));}
@@ -1732,10 +1732,12 @@ async function saveInvoice(){
     }
     closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
   }catch(e){console.error('saveInvoice',e);const m=(e&&e.message)||String(e);alert('⚠️ لم تُحفظ الفاتورة:\n\n'+m);btn.disabled=false;btn.textContent=oldLbl||'حفظ الفاتورة';}}
-async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الصورة')+'</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
-  try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);const url=data.signedUrl;
-    document.getElementById('phwrap').innerHTML=/\.pdf($|\?)/i.test(p)?`<iframe src="${url}" style="width:100%;height:70vh;border:none;border-radius:10px"></iframe><a href="${url}" target="_blank" class="link" style="display:block;margin-top:8px;text-align:center">فتح الـ PDF في نافذة جديدة</a>`:`<img src="${url}" style="width:100%;border-radius:10px">`;
-  }catch(e){document.getElementById('phwrap').textContent='تعذّر التحميل';}}
+async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الملف')+'</h3><div id="phwrap" style="color:var(--muted);text-align:center">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+  try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);const url=data.signedUrl;const isPdf=/\.pdf($|\?)/i.test(p);
+    document.getElementById('phwrap').innerHTML=isPdf
+      ?`<a href="${url}" target="_blank" rel="noopener" class="btn" style="display:block;text-decoration:none;margin-bottom:10px">📄 فتح ملف الـ PDF</a><iframe src="${url}" style="width:100%;height:58vh;border:1px solid var(--line);border-radius:10px"></iframe>`
+      :`<img src="${url}" style="width:100%;border-radius:10px"><a href="${url}" target="_blank" rel="noopener" class="link" style="display:block;margin-top:8px">فتح الصورة في نافذة جديدة</a>`;
+  }catch(e){document.getElementById('phwrap').textContent='تعذّر تحميل الملف';}}
 
 /* ===== المصروفات ===== */
 const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','مسحوبات شخصية','أخرى'];
