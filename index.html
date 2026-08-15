@@ -464,7 +464,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='102';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='103';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1684,11 +1684,13 @@ function finTab2(tab,btn){
 async function loadInvoices(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
   const inc=(data||[]).filter(x=>!x.deleted_at);const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
+  let _lset=new Set();try{const{data:_ex}=await sb.from('expenses').select('invoice_id').is('deleted_at',null).not('invoice_id','is',null);(_ex||[]).forEach(r=>r.invoice_id&&_lset.add(r.invoice_id));}catch(_){}
+  inc.forEach(i=>{i._exp=_lset.has(i.id);});
   const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>إجمالي المشتريات ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div>`;
   const box=document.getElementById('invList');if(!box)return;
   box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+    <div style="text-align:left;display:flex;align-items:center;gap:6px">${i._exp?`<span class="pill" style="background:#e6f6ed;color:var(--green)">ضمن المصروفات</span>`:`<span class="pill" style="background:#eee;color:var(--muted)">غير محتسبة</span>`}<span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
 }
 function openConfirm(title,msg,onYes,yesLabel){openModal(`<h3 style="margin-bottom:10px">${title}</h3><p style="color:var(--muted);font-size:14px;line-height:1.85;margin-bottom:16px">${msg}</p><button class="btn danger" id="cfmYes">${yesLabel||'نعم، احذف'}</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);const y=document.getElementById('cfmYes');if(y)y.onclick=()=>{closeModal();onYes&&onYes();};}
 function delInvoice(id){openConfirm('تأكيد حذف الفاتورة','هل أنت متأكد من حذف هذه الفاتورة؟ تقدر تسترجعها لاحقًا من سلة المحذوفات.',()=>softDelete('invoices',id));}
@@ -1697,7 +1699,7 @@ function openInvoice(inv){invPhoto=null;invFile=null;invIsPdf=false;invEditId=in
   <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد" value="${inv?(inv.party||'').replace(/"/g,'&quot;'):''}"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number" value="${inv?String(inv.number||'').replace(/"/g,'&quot;'):''}"></div></div>
   <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()" value="${inv?(inv.amount||''):''}"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal" value="${inv?(inv.vat||''):''}"></div></div>
   <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${inv?(inv.invoice_date||todayKey()):todayKey()}"></div>
-  ${invEditId?'':`<label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" checked style="width:18px;height:18px;accent-color:var(--brand)"> تسجيلها كمصروف (مشتريات) تلقائيًا — بقيمتها قبل الضريبة</label>`}
+  <label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" ${(!invEditId||(inv&&inv._exp))?'checked':''} style="width:18px;height:18px;accent-color:var(--brand)"> احتساب هذه الفاتورة ضمن المصروفات — بقيمتها قبل الضريبة</label>
   <div class="field"><label>صورة/ملف الفاتورة${invEditId&&invExistingPhoto?' (مرفقة — اختر ملفًا لاستبدالها)':' (صورة أو PDF)'}</label><div class="photobox" id="pb_inv" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>${invEditId&&invExistingPhoto?'ملف مرفق ✓':'اختر صورة أو PDF'}<input type="file" accept="image/*,application/pdf" onchange="pickInvPhoto(this)"></div></div>
   <div class="field"><label>ملاحظات</label><textarea id="iv_note" rows="2">${inv?(inv.note||''):''}</textarea></div>
   <button class="btn" id="ivSave" onclick="saveInvoice()">${invEditId?'حفظ التعديل':'حفظ الفاتورة'}</button>
@@ -1723,7 +1725,18 @@ async function saveInvoice(){
     if(invEditId){
       const{error}=await sb.from('invoices').update(rec).eq('id',invEditId);if(error)throw error;
       const net=+(amount-vat).toFixed(2);
-      try{await sb.from('expenses').update({amount:net,expense_date:idate,description:'فاتورة واردة'+(num?' رقم '+num:'')+(party?' — '+party:'')}).eq('invoice_id',invEditId);}catch(_){}
+      const _ae=document.getElementById('iv_asexp');const wantExp=!!(_ae&&_ae.checked);
+      const _desc='فاتورة واردة'+(num?' رقم '+num:'')+(party?' — '+party:'');
+      try{
+        const{data:_ex}=await sb.from('expenses').select('id').eq('invoice_id',invEditId).is('deleted_at',null);
+        const _has=_ex&&_ex.length;
+        if(wantExp){
+          if(_has)await sb.from('expenses').update({amount:net,expense_date:idate,category:'مشتريات',description:_desc}).eq('invoice_id',invEditId);
+          else await sb.from('expenses').insert({expense_date:idate,category:'مشتريات',amount:net,description:_desc,invoice_id:invEditId,created_by:ME.id});
+        }else if(_has){
+          await sb.from('expenses').delete().eq('invoice_id',invEditId);
+        }
+      }catch(_){}
       closeModal();toast('تم تعديل الفاتورة ✓');loadInvoices();return;
     }
     rec.created_by=ME.id;
