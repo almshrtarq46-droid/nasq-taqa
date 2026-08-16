@@ -1,43 +1,66 @@
 /* نسق الطاقة — service worker
-   1) تفعيل التثبيت كتطبيق (بدون تخزين للصفحة — network-only)
-   2) استقبال إشعارات Push وإظهارها على شاشة الجوال خارج التطبيق */
+   1) قشرة التطبيق: stale-while-revalidate (فتح/تحديث فوري من الكاش + تحديث بالخلفية)
+   2) إعادة التحميل القسري (?v= / ?_r= / ?_ck=): من الشبكة دائماً (أحدث نسخة)
+   3) مكتبات CDN والخطوط: cache-first (تسريع)
+   4) استقبال إشعارات Push */
 self.addEventListener('install', e => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
-/* المكتبات الخارجية والخطوط: تُخزّن مؤقتاً (cache-first) لتسريع الفتح.
-   صفحة التطبيق نفسها: تبقى من الشبكة دائماً (أحدث نسخة). */
+
 const CDN = /cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com/;
+const SHELL_CACHE = 'nasq-shell-v1';
+const CDN_CACHE = 'nasq-cdn-v1';
+
 self.addEventListener('fetch', e => {
-  const url = e.request.url;
-  if (e.request.method === 'GET' && CDN.test(url)) {
-    e.respondWith(caches.open('nasq-cdn-v1').then(c =>
-      c.match(e.request).then(hit => hit || fetch(e.request).then(resp => {
-        try { c.put(e.request, resp.clone()); } catch (_) {}
-        return resp;
-      }))
+  const req = e.request;
+  if (req.method !== 'GET') return;
+  const url = req.url;
+
+  // --- app shell (page navigations) ---
+  if (req.mode === 'navigate') {
+    let forced = false;
+    try { forced = /[?&](v|_r|_ck)=/.test(new URL(url).search); } catch (_) {}
+    const key = self.registration.scope;
+    if (forced) {
+      // network-first: forced reload / auto-update must get the freshest version
+      e.respondWith(
+        fetch(req).then(r => {
+          if (r && r.ok) caches.open(SHELL_CACHE).then(c => { try { c.put(key, r.clone()); } catch (_) {} });
+          return r;
+        }).catch(() => caches.open(SHELL_CACHE).then(c => c.match(key)).then(x => x || Response.error()))
+      );
+    } else {
+      // stale-while-revalidate: instant from cache, refresh in background
+      e.respondWith((async () => {
+        const c = await caches.open(SHELL_CACHE);
+        const cached = await c.match(key);
+        const netP = fetch(req).then(r => { if (r && r.ok) { try { c.put(key, r.clone()); } catch (_) {} } return r; }).catch(() => null);
+        return cached || (await netP) || Response.error();
+      })());
+    }
+    return;
+  }
+
+  // --- CDN libs & fonts: cache-first ---
+  if (CDN.test(url)) {
+    e.respondWith(caches.open(CDN_CACHE).then(c =>
+      c.match(req).then(hit => hit || fetch(req).then(resp => { try { c.put(req, resp.clone()); } catch (_) {} return resp; }))
     ));
     return;
   }
-  e.respondWith(fetch(e.request).catch(() => Response.error()));
+
+  // --- everything else: network, fall back to cache if present ---
+  e.respondWith(fetch(req).catch(() => caches.match(req).then(x => x || Response.error())));
 });
 
-/* استقبال الإشعار الخارجي */
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'نسق الطاقة', body: e.data ? e.data.text() : '' }; }
   const title = d.title || 'نسق الطاقة';
-  const body = d.body || '';
   e.waitUntil(self.registration.showNotification(title, {
-    body,
-    icon: './icon-192.png',
-    badge: './icon-192.png',
-    dir: 'rtl',
-    lang: 'ar',
-    vibrate: [80, 40, 80],
-    data: { url: './' }
+    body: d.body || '', icon: './icon-192.png', badge: './icon-192.png',
+    dir: 'rtl', lang: 'ar', vibrate: [80, 40, 80], data: { url: './' }
   }));
 });
-
-/* الضغط على الإشعار يفتح التطبيق */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   e.waitUntil((async () => {

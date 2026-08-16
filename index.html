@@ -18,12 +18,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 <style>
 :root{--green:#0f6b4f;--green-d:#0b4d38;--copper:#b5732f;--bg:#f4f6f5;--card:#fff;--ink:#182420;--muted:#6b7770;--line:#e3e8e5;--ok:#1f9d63;--bad:#c0392b;--shadow:0 2px 10px rgba(15,60,45,.07)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -478,7 +474,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='107';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='108';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -644,7 +640,7 @@ async function enterApp(role){
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
   const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   await Promise.all([loadProjectsCache(),loadZonesCache(),loadSettingsCache(),loadMyCrew(),loadCatalog(),loadAssignments()]);buildNav(role);show('screen-app');
-  if(role!=='admin')startLiveTracking();
+  if(role!=='admin')startLiveTracking();else _idlePreload();
   syncPush();
 }
 /* ===== إشعارات Push (خارج التطبيق) ===== */
@@ -930,7 +926,7 @@ function buildEmpWorkbookSaudi(list){
     set(9,e.notes||'');r++;});
   return wb;
 }
-async function exportEmployees(){
+async function exportEmployees(){await ensureLib('exceljs');
   const list=_empActiveList();if(!list.length){toast('لا يوجد موظفون في هذا القسم');return;}
   const saudi=EMP_SUB==='sau';
   try{const wb=saudi?buildEmpWorkbookSaudi(list):buildEmpWorkbook(list);const buf=await wb.xlsx.writeBuffer();
@@ -958,7 +954,7 @@ function _empHtmlTable(list,saudi){
     <tr><td colspan="4" style="${TH};background:#C6EFCE;color:#006100">سارية (أكثر من 30 يوم)</td><td colspan="3" style="${TH};background:#FFEB9C;color:#9C6500">تحتاج متابعة (15-30 يوم)</td><td colspan="6" style="${TH};background:#FFC7CE;color:#9C0006">قريبة من الانتهاء (15 يوم أو أقل)</td></tr>
     <tr>${H.map(h=>`<td style="${TH}">${h}</td>`).join('')}</tr>${rows}</table>`;
 }
-async function exportEmployeesPdf(){
+async function exportEmployeesPdf(){await ensureLib('jspdf','html2canvas');
   const list=_empActiveList();if(!list.length){toast('لا يوجد موظفون في هذا القسم');return;}
   const saudi=EMP_SUB==='sau';
   toast('جارٍ تجهيز PDF…');
@@ -1257,7 +1253,7 @@ function buildPayrollWorkbook(){
   _paySheet(wb,'رواتب المقيمين','كشف راتب شهر '+mn,rH,rW,rData,new Set([5,6,8,9,11,12,13,14,16,17,18,20]),20,new Set([5,8,11,12,13,16,17,18,20]),R.length);
   return wb;
 }
-async function exportPayroll(){if(!PAY_ROWS.length){toast('لا بيانات');return;}
+async function exportPayroll(){if(!PAY_ROWS.length){toast('لا بيانات');return;}await ensureLib('exceljs');
   try{const wb=buildPayrollWorkbook();const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='كشف_رواتب_'+PAY_PERIOD+'.xlsx';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
@@ -1296,7 +1292,7 @@ function _payHtml(){
     html+=tbl('كشف راتب شهر '+mn+' — المقيمين',H,rows,19,tot);}
   return html;
 }
-async function exportPayrollPdf(){if(!PAY_ROWS.length){toast('لا بيانات');return;}
+async function exportPayrollPdf(){if(!PAY_ROWS.length){toast('لا بيانات');return;}await ensureLib('jspdf','html2canvas');
   toast('جارٍ تجهيز PDF…');
   try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1500px;background:#fff;padding:24px;direction:rtl';
     wrap.innerHTML=_payHtml();document.body.appendChild(wrap);
@@ -1495,6 +1491,15 @@ async function saveSettings(){
 }
 
 function _loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=()=>res();el.onerror=()=>rej(new Error('فشل تحميل مكتبة الضغط'));document.head.appendChild(el);});}
+const _LIBS={
+  xlsx:['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX],
+  exceljs:['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',()=>window.ExcelJS],
+  jspdf:['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf],
+  html2canvas:['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',()=>window.html2canvas]
+};
+const _libP={};
+async function ensureLib(){for(let i=0;i<arguments.length;i++){const n=arguments[i],L=_LIBS[n];if(!L||L[1]())continue;if(!_libP[n])_libP[n]=_loadScript(L[0]);await _libP[n];}}
+function _idlePreload(){const run=()=>{for(const n in _LIBS){if(!_LIBS[n][1]()&&!_libP[n])_libP[n]=_loadScript(_LIBS[n][0]).catch(()=>{});}};if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:5000});else setTimeout(run,2500);}
 async function _listAllFiles(prefix){
   let out=[],offset=0;const limit=100;
   while(true){
@@ -1704,7 +1709,7 @@ function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;cons
 async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
-function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
+async function exportWO(){await ensureLib('xlsx');const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
   const aoa=[['أمر عمل — شركة نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
   let total=0;const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   Object.keys(byP).forEach(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};byP[pid].forEach(e=>{total+=e.amount;aoa.push([p.name||'',p.code||'',(e.item_code||''),(e.item_name_full||e.item_name),Number(e.qty),e.unit,e.rate,e.amount,e.work_date,e.worker_name||'',(e.photo_before&&e.photo_after)?'نعم':'—']);});});
@@ -1712,7 +1717,7 @@ function exportWO(){const rows=window._woRows||[];if(!rows.length){toast('لا �
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:10},{wch:10},{wch:34},{wch:8},{wch:7},{wch:10},{wch:12},{wch:12},{wch:14},{wch:8}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:10}}];
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'أمر العمل');XLSX.writeFile(wb,'أمر_عمل_'+todayKey()+'.xlsx');toast('تم التصدير ✓');}
 
-function exportMostakhlas(){
+async function exportMostakhlas(){await ensureLib('xlsx');
   const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
   const byItem={};rows.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
   const aoa=[['مستخلص أعمال منجزة (مسودة)'],['المقاول الرئيسي','مكتب الشرق','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','رقم البند','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
@@ -1895,7 +1900,7 @@ function buildExpWorkbook(list){
     const lc=ws.getCell('C'+rr);lc.value=tot;lc.font=F_TOT;lc.fill=FILL_S;lc.alignment=CEN;lc.border=BOX;lc.numFmt='#,##0.00';});
   return wb;
 }
-async function exportExpenses(){
+async function exportExpenses(){await ensureLib('exceljs');
   const{from,to,list}=_expRange();if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
   try{const wb=buildExpWorkbook(list);const buf=await wb.xlsx.writeBuffer();
     const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -1925,7 +1930,7 @@ function _expHtmlBlocks(list){
       <tr><td colspan="2" style="${th};background:#D9E1F2;font-weight:bold">الإجمالي</td><td style="${th};background:#D9E1F2;font-weight:bold">${_money(tot)}</td></tr></table>`;});
   return html;
 }
-async function exportExpensesPdf(){
+async function exportExpensesPdf(){await ensureLib('jspdf','html2canvas');
   const{from,to,list}=_expRange();if(!list.length){toast('لا مصروفات في هذه الفترة');return;}
   toast('جارٍ تجهيز PDF…');
   try{const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:780px;background:#fff;padding:24px;direction:rtl';
