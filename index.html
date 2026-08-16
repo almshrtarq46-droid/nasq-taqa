@@ -474,7 +474,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='108';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='109';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1806,7 +1806,7 @@ function pickInvPhoto(input){const f=input.files[0];if(!f)return;const b=documen
   if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){invIsPdf=true;invFile=f;invPhoto='pdf';const t=document.createElement('div');t.className='pdftag';t.textContent='📄 '+f.name;t.style.cssText='margin-top:6px;font-size:12px;color:var(--green);font-weight:700';b.appendChild(t);return;}
   invIsPdf=false;invFile=null;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{invPhoto=d;const img=document.createElement('img');img.src=d;b.appendChild(img);});rd.readAsDataURL(f);}
 function _fileToBlob(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(new Blob([r.result],{type:file.type||'application/pdf'}));r.onerror=()=>rej(new Error('تعذّر قراءة الملف'));r.readAsArrayBuffer(file);});}
-async function uploadFileDoc(file,tag){const ext=((file.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,''))||'pdf';const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.${ext}`;const blob=await _fileToBlob(file);if(!blob||!blob.size)throw new Error('الملف فارغ — أعد اختياره');const{error}=await sb.storage.from('photos').upload(path,blob,{contentType:file.type||'application/pdf',upsert:true});if(error)throw error;return path;}
+async function uploadFileDoc(file,tag){const ext=((file.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,''))||'pdf';const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.${ext}`;if(!file||!file.size)throw new Error('الملف فارغ — أعد اختياره');const{error}=await sb.storage.from('photos').upload(path,file,{contentType:file.type||'application/pdf',upsert:true});if(error)throw error;return path;}
 async function saveInvoice(){
   const amount=parseFloat(document.getElementById('iv_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
   const btn=document.getElementById('ivSave');const oldLbl=btn.textContent;btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
@@ -2122,7 +2122,7 @@ async function doCrewCheck(dir){
 async function pickSelfie(input){const f=input.files[0];if(!f)return;const lb=document.getElementById('att_loc');
   lb.className='locbar wait';lb.textContent='📸 جارٍ تحديد الموقع وختم الصورة…';
   try{
-    const raw=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>compress(rd.result,res);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});
+    const raw=await readFileData(f);
     const pos=await getPos();
     const geoZones=ZONES.filter(z=>z.lat!=null);
     if(geoZones.length){const inside=geoZones.some(z=>haversine(pos.lat,pos.lng,Number(z.lat),Number(z.lng))<=z.radius);
@@ -2201,7 +2201,7 @@ async function onFieldPhoto(input,phase){
 }
 function compress(dataUrl,cb){const img=new Image();img.onload=()=>{const max=900;let{width:w,height:h}=img;if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);cb(c.toDataURL('image/jpeg',0.6));};img.src=dataUrl;}
 function dataURLtoBlob(d){const[,b64]=d.split(',');const bin=atob(b64);const u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);return new Blob([u],{type:'image/jpeg'});}
-async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const{error}=await sb.storage.from('photos').upload(path,dataURLtoBlob(dataUrl),{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
+async function uploadPhoto(dataUrl,tag){const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.jpg`;const blob=await(await fetch(dataUrl)).blob();const{error}=await sb.storage.from('photos').upload(path,blob,{contentType:'image/jpeg',upsert:true});if(error)throw error;return path;}
 async function saveFieldReport(){
   const assign=ASSIGNMENTS.find(a=>a.id===document.getElementById('f_assign').value);
   const stationNo=document.getElementById('f_station_no').value.trim();
