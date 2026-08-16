@@ -338,6 +338,12 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div class="field"><label>العنوان الوطني</label><input id="t_address" placeholder="المدينة، الحي، الشارع"></div>
         <button class="btn" id="tSave" onclick="saveTaxInfo()">حفظ بيانات الفاتورة</button>
       </div>
+      <h2 class="section-title" style="margin-top:22px">النسخة الاحتياطية</h2>
+      <div class="hint">نزّل نسخة كاملة من كل بيانات النظام (الموظفين، الرواتب، الذمم، المالية، الحضور، الأعمال، المحطات…) كملف واحد تحفظه عندك. اشتراك Pro يأخذ نسخة تلقائية يومية من الخادم أيضاً؛ هذا الزر يعطيك نسخة يدوية تملكها أنت. (الصور والملفات المرفقة تبقى محفوظة في التخزين.)</div>
+      <div class="card">
+        <button class="btn" id="bkBtn" onclick="backupData()">📥 تنزيل نسخة احتياطية الآن</button>
+        <div class="hint" style="margin-top:8px">احفظ الملف في مكان آمن (Google Drive مثلاً). ينفع لاستعادة البيانات لو صار أي خطأ.</div>
+      </div>
     </div>
     <div class="view" id="v-catalog">
       <h2 class="section-title">البنود والأسعار</h2>
@@ -464,7 +470,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='104';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='105';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1477,6 +1483,23 @@ async function saveSettings(){
   const rec={work_start:(document.getElementById('s_hour').value||'06')+':'+(document.getElementById('s_min').value||'00'),late_t1_min:parseInt(document.getElementById('s_t1min').value)||0,late_t1_hours:parseFloat(document.getElementById('s_t1h').value)||0,late_t2_min:parseInt(document.getElementById('s_t2min').value)||0,late_t2_hours:parseFloat(document.getElementById('s_t2h').value)||0,work_hours:parseFloat(document.getElementById('s_wh').value)||8};
   const btn=document.getElementById('sSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
+}
+
+async function backupData(){
+  const btn=document.getElementById('bkBtn');const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span> جارٍ التجهيز…';
+  const tables=['profiles','employees','documents','employee_dues','due_payments','payslips','payroll_adjustments','expenses','invoices','tax_invoices','attendance','entries','entry_finance','projects','zones','catalog_items','assignments','crews','crew_members','settings','notifications','station_photos'];
+  const out={app:'نسق الطاقة',app_version:APP_VER,created_at:new Date().toISOString(),tables:{}};
+  let ok=0;const fail=[];
+  for(const t of tables){
+    try{const{data,error}=await sb.from(t).select('*');if(error)throw error;out.tables[t]=data||[];ok++;}
+    catch(e){fail.push(t);out.tables[t]={_error:String((e&&e.message)||e)};}
+  }
+  try{
+    const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nasq-backup-'+todayKey()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+    toast('تم تنزيل النسخة الاحتياطية ✓ ('+ok+' جدول'+(fail.length?(' · تعذّر: '+fail.join('، ')):'')+')');
+  }catch(e){toast('خطأ في إنشاء الملف: '+((e&&e.message)||e));}
+  btn.disabled=false;btn.innerHTML=old;
 }
 
 /* ===== catalog (global price list) ===== */
