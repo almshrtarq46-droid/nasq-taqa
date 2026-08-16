@@ -474,7 +474,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='109';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='110';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1147,18 +1147,19 @@ function renderPayroll(){
   const box=document.getElementById('payList');
   if(!PAY_ROWS.length){box.innerHTML='<div class="empty">لا يوجد موظفون — أضف رواتبهم في «بيانات الموظفين»</div>';return;}
   const TH=_TBLTH,TD=_TBLTD;let totNet=0;
-  const rows=PAY_ROWS.map((r,i)=>{const c=_pCalc(r);totNet+=c.net;const allow=(r.housing||0)+(r.transport||0);const ded=c.totalDed+c.absDed+c.lateDed;
+  const rows=PAY_ROWS.map((r,i)=>{const c=_pCalc(r);totNet+=c.net;const allow=(r.housing||0)+(r.transport||0);const ded=c.totalDed+c.absDed;
     return `<tr onclick="openPaySlip(${i})" style="cursor:pointer">
       <td style="${TD}">${i+1}</td>
       <td style="${TD};font-weight:700">${r.emp.name||'—'} <span class="pill role" style="font-size:9px">${r.saudi?'سعودي':'مقيم'}</span>${r.posted?' <span class="pill ok" style="font-size:9px">محفوظ</span>':''}</td>
       <td style="${TD}">${fmt(r.base)}</td>
       <td style="${TD};color:var(--ok)">${fmt(allow+c.otVal)}</td>
       <td style="${TD};color:var(--bad)">${fmt(ded)}</td>
+      <td style="${TD};color:var(--bad)">${(!r.saudi&&r.lateH)?`${fmt(c.lateDed)} <small style="color:var(--muted)">(${r.lateH}س)</small>`:'—'}</td>
       <td style="${TD};font-weight:800;color:var(--green)">${fmt(c.net)}</td>
       <td style="${TD};font-weight:700;color:var(--copper)">${r.duesTotal>0?fmt(r.duesTotal):'—'}</td>
       <td style="${TD}"><button class="link" onclick="event.stopPropagation();openPaySlip(${i})">تعديل</button></td></tr>`;}).join('');
   box.innerHTML=`<div style="overflow-x:auto;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
-    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">الأساسي</th><th style="${TH}">الاستحقاقات</th><th style="${TH}">الخصومات</th><th style="${TH}">الصافي</th><th style="${TH}">ذمم مستحقة</th><th style="${TH}"></th></tr></thead>
+    <thead><tr><th style="${TH}">م</th><th style="${TH}">الموظف</th><th style="${TH}">الأساسي</th><th style="${TH}">الاستحقاقات</th><th style="${TH}">الخصومات</th><th style="${TH}">خصم التأخير</th><th style="${TH}">الصافي</th><th style="${TH}">ذمم مستحقة</th><th style="${TH}"></th></tr></thead>
     <tbody>${rows}</tbody></table></div>
     <div class="card" style="padding:13px;margin-top:11px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>إجمالي صافي الرواتب</span><span>${fmt(totNet)} ﷼</span></div></div>
     <div class="hint" style="margin-top:8px">اضغط على أي موظف لتعديل تفاصيل راتبه.</div>`;
