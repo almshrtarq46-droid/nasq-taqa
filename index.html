@@ -480,7 +480,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='117';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='118';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1148,7 +1148,7 @@ async function saveAdjustment(id){const amount=parseFloat(document.getElementByI
     closeModal();toast('تم ✓ وأُشعر الموظف');loadPayroll();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ وإشعار الموظف';}}
 function viewAdjustments(id,name){const adj=(window._payAdj||[]).filter(a=>a.employee_id===id);
-  openModal(`<h3 style="margin-bottom:12px">حركات ${name||''} — ${monthKey()}</h3>${adj.length?adj.map(a=>{const plus=(a.type==='overtime'||a.type==='bonus');const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[a.type];return `<div class="item"><div class="meta"><b>${lbl}${a.note?' — '+a.note:''}</b><small>${a.created_at?a.created_at.slice(0,10):''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill ${plus?'ok':'susp'}">${plus?'+':'−'} ${fmt(a.amount)}</span><button class="btn danger sm" style="flex:none;width:36px" onclick="delAdjustment('${a.id}')">✕</button></div></div>`;}).join(''):'<div class="empty">لا حركات هذا الشهر</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+  openModal(`<h3 style="margin-bottom:12px">حركات ${name||''} — ${monthKey()}</h3>${adj.length?adj.map(a=>{const plus=(a.type==='overtime'||a.type==='bonus');const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[a.type];return `<div class="item"><div class="meta"><b>${lbl}${a.note?' — '+a.note:''}</b><small>${a.created_at?locDate(a.created_at):''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill ${plus?'ok':'susp'}">${plus?'+':'−'} ${fmt(a.amount)}</span><button class="btn danger sm" style="flex:none;width:36px" onclick="delAdjustment('${a.id}')">✕</button></div></div>`;}).join(''):'<div class="empty">لا حركات هذا الشهر</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 async function delAdjustment(id){const{error}=await sb.from('payroll_adjustments').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadPayroll();}
 function exportPayrollOLD(){const rows=window._payRows||[];if(!rows.length){toast('لا بيانات');return;}
   const aoa=[['كشف الرواتب — شركة نسق الطاقة'],['الشهر',monthKey()],[],['الموظف','أيام الحضور','الأساسي','خصم التأخير','أوفر تايم/إضافات','خصومات وسلف','الصافي']];
@@ -1375,14 +1375,14 @@ async function openTrash(table,title,labelFn){
   const{data,error}=await sb.from(table).select('*').not('deleted_at','is',null).order('deleted_at',{ascending:false});
   if(error){toast('نفّذ كود سلة المحذوفات (SQL) أولًا');return;}
   const list=data||[];
-  openModal(`<h3 style="margin-bottom:12px">🗑 المحذوفات — ${title}</h3>${list.length?list.map(x=>`<div class="item"><div class="meta"><b>${labelFn(x)}</b><small>حُذف ${(x.deleted_at||'').slice(0,16).replace('T',' ')}</small></div><button class="link" onclick="restoreItem('${table}','${x.id}');closeModal()">↩ استرجاع</button></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  openModal(`<h3 style="margin-bottom:12px">🗑 المحذوفات — ${title}</h3>${list.length?list.map(x=>`<div class="item"><div class="meta"><b>${labelFn(x)}</b><small>حُذف ${x.deleted_at?locDT(x.deleted_at):''}</small></div><button class="link" onclick="restoreItem('${table}','${x.id}');closeModal()">↩ استرجاع</button></div>`).join(''):'<div class="empty">السلة فارغة</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
 }
 async function openDuePayments(id,label){
   const{data,error}=await sb.from('due_payments').select('*').eq('due_id',id).order('created_at',{ascending:true});
   if(error){toast('نفّذ كود سجل التسديد (SQL) أولًا');return;}
   const list=data||[];const tot=list.reduce((s,p)=>s+Number(p.amount||0),0);
   openModal(`<h3 style="margin-bottom:4px">📋 سجل التسديد</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${label||''}</small>
-    ${list.length?list.map(p=>{const neg=Number(p.amount)<0;return `<div class="item"><div class="meta"><b>${neg?'إرجاع/تعديل':'تسديد'} ${fmt(Math.abs(p.amount))} ﷼</b><small>شهر ${p.period||''}${p.created_at?' · '+p.created_at.slice(0,10):''}</small></div><span class="pill ${neg?'susp':'ok'}">${neg?'−':'+'}${fmt(Math.abs(p.amount))}</span></div>`;}).join('')+`<div class="card" style="padding:11px;margin-top:8px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800"><span>إجمالي المسدَّد</span><span style="color:var(--ok)">${fmt(tot)} ﷼</span></div></div>`:'<div class="empty">لا تسديدات على هذه الذمة بعد</div>'}
+    ${list.length?list.map(p=>{const neg=Number(p.amount)<0;return `<div class="item"><div class="meta"><b>${neg?'إرجاع/تعديل':'تسديد'} ${fmt(Math.abs(p.amount))} ﷼</b><small>شهر ${p.period||''}${p.created_at?' · '+locDate(p.created_at):''}</small></div><span class="pill ${neg?'susp':'ok'}">${neg?'−':'+'}${fmt(Math.abs(p.amount))}</span></div>`;}).join('')+`<div class="card" style="padding:11px;margin-top:8px;background:#f6f8f7;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800"><span>إجمالي المسدَّد</span><span style="color:var(--ok)">${fmt(tot)} ﷼</span></div></div>`:'<div class="empty">لا تسديدات على هذه الذمة بعد</div>'}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
 }
 /* ===== ذمم الموظفين (حقوق الشركة) ===== */
@@ -1469,6 +1469,9 @@ async function loadAttAdmin(){
     const sOut=a.out_photo?`<button class="link" onclick="viewInvPhoto('${a.out_photo}','صورة الانصراف')">📷 صورة الانصراف</button>`:'';
     return `<div class="item" style="align-items:flex-start"><div class="ic">${(w.full_name||'؟').slice(0,1)}</div><div class="meta"><b>${w.full_name||'—'}</b><small>${ex}</small><div style="margin-top:5px">${b}</div>${map?`<div style="margin-top:10px">${map}</div>`:''}${sIn?`<div style="margin-top:10px">${sIn}</div>`:''}${sOut?`<div style="margin-top:8px">${sOut}</div>`:''}</div></div>`;}).join(''):'<div class="empty">لا يوجد حضور في هذا اليوم</div>';
 }
+function _pad2(n){return String(n).padStart(2,'0');}
+function locDate(ts){const d=new Date(ts);return isNaN(d.getTime())?'':d.getFullYear()+'-'+_pad2(d.getMonth()+1)+'-'+_pad2(d.getDate());}
+function locDT(ts){const d=new Date(ts);return isNaN(d.getTime())?'':locDate(ts)+' '+_pad2(d.getHours())+':'+_pad2(d.getMinutes());}
 function hm(ts){return new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}
 function hoursBetween(a,b){return((new Date(b)-new Date(a))/3600000).toFixed(1);}
 function drawMap(rows,pm){const el=document.getElementById('map');const pts=rows.filter(a=>a.in_lat!=null);if(!window.L){el.style.display='none';return;}el.style.display='block';
@@ -2132,7 +2135,7 @@ async function loadWorkerNotifs(){
   if(!data||!data.length){box.innerHTML='';return;}
   const unread=data.filter(n=>!n.is_read).length;
   box.innerHTML=`<div class="card"><h3 style="font-size:15px;margin-bottom:10px">🔔 الإشعارات ${unread?`<span class="pill susp">${unread} جديد</span>`:''}</h3>`+
-    data.map(n=>`<div class="item" style="${n.is_read?'':'border-color:var(--copper)'}"><div class="ic" style="background:${n.kind==='deduction'?'#fbecea':'#eef4f1'};color:${n.kind==='deduction'?'var(--bad)':'var(--green)'}">${n.kind==='deduction'?'⚠':'🔔'}</div><div class="meta"><b>${n.title||''}</b><small>${n.body||''}</small><small style="display:block;color:var(--muted)">${n.created_at?n.created_at.slice(0,16).replace('T',' '):''}</small></div></div>`).join('')+`</div>`;
+    data.map(n=>`<div class="item" style="${n.is_read?'':'border-color:var(--copper)'}"><div class="ic" style="background:${n.kind==='deduction'?'#fbecea':'#eef4f1'};color:${n.kind==='deduction'?'var(--bad)':'var(--green)'}">${n.kind==='deduction'?'⚠':'🔔'}</div><div class="meta"><b>${n.title||''}</b><small>${n.body||''}</small><small style="display:block;color:var(--muted)">${n.created_at?locDT(n.created_at):''}</small></div></div>`).join('')+`</div>`;
   const ids=data.filter(n=>!n.is_read).map(n=>n.id);
   if(ids.length){try{await sb.from('notifications').update({is_read:true}).in('id',ids);}catch(_){}}
 }
