@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='129';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='130';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2142,23 +2142,35 @@ async function loadMyInfo(){
   if(error){box.innerHTML='<div class="empty">تعذّر التحميل — تأكد من تنفيذ كود صلاحيات SQL.</div>';return;}
   const e=(emps||[]).filter(x=>!x.deleted_at)[0];
   if(!e){box.innerHTML='<div class="empty">لم يتم ربط حسابك بملف موظف بعد. راجع الإدارة.</div>';return;}
-  const mk=monthKey();let dues=[],adj=[],pen=0,lateDays=[];
+  const mk=monthKey();let dues=[],adj=[],pen=0,lateDays=[],slip=null;
   try{const{data}=await sb.from('employee_dues').select('*').eq('employee_id',e.id);dues=(data||[]).filter(x=>!x.deleted_at);}catch(_){}
   try{const{data}=await sb.from('payroll_adjustments').select('*').eq('employee_id',ME.id).eq('month',mk);adj=data||[];}catch(_){}
+  try{const{data}=await sb.from('payslips').select('*').eq('employee_id',e.id).eq('period',mk).limit(1);slip=(data||[])[0]||null;}catch(_){}
   const lateSubject=!_isSaudi(e)&&!!e.late_deduction;
-  if(lateSubject){try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');lateDays=(data||[]).filter(a=>Number(a.penalty_hours||0)>0).sort((x,y)=>(x.work_date<y.work_date?-1:1));pen=lateDays.reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}}
+  if(lateSubject&&!slip){try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');lateDays=(data||[]).filter(a=>Number(a.penalty_hours||0)>0).sort((x,y)=>(x.work_date<y.work_date?-1:1));pen=lateDays.reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}}
   const duesActive=dues.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).sort((x,y)=>((x.created_at||'')<(y.created_at||'')?1:-1));
   const duesRem=duesActive.reduce((s2,d)=>s2+(Number(d.total_amount||0)-Number(d.paid||0)),0);
-  const duesInstall=Math.min(duesActive.reduce((s2,d)=>s2+Number(d.installment||0),0),duesRem);
-  const viol=adj.filter(a=>a.type==='deduction'&&Number(a.amount||0)>0),adv=adj.filter(a=>a.type==='advance'&&Number(a.amount||0)>0),bon=adj.filter(a=>(a.type==='overtime'||a.type==='bonus')&&Number(a.amount||0)>0);
-  const base=Number(e.monthly_salary||0),hou=Number(e.housing_allowance||0),tra=Number(e.transport_allowance||0);
-  const hourly=base/240,lateDed=pen*hourly;
-  const violSum=viol.reduce((s2,a)=>s2+Number(a.amount||0),0);
-  const advSum=adv.reduce((s2,a)=>s2+Number(a.amount||0),0);
-  const bonSum=bon.reduce((s2,a)=>s2+Number(a.amount||0),0);
-  const gross=base+hou+tra+bonSum;
-  const totalDed=lateDed+violSum+advSum+duesInstall;
-  const net=gross-totalDed;
+  const duesInstallEst=Math.min(duesActive.reduce((s2,d)=>s2+Number(d.installment||0),0),duesRem);
+  const viol=adj.filter(a=>a.type==='deduction'&&Number(a.amount||0)>0),adv=adj.filter(a=>a.type==='advance'&&Number(a.amount||0)>0);
+  const bonusAdj=adj.filter(a=>a.type==='bonus'&&Number(a.amount||0)>0),otAdj=adj.filter(a=>a.type==='overtime'&&Number(a.amount||0)>0);
+  const posted=!!slip;
+  const base=posted?Number(slip.base||0):Number(e.monthly_salary||0);
+  const hou=posted?Number(slip.housing||0):Number(e.housing_allowance||0);
+  const tra=posted?Number(slip.transport||0):Number(e.transport_allowance||0);
+  const hourly=base/240;
+  const otVal=posted?Number(slip.overtime||0):otAdj.reduce((s2,a)=>s2+Number(a.amount||0),0);
+  const otH=posted?Number(slip.overtime_hours||0):0;
+  const bonusSum=bonusAdj.reduce((s2,a)=>s2+Number(a.amount||0),0);
+  const lateDed=posted?Number(slip.late_ded||0):pen*hourly;
+  const lateH=posted?Number(slip.late_hours||0):pen;
+  const absDed=posted?Number(slip.absence_ded||0):0;
+  const absDays=posted?Number(slip.absent_days||0):0;
+  const manualDed=posted?Number(slip.deductions||0):(viol.reduce((s2,a)=>s2+Number(a.amount||0),0)+adv.reduce((s2,a)=>s2+Number(a.amount||0),0));
+  const manualReason=posted?(slip.deduction_reason||''):'';
+  const duesInstall=posted?Number(slip.dues_ded||0):duesInstallEst;
+  const gross=base+hou+tra+otVal+bonusSum;
+  const totalDed=lateDed+absDed+manualDed+duesInstall;
+  const net=posted?Number(slip.net||0):(gross-totalDed);
   const bdg=d=>{const st=docStatus(d);return st?` <span class="pill ${st.k==='expired'?'susp':st.k==='soon'?'pend':'ok'}" style="font-size:10px">${st.k==='expired'?'منتهٍ':st.k==='soon'?'قرب الانتهاء':'سارٍ'}</span>`:'';};
   const R=(l,v,x)=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted)">${l}</span><span style="font-weight:700">${(v==null||v==='')?'—':v}${x||''}</span></div>`;
   const L=(l,v,c)=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted)">${l}</span><span style="font-weight:700${c?';color:'+c:''}">${v}</span></div>`;
@@ -2171,21 +2183,24 @@ async function loadMyInfo(){
       <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:6px"><span>إجمالي المتبقّي</span><span style="color:var(--bad)">${fmt(duesRem)} ﷼</span></div>
       ${duesActive.map(d=>`<div style="padding:7px 0;border-bottom:1px solid var(--line)"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700"><span>${d.category||'ذمة'}</span><span style="color:var(--bad)">${fmt(Number(d.total_amount||0)-Number(d.paid||0))} ﷼</span></div><div style="font-size:12px;color:var(--muted);margin-top:2px">${d.created_at?locDate(d.created_at):''}${d.reason?' · '+d.reason:''}${Number(d.paid||0)>0?' · مسدَّد منها '+fmt(d.paid)+' ﷼':''}${Number(d.installment||0)>0?' · القسط الشهري '+fmt(d.installment)+' ﷼':''}</div></div>`).join('')||'<div style="color:var(--muted);font-size:13px">لا ذمم مستحقة ✓</div>'}
       ${duesInstall>0?`<div class="hint" style="margin-top:6px">يُخصم منها هذا الشهر قسط بمقدار ${fmt(duesInstall)} ﷼ (محسوب ضمن الصافي أدناه).</div>`:''}</div>
-    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:8px">🧾 كشف راتبك هذا الشهر (مباشر)</h3>
+    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:8px">🧾 كشف راتبك هذا الشهر ${posted?'<span class="pill ok" style="font-size:10px">معتمد</span>':'<span class="pill pend" style="font-size:10px">تقديري</span>'}</h3>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin:2px 0 2px">الاستحقاقات</div>
       ${L('الراتب الأساسي','+ '+fmt(base)+' ﷼','var(--ok)')}
       ${hou?L('بدل سكن','+ '+fmt(hou)+' ﷼','var(--ok)'):''}
       ${tra?L('بدل نقل','+ '+fmt(tra)+' ﷼','var(--ok)'):''}
-      ${bon.map(a=>L((a.type==='overtime'?'أوفر تايم':'مكافأة')+(a.note?' — '+a.note:''),'+ '+fmt(a.amount)+' ﷼','var(--ok)')).join('')}
+      ${otVal>0?L('أوفر تايم'+(otH?' ('+otH+' ساعة)':''),'+ '+fmt(otVal)+' ﷼','var(--ok)'):(posted?'':'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا أوفر تايم هذا الشهر</div>')}
+      ${bonusAdj.map(a=>L('مكافأة'+(a.note?' — '+a.note:''),'+ '+fmt(a.amount)+' ﷼','var(--ok)')).join('')}
       <div style="display:flex;justify-content:space-between;font-weight:800;padding:7px 0;border-bottom:2px solid var(--line)"><span>الإجمالي قبل الخصم</span><span>${fmt(gross)} ﷼</span></div>
       <div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">١) خصم التأخير</div>
-      ${!lateSubject?'<div style="color:var(--muted);font-size:13px;padding:3px 0">غير خاضع لخصم التأخير</div>':(lateDays.length?lateDays.map(a=>L('تأخير '+a.work_date+' ('+Number(a.penalty_hours)+' ساعة × '+fmt(hourly)+' ﷼)','− '+fmt(Number(a.penalty_hours)*hourly)+' ﷼','var(--bad)')).join(''):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا تأخير هذا الشهر ✓</div>')}
-      ${(viol.length||adv.length)?`<div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">مخالفات وسلف</div>${viol.map(a=>L('مخالفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}${adv.map(a=>L('سلفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}`:''}
+      ${!lateSubject?'<div style="color:var(--muted);font-size:13px;padding:3px 0">غير خاضع لخصم التأخير</div>':(posted?(lateDed>0?L('خصم تأخير'+(lateH?' ('+lateH+' ساعة)':''),'− '+fmt(lateDed)+' ﷼','var(--bad)'):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا تأخير هذا الشهر ✓</div>'):(lateDays.length?lateDays.map(a=>L('تأخير '+a.work_date+' ('+Number(a.penalty_hours)+' ساعة × '+fmt(hourly)+' ﷼)','− '+fmt(Number(a.penalty_hours)*hourly)+' ﷼','var(--bad)')).join(''):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا تأخير هذا الشهر ✓</div>'))}
+      ${absDed>0?`<div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">خصم الغياب</div>${L('غياب'+(absDays?' ('+absDays+' يوم)':''),'− '+fmt(absDed)+' ﷼','var(--bad)')}`:''}
+      ${manualDed>0?`<div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">مخالفات وسلف</div>${posted?L('خصومات'+(manualReason?' — '+manualReason:''),'− '+fmt(manualDed)+' ﷼','var(--bad)'):(viol.map(a=>L('مخالفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')+adv.map(a=>L('سلفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join(''))}`:''}
       <div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">٢) قسط الذمم هذا الشهر</div>
       ${duesInstall>0?L('قسط الذمم (من إجمالي '+fmt(duesRem)+' ﷼)','− '+fmt(duesInstall)+' ﷼','var(--bad)'):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا قسط ذمم هذا الشهر ✓</div>'}
       <div style="display:flex;justify-content:space-between;font-weight:800;padding:7px 0;border-bottom:2px solid var(--line);margin-top:4px"><span>إجمالي الخصومات</span><span style="color:var(--bad)">− ${fmt(totalDed)} ﷼</span></div>
-      <div style="font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 4px">٣) إجمالي الراتب المتوقّع</div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--ok);color:#fff;border-radius:12px"><span style="font-weight:800;font-size:15px">الصافي المتوقّع</span><span style="font-weight:900;font-size:22px">${fmt(net)} ﷼</span></div>
-      <div class="hint" style="margin-top:8px">مبلغ تقريبي مباشر = (الإجمالي قبل الخصم) − (التأخير) − (قسط الذمم) − (مخالفات/سلف إن وُجدت). الصافي النهائي يُعتمد عند اعتماد الرواتب وقد يختلف بحسب الغياب.</div></div>
+      <div style="font-size:12px;color:var(--muted);font-weight:700;margin:10px 0 4px">٣) إجمالي الراتب ${posted?'الصافي':'المتوقّع'}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px;background:var(--ok);color:#fff;border-radius:12px"><span style="font-weight:800;font-size:15px">${posted?'الصافي المعتمد':'الصافي المتوقّع'}</span><span style="font-weight:900;font-size:22px">${fmt(net)} ﷼</span></div>
+      <div class="hint" style="margin-top:8px">${posted?'هذا كشف راتبك المعتمد لهذا الشهر بالتفصيل الكامل.':'مبلغ تقديري مباشر = (الإجمالي قبل الخصم) − (التأخير) − (قسط الذمم) − (مخالفات/سلف إن وُجدت). يُعتمد الأوفر تايم والغياب عند اعتماد الرواتب من الإدارة.'}</div></div>
     <div class="hint" style="margin-top:10px">بياناتك تُحدَّث تلقائيًا من إدارة النظام. للاستفسار أو التعديل راجع الإدارة.</div>`;
 }
 async function loadWorkerNotifs(){
