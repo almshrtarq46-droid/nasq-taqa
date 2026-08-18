@@ -480,7 +480,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='115';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='116';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1056,10 +1056,12 @@ async function downloadCompanyFile(path,encTitle){
     const title=decodeURIComponent(encTitle||'');
     const ext=((path.split('.').pop()||'')+'').toLowerCase().replace(/[^a-z0-9]/g,'');
     const fname=(title||'ملف-الشركة')+(ext?('.'+ext):'');
-    const{data,error}=await sb.storage.from('photos').createSignedUrl(path,120,{download:fname});
-    if(error||!data||!data.signedUrl)throw error||new Error('تعذّر إنشاء رابط التحميل');
-    const a=document.createElement('a');a.href=data.signedUrl;a.download=fname;document.body.appendChild(a);a.click();a.remove();
-    toast('جارٍ التحميل ✓');
+    const{data,error}=await sb.storage.from('photos').download(path);
+    if(error||!data)throw error||new Error('تعذّر تحميل الملف');
+    const url=URL.createObjectURL(data);
+    const a=document.createElement('a');a.href=url;a.download=fname;document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),5000);
+    toast('تم التحميل ✓');
   }catch(e){toast('تعذّر التحميل: '+((e&&e.message)||e));}
 }
 let coFile=null,coEditId=null,coExistingFile='';
