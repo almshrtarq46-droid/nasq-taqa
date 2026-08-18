@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='128';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='129';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2145,7 +2145,8 @@ async function loadMyInfo(){
   const mk=monthKey();let dues=[],adj=[],pen=0,lateDays=[];
   try{const{data}=await sb.from('employee_dues').select('*').eq('employee_id',e.id);dues=(data||[]).filter(x=>!x.deleted_at);}catch(_){}
   try{const{data}=await sb.from('payroll_adjustments').select('*').eq('employee_id',ME.id).eq('month',mk);adj=data||[];}catch(_){}
-  try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');lateDays=(data||[]).filter(a=>Number(a.penalty_hours||0)>0).sort((x,y)=>(x.work_date<y.work_date?-1:1));pen=lateDays.reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}
+  const lateSubject=!_isSaudi(e)&&!!e.late_deduction;
+  if(lateSubject){try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');lateDays=(data||[]).filter(a=>Number(a.penalty_hours||0)>0).sort((x,y)=>(x.work_date<y.work_date?-1:1));pen=lateDays.reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}}
   const duesActive=dues.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).sort((x,y)=>((x.created_at||'')<(y.created_at||'')?1:-1));
   const duesRem=duesActive.reduce((s2,d)=>s2+(Number(d.total_amount||0)-Number(d.paid||0)),0);
   const duesInstall=Math.min(duesActive.reduce((s2,d)=>s2+Number(d.installment||0),0),duesRem);
@@ -2177,7 +2178,7 @@ async function loadMyInfo(){
       ${bon.map(a=>L((a.type==='overtime'?'أوفر تايم':'مكافأة')+(a.note?' — '+a.note:''),'+ '+fmt(a.amount)+' ﷼','var(--ok)')).join('')}
       <div style="display:flex;justify-content:space-between;font-weight:800;padding:7px 0;border-bottom:2px solid var(--line)"><span>الإجمالي قبل الخصم</span><span>${fmt(gross)} ﷼</span></div>
       <div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">١) خصم التأخير</div>
-      ${lateDays.length?lateDays.map(a=>L('تأخير '+a.work_date+' ('+Number(a.penalty_hours)+' ساعة × '+fmt(hourly)+' ﷼)','− '+fmt(Number(a.penalty_hours)*hourly)+' ﷼','var(--bad)')).join(''):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا تأخير هذا الشهر ✓</div>'}
+      ${!lateSubject?'<div style="color:var(--muted);font-size:13px;padding:3px 0">غير خاضع لخصم التأخير</div>':(lateDays.length?lateDays.map(a=>L('تأخير '+a.work_date+' ('+Number(a.penalty_hours)+' ساعة × '+fmt(hourly)+' ﷼)','− '+fmt(Number(a.penalty_hours)*hourly)+' ﷼','var(--bad)')).join(''):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا تأخير هذا الشهر ✓</div>')}
       ${(viol.length||adv.length)?`<div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">مخالفات وسلف</div>${viol.map(a=>L('مخالفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}${adv.map(a=>L('سلفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}`:''}
       <div style="font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 2px">٢) قسط الذمم هذا الشهر</div>
       ${duesInstall>0?L('قسط الذمم (من إجمالي '+fmt(duesRem)+' ﷼)','− '+fmt(duesInstall)+' ﷼','var(--bad)'):'<div style="color:var(--muted);font-size:13px;padding:3px 0">لا قسط ذمم هذا الشهر ✓</div>'}
