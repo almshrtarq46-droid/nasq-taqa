@@ -48,6 +48,20 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // --- Supabase read (REST GET + auth user): network-first, fast fallback to cached (offline read + slow-net) ---
+  if (req.method === 'GET' && /supabase\.co\/(rest\/v1|auth\/v1\/user)/.test(url)) {
+    e.respondWith((async () => {
+      const c = await caches.open('nasq-data-v1');
+      const netP = fetch(req).then(r => { if (r && r.ok) { try { c.put(req, r.clone()); } catch (_) {} } return r; });
+      const cached = await c.match(req);
+      if (!cached) { try { return await netP; } catch (_) { return Response.error(); } }
+      const timeout = new Promise(res => setTimeout(() => res(null), 3500));
+      const winner = await Promise.race([netP.catch(() => null), timeout]);
+      return winner || cached;
+    })());
+    return;
+  }
+
   // --- everything else: network, fall back to cache if present ---
   e.respondWith(fetch(req).catch(() => caches.match(req).then(x => x || Response.error())));
 });
