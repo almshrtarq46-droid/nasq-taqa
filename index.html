@@ -227,7 +227,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div class="who"><b id="h_name"></b><span id="h_role"></span></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      <button class="btn ghost sm" onclick="refreshApp()" title="تحديث" aria-label="تحديث"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></button>
+      <button class="btn ghost sm" id="bellBtn" onclick="openNotifsModal()" title="الإشعارات" aria-label="الإشعارات" style="position:relative"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span id="notifBadge" style="display:none;position:absolute;top:-5px;right:-5px;min-width:16px;height:16px;line-height:16px;background:var(--bad);color:#fff;border-radius:9px;font-size:10px;font-weight:800;text-align:center;padding:0 3px"></span></button><button class="btn ghost sm" onclick="refreshApp()" title="تحديث" aria-label="تحديث"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" style="vertical-align:middle"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 4v5h-5"/></svg></button>
     </div>
   </header>
   <main>
@@ -480,7 +480,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='120';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='121';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -647,6 +647,7 @@ async function enterApp(role){
   const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=role==='admin'?'مدير النظام':'عامل ميداني';
   await Promise.all([loadProjectsCache(),loadZonesCache(),loadSettingsCache(),loadMyCrew(),loadCatalog(),loadAssignments()]);buildNav(role);show('screen-app');
   if(role!=='admin')startLiveTracking();else _idlePreload();
+  refreshNotifBadge();if(!window._notifTimer)window._notifTimer=setInterval(refreshNotifBadge,60000);
   syncPush();
 }
 /* ===== إشعارات Push (خارج التطبيق) ===== */
@@ -2139,8 +2140,13 @@ async function loadWorkerNotifs(){
   const ids=data.filter(n=>!n.is_read).map(n=>n.id);
   if(ids.length){try{await sb.from('notifications').update({is_read:true}).in('id',ids);}catch(_){}}
 }
-async function delNotif(id){try{const{data,error}=await sb.from('notifications').delete().eq('id',id).select();if(error)throw error;if(!data||!data.length){toast('تعذّر الحذف — نفّذ كود صلاحية الحذف (SQL)');return;}loadWorkerNotifs();}catch(e){toast('تعذّر الحذف: '+((e&&e.message)||e));}}
-function clearAllNotifs(){openConfirm('مسح كل الإشعارات','متأكد من حذف جميع إشعاراتك؟',async()=>{try{const{data,error}=await sb.from('notifications').delete().eq('employee_id',ME.id).select();if(error)throw error;if(!data||!data.length){toast('تعذّر المسح — نفّذ كود صلاحية الحذف (SQL)');return;}toast('تم مسح الإشعارات');loadWorkerNotifs();}catch(e){toast('تعذّر المسح: '+((e&&e.message)||e));}});}
+function _refreshNotifViews(){refreshNotifBadge();if(document.getElementById('notifModalList'))renderNotifModal();if(document.getElementById('workerNotifs')&&typeof loadWorkerNotifs==='function')loadWorkerNotifs();}
+async function refreshNotifBadge(){try{if(!ME)return;const{count}=await sb.from('notifications').select('*',{count:'exact',head:true}).eq('employee_id',ME.id).eq('is_read',false);const b=document.getElementById('notifBadge');if(!b)return;if(count>0){b.textContent=count>99?'99+':count;b.style.display='';}else b.style.display='none';}catch(_){}}
+function _notifItem(n){return `<div class="item" style="${n.is_read?'':'border-color:var(--copper)'}"><div class="ic" style="background:${n.kind==='deduction'?'#fbecea':'#eef4f1'};color:${n.kind==='deduction'?'var(--bad)':'var(--green)'}">${n.kind==='deduction'?'⚠':'🔔'}</div><div class="meta"><b>${n.title||''}</b><small>${n.body||''}</small><small style="display:block;color:var(--muted)">${n.created_at?locDT(n.created_at):''}</small></div><button class="link" style="color:var(--bad);flex:none;align-self:flex-start" onclick="delNotif('${n.id}')">✕</button></div>`;}
+function openNotifsModal(){openModal('<h3 style="margin-bottom:10px">🔔 الإشعارات <button class="link" style="float:left;font-size:12px;color:var(--bad)" onclick="clearAllNotifs()">مسح الكل</button></h3><div id="notifModalList" style="max-height:62vh;overflow-y:auto"><div class="empty">جارٍ التحميل…</div></div><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>');renderNotifModal();}
+async function renderNotifModal(){const box=document.getElementById('notifModalList');if(!box)return;const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(50);box.innerHTML=(data&&data.length)?data.map(_notifItem).join(''):'<div class="empty">لا توجد إشعارات</div>';const ids=(data||[]).filter(n=>!n.is_read).map(n=>n.id);if(ids.length){try{await sb.from('notifications').update({is_read:true}).in('id',ids);refreshNotifBadge();}catch(_){}}}
+async function delNotif(id){try{const{data,error}=await sb.from('notifications').delete().eq('id',id).select();if(error)throw error;if(!data||!data.length){toast('تعذّر الحذف — نفّذ كود صلاحية الحذف (SQL)');return;}_refreshNotifViews();}catch(e){toast('تعذّر الحذف: '+((e&&e.message)||e));}}
+function clearAllNotifs(){openConfirm('مسح كل الإشعارات','متأكد من حذف جميع إشعاراتك؟',async()=>{try{const{data,error}=await sb.from('notifications').delete().eq('employee_id',ME.id).select();if(error)throw error;if(!data||!data.length){toast('تعذّر المسح — نفّذ كود صلاحية الحذف (SQL)');return;}toast('تم مسح الإشعارات');_refreshNotifViews();}catch(e){toast('تعذّر المسح: '+((e&&e.message)||e));}});}
 
 /* ===== WORKER: attendance ===== */
 let attToday=null,attSelfie=null,attSelfiePos=null;
