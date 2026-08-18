@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='124';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='125';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2148,26 +2148,38 @@ async function loadMyInfo(){
   try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');pen=(data||[]).reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}
   const duesRem=dues.reduce((s2,d)=>s2+Math.max(0,Number(d.total_amount||0)-Number(d.paid||0)),0);
   const viol=adj.filter(a=>a.type==='deduction'),adv=adj.filter(a=>a.type==='advance'),bon=adj.filter(a=>a.type==='overtime'||a.type==='bonus');
+  const base=Number(e.monthly_salary||0),hou=Number(e.housing_allowance||0),tra=Number(e.transport_allowance||0);
+  const hourly=base/240,lateDed=pen*hourly;
+  const violSum=viol.reduce((s2,a)=>s2+Number(a.amount||0),0);
+  const advSum=adv.reduce((s2,a)=>s2+Number(a.amount||0),0);
+  const bonSum=bon.reduce((s2,a)=>s2+Number(a.amount||0),0);
+  const gross=base+hou+tra+bonSum;
+  const totalDed=lateDed+violSum+advSum;
+  const net=gross-totalDed;
   const bdg=d=>{const st=docStatus(d);return st?` <span class="pill ${st.k==='expired'?'susp':st.k==='soon'?'pend':'ok'}" style="font-size:10px">${st.k==='expired'?'منتهٍ':st.k==='soon'?'قرب الانتهاء':'سارٍ'}</span>`:'';};
   const R=(l,v,x)=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted)">${l}</span><span style="font-weight:700">${(v==null||v==='')?'—':v}${x||''}</span></div>`;
+  const L=(l,v,c)=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted)">${l}</span><span style="font-weight:700${c?';color:'+c:''}">${v}</span></div>`;
   box.innerHTML=`
     <div class="card"><h3 style="margin-bottom:6px">👤 المعلومات الشخصية</h3>
       ${R('الاسم',e.name)}${R('رقم الإقامة',e.iqama_number)}${R('الجنسية',e.nationality)}
       ${R('انتهاء الإقامة',e.iqama_expiry,e.iqama_expiry?bdg(e.iqama_expiry):'')}
       ${R('انتهاء العقد',e.contract_expiry,e.contract_expiry?bdg(e.contract_expiry):'')}</div>
-    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">💰 الراتب</h3>
-      ${R('الراتب الأساسي',fmt(e.monthly_salary||0)+' ﷼')}
-      ${e.housing_allowance?R('بدل سكن',fmt(e.housing_allowance)+' ﷼'):''}
-      ${e.transport_allowance?R('بدل نقل',fmt(e.transport_allowance)+' ﷼'):''}</div>
+    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:8px">🧾 كشف راتبك هذا الشهر (مباشر)</h3>
+      ${L('الراتب الأساسي','+ '+fmt(base)+' ﷼','var(--ok)')}
+      ${hou?L('بدل سكن','+ '+fmt(hou)+' ﷼','var(--ok)'):''}
+      ${tra?L('بدل نقل','+ '+fmt(tra)+' ﷼','var(--ok)'):''}
+      ${bon.map(a=>L((a.type==='overtime'?'أوفر تايم':'مكافأة')+(a.note?' — '+a.note:''),'+ '+fmt(a.amount)+' ﷼','var(--ok)')).join('')}
+      <div style="display:flex;justify-content:space-between;font-weight:800;padding:7px 0;border-bottom:2px solid var(--line)"><span>الإجمالي قبل الخصم</span><span>${fmt(gross)} ﷼</span></div>
+      ${pen?L('خصم التأخير ('+pen+' ساعة × '+fmt(hourly)+' ﷼)','− '+fmt(lateDed)+' ﷼','var(--bad)'):''}
+      ${viol.map(a=>L('مخالفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}
+      ${adv.map(a=>L('سلفة'+(a.note?' — '+a.note:''),'− '+fmt(a.amount)+' ﷼','var(--bad)')).join('')}
+      ${totalDed?`<div style="display:flex;justify-content:space-between;font-weight:800;padding:7px 0;border-bottom:2px solid var(--line)"><span>إجمالي الخصومات</span><span style="color:var(--bad)">− ${fmt(totalDed)} ﷼</span></div>`:'<div style="color:var(--muted);font-size:13px;padding:5px 0">لا خصومات هذا الشهر ✓</div>'}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:12px;background:var(--ok);color:#fff;border-radius:12px"><span style="font-weight:800;font-size:15px">الصافي المتوقّع</span><span style="font-weight:900;font-size:20px">${fmt(net)} ﷼</span></div>
+      <div class="hint" style="margin-top:8px">هذا مبلغ تقريبي مباشر. الصافي النهائي يُعتمد عند اعتماد الرواتب وقد يختلف بحسب أيام الغياب أو تقسيط الذمم.</div></div>
     <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">📋 الذمم المستحقة عليك</h3>
       <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:6px"><span>المتبقّي</span><span style="color:var(--bad)">${fmt(duesRem)} ﷼</span></div>
-      ${dues.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).map(d=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted)"><span>${d.category||''}${d.reason?' — '+d.reason:''}</span><span>${fmt(Number(d.total_amount||0)-Number(d.paid||0))} ﷼</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">لا ذمم مستحقة ✓</div>'}</div>
-    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">⚠ المخالفات والخصومات (هذا الشهر)</h3>
-      ${pen?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>خصم التأخير</span><span style="color:var(--bad)">${pen} ساعة</span></div>`:''}
-      ${viol.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>مخالفة${a.note?' — '+a.note:''}</span><span style="color:var(--bad)">− ${fmt(a.amount)} ﷼</span></div>`).join('')}
-      ${adv.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>سلفة${a.note?' — '+a.note:''}</span><span style="color:var(--bad)">− ${fmt(a.amount)} ﷼</span></div>`).join('')}
-      ${bon.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>${a.type==='overtime'?'أوفر تايم':'مكافأة'}${a.note?' — '+a.note:''}</span><span style="color:var(--ok)">+ ${fmt(a.amount)} ﷼</span></div>`).join('')}
-      ${(!pen&&!viol.length&&!adv.length&&!bon.length)?'<div style="color:var(--muted);font-size:13px">لا مخالفات أو خصومات هذا الشهر ✓</div>':''}</div>
+      ${dues.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).map(d=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted)"><span>${d.category||''}${d.reason?' — '+d.reason:''}</span><span>${fmt(Number(d.total_amount||0)-Number(d.paid||0))} ﷼</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">لا ذمم مستحقة ✓</div>'}
+      <div class="hint" style="margin-top:6px">الذمم تُخصم بالتقسيط عند اعتماد الرواتب وليست ضمن خصم هذا الشهر بالضرورة.</div></div>
     <div class="hint" style="margin-top:10px">بياناتك تُحدَّث تلقائيًا من إدارة النظام. للاستفسار أو التعديل راجع الإدارة.</div>`;
 }
 async function loadWorkerNotifs(){
