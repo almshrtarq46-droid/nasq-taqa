@@ -480,7 +480,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='118';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='119';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1163,7 +1163,7 @@ function _pDaily(b){return (Number(b)||0)/30;}
 function _pLateHr(b){return (Number(b)||0)/240;}
 function _pOtHr(b){return (Number(b)||0)/240*1.5;}
 function _pCalc(r){const b=Number(r.base)||0;const daily=_pDaily(b),lateHr=_pLateHr(b),otHr=_pOtHr(b);
-  const absDed=(r.absent||0)*daily,lateDed=(r.lateH||0)*lateHr,otVal=r.saudi?0:(r.otH||0)*otHr;
+  const absDed=(r.absent||0)*daily*0.5,lateDed=(r.lateH||0)*lateHr,otVal=r.saudi?0:(r.otH||0)*otHr;
   const gross=b+(r.housing||0)+(r.transport||0)+otVal;
   const totalDed=(r.deductions||0)+(r.duesDeduct||0);
   const net=r.saudi?(gross-totalDed):(gross-totalDed-absDed-lateDed);
@@ -1229,7 +1229,7 @@ function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
     <div class="row"><div class="field"><label>الراتب الأساسي</label><input type="number" inputmode="decimal" value="${r.base||''}" oninput="paySet(${i},'base',this.value)" style="${inp}"></div>
       <div class="field"><label>بدل سكن</label><input type="number" inputmode="decimal" value="${r.housing||''}" oninput="paySet(${i},'housing',this.value)" style="${inp}"></div></div>
     <div class="row"><div class="field"><label>بدل نقل</label><input type="number" inputmode="decimal" value="${r.transport||''}" oninput="paySet(${i},'transport',this.value)" style="${inp}"></div>
-      ${sa?`<div class="field"><label>الرجيع (يُرجع للشركة)</label><input type="number" inputmode="decimal" value="${r.rejeeh||''}" oninput="paySet(${i},'rejeeh',this.value)" style="${inp}"></div>`:`<div class="field"><label>أيام الغياب</label><input type="number" inputmode="decimal" value="${r.absent||''}" oninput="paySet(${i},'absent',this.value)" style="${inp}"></div>`}</div>
+      ${sa?`<div class="field"><label>الرجيع (يُرجع للشركة)</label><input type="number" inputmode="decimal" value="${r.rejeeh||''}" oninput="paySet(${i},'rejeeh',this.value)" style="${inp}"></div>`:`<div class="field"><label>أيام الغياب (خصم نصف يوم لكل يوم)</label><input type="number" inputmode="decimal" value="${r.absent||''}" oninput="paySet(${i},'absent',this.value)" style="${inp}"></div>`}</div>
     ${sa?'':`<div class="row"><div class="field"><label>ساعات التأخير</label><input type="number" inputmode="decimal" value="${r.lateH||''}" oninput="paySet(${i},'lateH',this.value)" style="${inp}"></div>
       <div class="field"><label>ساعات أوفر تايم</label><input type="number" inputmode="decimal" value="${r.otH||''}" oninput="paySet(${i},'otH',this.value)" style="${inp}"></div></div>`}
     <div class="field"><label>الخصومات اليدوية (سلف/مخالفات)</label><input type="number" inputmode="decimal" value="${r.deductions||''}" oninput="paySet(${i},'deductions',this.value)" style="${inp}"></div>
