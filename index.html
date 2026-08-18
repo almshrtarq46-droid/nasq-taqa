@@ -355,6 +355,10 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="coAddWrap" style="margin-bottom:12px"></div>
       <div id="coList"></div>
     </div>
+    <div class="view" id="v-my-info">
+      <h2 class="section-title">بياناتي</h2>
+      <div id="myInfoBox"></div>
+    </div>
     <div class="view" id="v-catalog">
       <h2 class="section-title">البنود والأسعار</h2>
       <div class="hint">القائمة المركزية للبنود (رقم البند، الاسم، الوحدة، السعر). تظهر للموظف في كل محطة بدون الأسعار.</div>
@@ -480,7 +484,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='122';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='123';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -712,7 +716,8 @@ const NAV_SET_CHILDREN=[
   {v:'backup',l:'النسخة الاحتياطية',i:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3'}
 ];
 const NAV_WORKER=[
-  {v:'home',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'}
+  {v:'home',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'},
+  {v:'my-info',l:'بياناتي',i:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'}
 ];
 const NAV_WORKER_SET=[
   {v:'my-att',l:'أيام حضوري هذا الشهر',i:'M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'},
@@ -728,7 +733,7 @@ function buildNav(role){
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
-  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:['home','att-worker','field','my-att','my-works','company'];
+  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:['home','att-worker','field','my-att','my-works','company','my-info'];
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -742,7 +747,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks}[v]||(()=>{}))();
+  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -2129,6 +2134,40 @@ function renderMyWorks(){
   let keys=Object.keys(byP);
   if(term)keys=keys.filter(pid=>String((pm[pid]||{}).code||'').includes(term));
   box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
+}
+async function loadMyInfo(){
+  const box=document.getElementById('myInfoBox');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data:emps,error}=await sb.from('employees').select('*').eq('user_id',ME.id).limit(1);
+  if(error){box.innerHTML='<div class="empty">تعذّر التحميل — تأكد من تنفيذ كود صلاحيات SQL.</div>';return;}
+  const e=(emps||[]).filter(x=>!x.deleted_at)[0];
+  if(!e){box.innerHTML='<div class="empty">لم يتم ربط حسابك بملف موظف بعد. راجع الإدارة.</div>';return;}
+  const mk=monthKey();let dues=[],adj=[],pen=0;
+  try{const{data}=await sb.from('employee_dues').select('*').eq('employee_id',e.id);dues=(data||[]).filter(x=>!x.deleted_at);}catch(_){}
+  try{const{data}=await sb.from('payroll_adjustments').select('*').eq('employee_id',ME.id).eq('month',mk);adj=data||[];}catch(_){}
+  try{const{data}=await sb.from('attendance').select('penalty_hours,work_date').eq('worker_id',ME.id).gte('work_date',mk+'-01').lte('work_date',mk+'-31');pen=(data||[]).reduce((s2,a)=>s2+Number(a.penalty_hours||0),0);}catch(_){}
+  const duesRem=dues.reduce((s2,d)=>s2+Math.max(0,Number(d.total_amount||0)-Number(d.paid||0)),0);
+  const viol=adj.filter(a=>a.type==='deduction'),adv=adj.filter(a=>a.type==='advance'),bon=adj.filter(a=>a.type==='overtime'||a.type==='bonus');
+  const bdg=d=>{const st=docStatus(d);return st?` <span class="pill ${st.k==='expired'?'susp':st.k==='soon'?'pend':'ok'}" style="font-size:10px">${st.k==='expired'?'منتهٍ':st.k==='soon'?'قرب الانتهاء':'سارٍ'}</span>`:'';};
+  const R=(l,v,x)=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><span style="color:var(--muted)">${l}</span><span style="font-weight:700">${(v==null||v==='')?'—':v}${x||''}</span></div>`;
+  box.innerHTML=`
+    <div class="card"><h3 style="margin-bottom:6px">👤 المعلومات الشخصية</h3>
+      ${R('الاسم',e.name)}${R('رقم الإقامة',e.iqama_number)}${R('الجنسية',e.nationality)}
+      ${R('انتهاء الإقامة',e.iqama_expiry,e.iqama_expiry?bdg(e.iqama_expiry):'')}
+      ${R('انتهاء العقد',e.contract_expiry,e.contract_expiry?bdg(e.contract_expiry):'')}</div>
+    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">💰 الراتب</h3>
+      ${R('الراتب الأساسي',fmt(e.monthly_salary||0)+' ﷼')}
+      ${e.housing_allowance?R('بدل سكن',fmt(e.housing_allowance)+' ﷼'):''}
+      ${e.transport_allowance?R('بدل نقل',fmt(e.transport_allowance)+' ﷼'):''}</div>
+    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">📋 الذمم المستحقة عليك</h3>
+      <div style="display:flex;justify-content:space-between;font-weight:800;margin-bottom:6px"><span>المتبقّي</span><span style="color:var(--bad)">${fmt(duesRem)} ﷼</span></div>
+      ${dues.filter(d=>Number(d.total_amount||0)-Number(d.paid||0)>0).map(d=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0;color:var(--muted)"><span>${d.category||''}${d.reason?' — '+d.reason:''}</span><span>${fmt(Number(d.total_amount||0)-Number(d.paid||0))} ﷼</span></div>`).join('')||'<div style="color:var(--muted);font-size:13px">لا ذمم مستحقة ✓</div>'}</div>
+    <div class="card" style="margin-top:12px"><h3 style="margin-bottom:6px">⚠ المخالفات والخصومات (هذا الشهر)</h3>
+      ${pen?`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>خصم التأخير</span><span style="color:var(--bad)">${pen} ساعة</span></div>`:''}
+      ${viol.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>مخالفة${a.note?' — '+a.note:''}</span><span style="color:var(--bad)">− ${fmt(a.amount)} ﷼</span></div>`).join('')}
+      ${adv.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>سلفة${a.note?' — '+a.note:''}</span><span style="color:var(--bad)">− ${fmt(a.amount)} ﷼</span></div>`).join('')}
+      ${bon.map(a=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:4px 0"><span>${a.type==='overtime'?'أوفر تايم':'مكافأة'}${a.note?' — '+a.note:''}</span><span style="color:var(--ok)">+ ${fmt(a.amount)} ﷼</span></div>`).join('')}
+      ${(!pen&&!viol.length&&!adv.length&&!bon.length)?'<div style="color:var(--muted);font-size:13px">لا مخالفات أو خصومات هذا الشهر ✓</div>':''}</div>
+    <div class="hint" style="margin-top:10px">بياناتك تُحدَّث تلقائيًا من إدارة النظام. للاستفسار أو التعديل راجع الإدارة.</div>`;
 }
 async function loadWorkerNotifs(){
   const{data}=await sb.from('notifications').select('*').eq('employee_id',ME.id).order('created_at',{ascending:false}).limit(20);
