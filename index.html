@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='131';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='132';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -636,7 +636,8 @@ async function doAuth(){
 }
 function translateErr(s){if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';if(/already registered/i.test(s))return'هذا الرقم مسجّل مسبقاً';if(/at least 6/i.test(s))return'كلمة المرور 6 أحرف على الأقل';if(/Email not confirmed/i.test(s))return'الحساب غير مُفعّل بعد';return s;}
 async function logout(){try{if('caches'in window)caches.delete('nasq-data-v1');}catch(_){}stopLiveTracking();if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
-function routeFor(p){if(!p)return'missing';if(p.status==='suspended')return'suspended';if(p.status==='pending')return'pending';return p.role==='admin'?'admin':'worker';}
+function routeFor(p){if(!p)return'missing';if(p.status==='suspended')return'suspended';if(p.status==='pending')return'pending';return p.role==='admin'?'admin':(p.role==='data_entry'?'entry':'worker');}
+function roleLabel(r){return r==='admin'?'مدير النظام':(r==='entry'||r==='data_entry')?'مدخل بيانات':'عامل ميداني';}
 async function afterLogin(){const{data:{user}}=await sb.auth.getUser();if(!user){show('screen-auth');return;}ME=user;
   const{data:prof,error}=await sb.from('profiles').select('*').eq('id',user.id).single();
   if(error){show('screen-gate');setGate('pending');return;}PROFILE=prof;const r=routeFor(prof);
@@ -647,11 +648,11 @@ function setGate(k){const i=document.getElementById('gate_icon'),t=document.getE
 /* shell */
 async function enterApp(role){
   document.getElementById('h_name').textContent=PROFILE.full_name||'';
-  document.getElementById('h_role').textContent=role==='admin'?'مدير النظام':'عامل ميداني';
+  document.getElementById('h_role').textContent=roleLabel(role);
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
-  const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=role==='admin'?'مدير النظام':'عامل ميداني';
+  const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=roleLabel(role);
   await Promise.all([loadProjectsCache(),loadZonesCache(),loadSettingsCache(),loadMyCrew(),loadCatalog(),loadAssignments()]);buildNav(role);show('screen-app');
-  if(role!=='admin')startLiveTracking();else _idlePreload();
+  if(role==='worker')startLiveTracking();else if(role==='admin')_idlePreload();
   refreshNotifBadge();if(!window._notifTimer)window._notifTimer=setInterval(refreshNotifBadge,60000);
   syncPush();
 }
@@ -724,10 +725,23 @@ const NAV_WORKER_SET=[
   {v:'my-att',l:'أيام حضوري هذا الشهر',i:'M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'},
   {v:'my-works',l:'أعمالي المسجّلة',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'}
 ];
+const NAV_ENTRY=[
+  {v:'workorders',l:'المحطات والأعمال',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
+  {v:'field',l:'رفع محطة جديدة',i:'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'},
+  {v:'projects',l:'إدارة المحطات',i:'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z'}
+];
 function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
   hamb.style.display='grid';nav.style.display='none';
-  const isAdmin=role==='admin';
+  const isAdmin=role==='admin',isEntry=role==='entry';
+  if(isEntry){
+    let ehtml=NAV_ENTRY.map(it=>`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
+    document.getElementById('sbMenu').innerHTML=ehtml;
+    const _validE=['workorders','field','projects'];
+    let _wantE='';try{_wantE=sessionStorage.getItem('nasqView')||'';}catch(e){}
+    if(!_wantE)_wantE=(location.hash||'').replace(/^#/,'');
+    goView(_validE.includes(_wantE)?_wantE:'workorders');return;
+  }
   const main=isAdmin?NAV_MAIN:NAV_WORKER, children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET, first=isAdmin?'overview':'home';
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
   html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
@@ -1033,7 +1047,7 @@ async function loadEmployees(){
     const alertN=dd.filter(d=>{const s=docStatus(d.expiry);return s&&(s.k==='expired'||s.k==='soon');}).length;
     return `<div class="item"><div class="ic">${(p.full_name||'؟').slice(0,1)}</div>
     <div class="meta"><b>${p.full_name||'—'} ${p.id===ME.id?'<small>(أنت)</small>':''}</b>
-    <small>${p.phone||''} · <span class="pill role">${p.role==='admin'?'مدير':'عامل'}</span> <span class="pill ${p.status==='active'?'ok':p.status==='pending'?'pend':'susp'}">${p.status==='active'?'نشط':p.status==='pending'?'معلّق':'موقوف'}</span> · أجر ${fmt(p.daily_wage||0)} ﷼</small>
+    <small>${p.phone||''} · <span class="pill role">${p.role==='admin'?'مدير':p.role==='data_entry'?'مدخل بيانات':'عامل'}</span> <span class="pill ${p.status==='active'?'ok':p.status==='pending'?'pend':'susp'}">${p.status==='active'?'نشط':p.status==='pending'?'معلّق':'موقوف'}</span> · أجر ${fmt(p.daily_wage||0)} ﷼</small>
     <div style="margin-top:5px">${safety} ${cardRole} ${alertN?`<span class="pill pend">⚠ ${alertN} مستند</span>`:''}</div></div>
     <button class="link" onclick='openEmp(${JSON.stringify(p).replace(/'/g,"&#39;")})'>تعديل</button></div>`;}).join('')||'<div class="empty">لا يوجد موظفون</div>');
 }
@@ -1041,8 +1055,9 @@ function openEmp(p){openModal(`<h3 style="margin-bottom:14px">${p.full_name||'م
   <div class="field"><label>الأجر اليومي (﷼)</label><input id="emp_wage" type="number" value="${p.daily_wage||0}"></div>
   <button class="btn" onclick="saveEmp('${p.id}')">حفظ الأجر</button>
   <button class="btn ghost" style="margin-top:9px" onclick='openEmpDocs(${JSON.stringify({id:p.id,full_name:p.full_name}).replace(/'/g,"&#39;")})'>📁 المستندات والكروت</button>
-  ${p.id!==ME.id?`<div class="row" style="margin-top:9px"><button class="btn ghost sm" style="width:100%" onclick="setRole('${p.id}','${p.role==='admin'?'worker':'admin'}')">${p.role==='admin'?'تحويل لعامل':'ترقية لمدير'}</button>
-  ${p.status==='active'?`<button class="btn danger sm" style="width:100%" onclick="setStatus('${p.id}','suspended')">إيقاف</button>`:`<button class="btn ghost sm" style="width:100%" onclick="setStatus('${p.id}','active')">تفعيل</button>`}</div><button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="setDocsAccess('${p.id}',${p.docs_access?'false':'true'})">${p.docs_access?'🔒 إلغاء صلاحية بيانات الشركة':'🔓 منح صلاحية بيانات الشركة'}</button>`:''}
+  ${p.id!==ME.id?`<div style="margin-top:12px"><label style="font-size:12.5px;color:var(--muted);display:block;margin-bottom:5px">صلاحية الحساب</label>
+  <div class="row" style="gap:6px"><button class="btn ${p.role==='worker'?'':'ghost'} sm" style="flex:1" onclick="setRole('${p.id}','worker')">عامل</button><button class="btn ${p.role==='data_entry'?'':'ghost'} sm" style="flex:1" onclick="setRole('${p.id}','data_entry')">مدخل بيانات</button><button class="btn ${p.role==='admin'?'':'ghost'} sm" style="flex:1" onclick="setRole('${p.id}','admin')">مدير</button></div></div>
+  <div class="row" style="margin-top:9px">${p.status==='active'?`<button class="btn danger sm" style="width:100%" onclick="setStatus('${p.id}','suspended')">إيقاف</button>`:`<button class="btn ghost sm" style="width:100%" onclick="setStatus('${p.id}','active')">تفعيل</button>`}</div><button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="setDocsAccess('${p.id}',${p.docs_access?'false':'true'})">${p.docs_access?'🔒 إلغاء صلاحية بيانات الشركة':'🔓 منح صلاحية بيانات الشركة'}</button>`:''}
   <button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>`);}
 async function saveEmp(id){const{error}=await sb.from('profiles').update({daily_wage:parseFloat(document.getElementById('emp_wage').value)||0}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم ✓');closeModal();loadEmployees();}
 async function setDocsAccess(id,v){const{error}=await sb.from('profiles').update({docs_access:!!v}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}toast('تم ✓');closeModal();loadEmployees();}
@@ -1718,7 +1733,9 @@ async function loadWorkOrders(){
   PROJECTS.forEach(p=>{const v=valByP[p.id]||0;if(v<=0)return;const st=p.wo_stage||'قيد التنفيذ';stageCount[st]=(stageCount[st]||0)+1;const share=v*0.75;
     if(p.paid_to_us)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main)vMain+=share;else vPending+=share;});
   const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
-  document.getElementById('woSummary').innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
+  const _adm=PROFILE.role==='admin';
+  const stationsN=Object.keys(byP).length;
+  document.getElementById('woSummary').innerHTML=_adm?`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
     <table class="tbl"><tbody>
     <tr><td>نصيبنا بانتظار النزول للمقاول</td><td style="text-align:left">${fmt(vPending)} ﷼</td></tr>
@@ -1726,7 +1743,7 @@ async function loadWorkOrders(){
     <tr><td>صدرت الفاتورة — بانتظار وصوله لنا</td><td style="text-align:left">${fmt(vInv)} ﷼</td></tr>
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
-  <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`;
+  <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`:`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>محطة</span></div><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div></div>`;
   renderWOList();
 }
 function renderWOList(){
@@ -1739,17 +1756,18 @@ function renderWOList(){
   box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid])).join('');
 }
 function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
+  const _adm=PROFILE.role==='admin';
   const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const tot=es.reduce((s,e)=>s+e.amount,0);
   const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
   const stage=p.wo_stage||'قيد التنفيذ';
   return `<div class="station" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
     <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'}${p.station_type?' · '+p.station_type:''} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
-    <div style="text-align:left"><div class="pill role">${fmt(tot)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
-    <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th><th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th></tr></thead><tbody>
-    ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td><td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td></tr>`;}).join('')}
-    <tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr></tbody></table>
-    <div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button></div></div></div>`;
+    <div style="text-align:left">${_adm?`<div class="pill role">${fmt(tot)} ﷼</div>`:`<div class="pill role">${es.length} بند</div>`}<div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
+    <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_adm?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
+    ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td>${_adm?`<td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td>`:''}</tr>`;}).join('')}
+    ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
+    ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button></div></div></div>`;
 }
 async function viewStationPhotos(pid){
   openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
@@ -1824,7 +1842,7 @@ function openStationEntries(pid){
   const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
   openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
     ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_code?e.item_code+' · ':''}${e.item_name_full||e.item_name}</b>
-      <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date} · ${fmt(e.amount)} ﷼</small>
+      <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date}${PROFILE.role==='admin'?' · '+fmt(e.amount)+' ﷼':''}</small>
       <div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
       <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div></div>`).join('')||'<div class="empty">لا أعمال</div>'}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
