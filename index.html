@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='135';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='136';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1728,6 +1728,11 @@ async function loadWorkOrders(){
   const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
   const _adm=PROFILE.role==='admin';
   const stationsN=Object.keys(byP).length;
+  const _today=todayKey();
+  const todayRows=rows.filter(e=>e.work_date===_today);
+  const prod={};rows.forEach(e=>{const nm=e.worker_name||'غير محدد';const o=(prod[nm]=prod[nm]||{items:0,qty:0,st:new Set()});o.items++;o.qty+=Number(e.qty||0);o.st.add(e.project_id);});
+  const prodRows=Object.entries(prod).sort((a,b)=>b[1].items-a[1].items);
+  const _plabel={all:'الكل',today:'اليوم','7':'آخر 7 أيام','30':'آخر 30 يوم'}[period]||'الكل';
   document.getElementById('woSummary').innerHTML=_adm?`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
     <table class="tbl"><tbody>
@@ -1736,7 +1741,12 @@ async function loadWorkOrders(){
     <tr><td>صدرت الفاتورة — بانتظار وصوله لنا</td><td style="text-align:left">${fmt(vInv)} ﷼</td></tr>
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
-  <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`:`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>محطة</span></div><div class="kpi"><b>${rows.length}</b><span>بنود منجزة</span></div></div>`;
+  <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`:`<div class="grid2" style="margin-bottom:11px"><div class="kpi"><b>${todayRows.length}</b><span>بنود رُفعت اليوم</span></div><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div></div>
+  <div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>محطات (${_plabel})</span></div><div class="kpi"><b>${rows.length}</b><span>بنود (${_plabel})</span></div></div>
+  <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
+    <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
+    ${prodRows.map(([nm,v])=>`<tr><td>${nm}</td><td style="text-align:center">${v.st.size}</td><td style="text-align:center">${v.items}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">لا إنتاج في هذه الفترة</td></tr>'}
+    </tbody></table></div>`;
   renderWOList();
 }
 function renderWOList(){
@@ -1880,7 +1890,10 @@ async function addStationItem(pid){
   const unit=(document.getElementById('ni_unit').value||'').trim();
   if(!name){toast('اكتب اسم البند');return;}
   if(!qty||qty<=0){toast('أدخل كمية صحيحة');return;}
-  try{const{error}=await sb.from('entries').insert({project_id:pid,worker_id:ME.id,item_name:name,item_name_full:name,item_code:'',unit:unit||'EA',qty,work_date:todayKey()});if(error)throw error;
+  try{const rec={project_id:pid,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:name,item_name_full:name,item_code:'',unit:unit||'EA',qty,work_date:todayKey()};
+    let{error}=await sb.from('entries').insert(rec);
+    if(error&&/worker_name/i.test(error.message||'')){delete rec.worker_name;({error}=await sb.from('entries').insert(rec));}
+    if(error)throw error;
     toast('تم إضافة البند ✓');closeModal();loadWorkOrders();
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
@@ -2436,8 +2449,10 @@ async function saveFieldReport(){
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
     const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
     const note=document.getElementById('f_note').value.trim();
-    const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
-    const{error:ee}=await sb.from('entries').insert(entryRows);if(ee)throw ee;
+    const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
+    let{error:ee}=await sb.from('entries').insert(entryRows);
+    if(ee&&/worker_name/i.test(ee.message||'')){entryRows.forEach(r=>delete r.worker_name);({error:ee}=await sb.from('entries').insert(entryRows));}
+    if(ee)throw ee;
     btn.disabled=false;btn.textContent='رفع العمل';initField();goView(PROFILE.role==='worker'?'home':'workorders');showBigSuccess('✓ تم رفع العمل بنجاح');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
