@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='136';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='137';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1715,10 +1715,12 @@ async function delZone(id){const{error}=await sb.from('zones').delete().eq('id',
 /* ===== WORK ORDERS (admin, with prices) ===== */
 async function loadWorkOrders(){
   const period=document.getElementById('wo_period').value;
-  let q=sb.from('entries').select('*, entry_finance(rate,amount)').order('created_at',{ascending:false});
-  if(period==='today')q=q.eq('work_date',todayKey());else if(period==='7'||period==='30'){const d=new Date();d.setDate(d.getDate()-Number(period));q=q.gte('work_date',d.toISOString().slice(0,10));}
-  const{data,error}=await q;if(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}
-  const rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
+  const{data,error}=await sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false});
+  if(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}
+  let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
+  if(period!=='all'){const wdOf=e=>String(e.work_date||'').slice(0,10);
+    if(period==='today'){const t=todayKey();rows=rows.filter(e=>wdOf(e)===t);}
+    else{const d=new Date();d.setDate(d.getDate()-Number(period));const cut=d.toISOString().slice(0,10);rows=rows.filter(e=>wdOf(e)>=cut);}}
   window._woRows=rows;
   const grand=rows.reduce((s,e)=>s+e.amount,0);
   const valByP={};rows.forEach(e=>{valByP[e.project_id]=(valByP[e.project_id]||0)+e.amount;});
