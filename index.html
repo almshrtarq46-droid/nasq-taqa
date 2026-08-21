@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='133';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='134';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1517,7 +1517,7 @@ function openProject(p){
     <div class="field"><label>الإسناد (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
     <div class="hint">البنود والأسعار تُدار مركزياً من "البنود والأسعار". الموظف يضيف البنود عند العمل على المحطة. (غالباً المحطات تُنشأ تلقائياً من رفع الموظف — هذي الشاشة للتعديل فقط.)</div>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
-    ${p?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف المحطة وكل أعمالها وصورها</button>`:''}
+    ${p&&PROFILE.role==='admin'?`<button class="btn danger" style="margin-top:9px" onclick="delProject('${p.id}')">حذف المحطة وكل أعمالها وصورها</button>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
 function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div style="border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:8px">
@@ -1531,7 +1531,7 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
   try{if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');refreshAfterProject();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
-async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();}
+async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');const mw=document.getElementById('v-my-works');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();else if(mw&&mw.classList.contains('on'))loadMyWorks();}
 async function delProject(id){
   try{await sb.from('station_photos').delete().eq('project_id',id);await sb.from('entries').delete().eq('project_id',id);const{error}=await sb.from('projects').delete().eq('id',id);if(error)throw error;
     closeModal();toast('تم حذف المحطة وأعمالها');refreshAfterProject();
@@ -1769,18 +1769,44 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
     <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button></div></div></div>`;
 }
+function canEditPhotos(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'||isCrewLeader());}
 async function viewStationPhotos(pid){
-  openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+  window._phPid=pid;
+  openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><input type="file" id="phAddInput" accept="image/*" multiple style="display:none"><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
+  await _renderStPhotos(pid);
+}
+async function _renderStPhotos(pid){
+  const wrap=document.getElementById('phwrap');if(!wrap)return;
   const{data}=await sb.from('station_photos').select('*').eq('project_id',pid).order('created_at');
-  if(!data||!data.length){document.getElementById('phwrap').innerHTML='<div class="empty">لا توجد صور</div>';return;}
+  const ed=canEditPhotos();
+  const addBtns=ed?`<div class="row" style="margin:10px 0 4px"><button class="btn ghost sm" style="flex:1" onclick="pickStPhotos('${pid}','before')">➕ إضافة صور قبل</button><button class="btn ghost sm" style="flex:1" onclick="pickStPhotos('${pid}','after')">➕ إضافة صور بعد</button></div>`:'';
+  if(!data||!data.length){wrap.innerHTML='<div class="empty">لا توجد صور</div>'+addBtns;return;}
   const before=data.filter(x=>x.phase==='before'),after=data.filter(x=>x.phase==='after');
   const paths=data.map(x=>x.photo);
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   const stName=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
   const map={};
   try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}
-  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px"><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇ تحميل</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲 واتساب</button></div></div>`;}).join('')||'<small class="muted">لا صور</small>';
-  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${cell(before,'قبل')}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${cell(after,'بعد')}</div>`;
+  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px"><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇ تحميل</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small class="muted">لا صور</small>';
+  wrap.innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${cell(before,'قبل')}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${cell(after,'بعد')}</div>${addBtns}`;
+}
+async function delStPhoto(id,path){
+  try{const{error}=await sb.from('station_photos').delete().eq('id',id);if(error)throw error;
+    try{await sb.storage.from('photos').remove([path]);}catch(_){}
+    toast('تم حذف الصورة');await _renderStPhotos(window._phPid);
+  }catch(e){toast('تعذّر الحذف: '+(e&&e.message||e));}
+}
+function pickStPhotos(pid,phase){
+  const inp=document.getElementById('phAddInput');if(!inp)return;
+  inp.value='';inp.onchange=async()=>{
+    const files=[...(inp.files||[])];if(!files.length)return;
+    toast('جارٍ رفع '+files.length+' صورة…');
+    try{for(const f of files){const dataUrl=await readFileData(f);const p=await uploadPhoto(dataUrl,phase);
+        const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase,photo:p,work_date:todayKey()});if(error)throw error;}
+      toast('تم إضافة الصور ✓');await _renderStPhotos(pid);
+    }catch(e){toast('تعذّر الرفع: '+(e&&e.message||e));}
+  };
+  inp.click();
 }
 async function dlStPhoto(path,name){
   try{const{data,error}=await sb.storage.from('photos').download(path);if(error)throw error;
@@ -1838,14 +1864,32 @@ async function viewStationDetail(pid){
     <div style="font-size:12.5px;margin:10px 2px;color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)} ﷼</b> <small>(غير شامل الضريبة)</small></div>
     <button class="btn ghost sm" style="width:100%;margin-top:6px" onclick="viewStationPhotos('${pid}')">📷 عرض الصور</button>`:'<div class="empty">لا توجد بنود</div>';
 }
+function isCrewLeader(){return !!(window.MY_CREW_LED&&MY_CREW_LED.length);}
+function canEditItems(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');}
+function canEditStation(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'||isCrewLeader());}
 function openStationEntries(pid){
   const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
+  const edit=canEditItems();
   openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
     ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_code?e.item_code+' · ':''}${e.item_name_full||e.item_name}</b>
       <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date}${PROFILE.role==='admin'?' · '+fmt(e.amount)+' ﷼':''}</small>
-      <div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
-      <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div></div>`).join('')||'<div class="empty">لا أعمال</div>'}
+      ${edit?`<div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
+      <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div>`:`<div style="font-size:13px;color:var(--muted)">${fmt(e.qty)} ${e.unit}</div>`}</div>`).join('')||'<div class="empty">لا أعمال</div>'}
+    ${edit?`<div class="card" style="padding:12px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:13.5px;display:block;margin-bottom:8px">➕ إضافة بند جديد</b>
+      <div class="field" style="margin-bottom:8px"><input id="ni_name" placeholder="اسم البند (مثال: دهان جدار)"></div>
+      <div class="row"><input id="ni_qty" type="number" placeholder="الكمية" style="flex:2"><input id="ni_unit" placeholder="الوحدة (M2/متر/EA)" style="flex:2"></div>
+      <button class="btn sm" style="width:100%;margin-top:8px" onclick="addStationItem('${pid}')">إضافة البند</button></div>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+}
+async function addStationItem(pid){
+  const name=(document.getElementById('ni_name').value||'').trim();
+  const qty=parseFloat(document.getElementById('ni_qty').value);
+  const unit=(document.getElementById('ni_unit').value||'').trim();
+  if(!name){toast('اكتب اسم البند');return;}
+  if(!qty||qty<=0){toast('أدخل كمية صحيحة');return;}
+  try{const{error}=await sb.from('entries').insert({project_id:pid,worker_id:ME.id,item_name:name,item_name_full:name,item_code:'',unit:unit||'EA',qty,work_date:todayKey()});if(error)throw error;
+    toast('تم إضافة البند ✓');closeModal();loadWorkOrders();
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 async function saveEntryQty(id,rate){
   const q=parseFloat(document.getElementById('eq_'+id).value);if(!q||q<=0){toast('كمية غير صحيحة');return;}
@@ -2157,7 +2201,7 @@ async function loadMyWorks(){
   if(myWorksPeriod==='today')q=q.eq('work_date',todayKey());else if(myWorksPeriod==='7')q=q.gte('work_date',daysAgo(7));else if(myWorksPeriod==='30')q=q.gte('work_date',daysAgo(30));
   const{data:ents}=await q;
   const pids=[...new Set((ents||[]).map(e=>e.project_id))];const pm={};
-  if(pids.length){const{data:prs}=await sb.from('projects').select('id,name,code,station_type').in('id',pids);(prs||[]).forEach(p=>pm[p.id]=p);}
+  if(pids.length){const{data:prs}=await sb.from('projects').select('id,name,code,station_type,client,assignment,wo_stage').in('id',pids);(prs||[]).forEach(p=>pm[p.id]=p);}
   window._myEnts=ents||[];window._myPm=pm;renderMyWorks();
 }
 function renderMyWorks(){
@@ -2166,7 +2210,8 @@ function renderMyWorks(){
   const byP={};ents.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   let keys=Object.keys(byP);
   if(term)keys=keys.filter(pid=>String((pm[pid]||{}).code||'').includes(term));
-  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
+  const lead=isCrewLeader();
+  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}${lead?`<div class="row" style="margin-top:9px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ تعديل بيانات المحطة</button></div>`:''}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
 }
 async function loadMyInfo(){
   const box=document.getElementById('myInfoBox');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
