@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='138';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='139';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -734,8 +734,8 @@ function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
   hamb.style.display='grid';nav.style.display='none';
   const isAdmin=role==='admin',isEntry=PROFILE&&PROFILE.role==='data_entry';
-  let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET, first=isAdmin?'overview':'home';
-  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},...NAV_WORKER.slice(1)];}
+  let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET; let first=isAdmin?'overview':'home';
+  if(isEntry){main=[{v:'workorders',l:'الرئيسية — كل المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},NAV_WORKER[0],...NAV_WORKER.slice(1)];first='workorders';}
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
   html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
@@ -1729,7 +1729,7 @@ async function loadWorkOrders(){
     if(p.paid_to_us)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main)vMain+=share;else vPending+=share;});
   const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
   const _adm=PROFILE.role==='admin';
-  const stationsN=Object.keys(byP).length;
+  const stationsN=(PROFILE.role==='data_entry')?(PROJECTS||[]).length:Object.keys(byP).length;
   const _today=todayKey();
   const todayRows=rows.filter(e=>e.work_date===_today);
   const prod={};rows.forEach(e=>{const nm=e.worker_name||'غير محدد';const o=(prod[nm]=prod[nm]||{items:0,qty:0,st:new Set()});o.items++;o.qty+=Number(e.qty||0);o.st.add(e.project_id);});
@@ -1744,7 +1744,7 @@ async function loadWorkOrders(){
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
   <div class="row" style="margin-bottom:13px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>`:`<div class="grid2" style="margin-bottom:11px"><div class="kpi"><b>${todayRows.length}</b><span>بنود رُفعت اليوم</span></div><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div></div>
-  <div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>محطات (${_plabel})</span></div><div class="kpi"><b>${rows.length}</b><span>بنود (${_plabel})</span></div></div>
+  <div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi"><b>${rows.length}</b><span>بنود (${_plabel})</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
     <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
     ${prodRows.map(([nm,v])=>`<tr><td>${nm}</td><td style="text-align:center">${v.st.size}</td><td style="text-align:center">${v.items}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">لا إنتاج في هذه الفترة</td></tr>'}
@@ -1755,10 +1755,11 @@ function renderWOList(){
   const rows=window._woRows||[];const box=document.getElementById('woList');if(!box)return;
   const term=(document.getElementById('wo_search')?.value||'').trim();
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
-  let keys=Object.keys(byP);
+  const _de=PROFILE&&PROFILE.role==='data_entry';
+  let keys=_de?(PROJECTS||[]).map(p=>p.id):Object.keys(byP);
   if(term)keys=keys.filter(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};return String(p.code||'').includes(term);});
-  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';return;}
-  box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid])).join('');
+  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':(_de?'لا توجد محطات بعد':'لا توجد أعمال في هذه الفترة'))+'</div>';return;}
+  box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
 function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const _adm=PROFILE.role==='admin';
