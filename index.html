@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='130';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='131';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1757,10 +1757,24 @@ async function viewStationPhotos(pid){
   if(!data||!data.length){document.getElementById('phwrap').innerHTML='<div class="empty">لا توجد صور</div>';return;}
   const before=data.filter(x=>x.phase==='before'),after=data.filter(x=>x.phase==='after');
   const paths=data.map(x=>x.photo);
+  const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
+  const stName=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
   const map={};
   try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}
-  const cell=arr=>arr.map(x=>map[x.photo]?`<img src="${map[x.photo]}" loading="lazy" style="width:48%;border-radius:8px">`:'').join('')||'<small class="muted">لا صور</small>';
-  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${cell(before)}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${cell(after)}</div>`;
+  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px"><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇ تحميل</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲 واتساب</button></div></div>`;}).join('')||'<small class="muted">لا صور</small>';
+  document.getElementById('phwrap').innerHTML=`<b style="font-size:14px">قبل (${before.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 14px">${cell(before,'قبل')}</div><b style="font-size:14px">بعد (${after.length})</b><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">${cell(after,'بعد')}</div>`;
+}
+async function dlStPhoto(path,name){
+  try{const{data,error}=await sb.storage.from('photos').download(path);if(error)throw error;
+    const url=URL.createObjectURL(data);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('تم تنزيل الصورة ✓');
+  }catch(e){toast('تعذّر التحميل: '+(e&&e.message||e));}
+}
+async function waStPhoto(path,name){
+  try{const{data,error}=await sb.storage.from('photos').download(path);if(error)throw error;
+    const file=new File([data],name,{type:data.type||'image/jpeg'});
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'صورة محطة — نسق الطاقة'});}
+    else{const url=URL.createObjectURL(data);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('جهازك لا يدعم المشاركة المباشرة — نزّلت الصورة، أرفقها في واتساب');}
+  }catch(e){if(e&&e.name==='AbortError')return;toast('تعذّرت المشاركة: '+(e&&e.message||e));}
 }
 function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;const val=(window._woRows||[]).filter(e=>e.project_id===pid).reduce((s,e)=>s+e.amount,0);
   openModal(`<h3 style="margin-bottom:4px">متابعة أمر العمل</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${p.name} · رقم ${p.code||'—'}</small>
