@@ -1,4 +1,4 @@
-/* نسق الطاقة — service worker
+/* شركة دبلان — service worker
    1) قشرة التطبيق: stale-while-revalidate (فتح/تحديث فوري من الكاش + تحديث بالخلفية)
    2) إعادة التحميل القسري (?v= / ?_r= / ?_ck=): من الشبكة دائماً (أحدث نسخة)
    3) مكتبات CDN والخطوط: cache-first (تسريع)
@@ -68,8 +68,8 @@ self.addEventListener('fetch', e => {
 
 self.addEventListener('push', e => {
   let d = {};
-  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'نسق الطاقة', body: e.data ? e.data.text() : '' }; }
-  const title = d.title || 'نسق الطاقة';
+  try { d = e.data ? e.data.json() : {}; } catch (_) { d = { title: 'شركة دبلان', body: e.data ? e.data.text() : '' }; }
+  const title = d.title || 'شركة دبلان';
   e.waitUntil(self.registration.showNotification(title, {
     body: d.body || '', icon: './icon-192.png', badge: './icon-192.png',
     dir: 'rtl', lang: 'ar', vibrate: [80, 40, 80], data: { url: './' }
