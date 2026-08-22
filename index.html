@@ -11,10 +11,10 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="شركة دبلان">
+<meta name="apple-mobile-web-app-title" content="نسق الطاقة">
 <link rel="apple-touch-icon" href="./icon-180.png">
 <link rel="icon" type="image/png" href="./icon-192.png">
-<title>شركة دبلان — النظام</title>
+<title>نسق الطاقة — النظام</title>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -196,7 +196,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
 <!-- AUTH -->
 <section class="screen" id="screen-auth"><div class="center">
-  <div class="brand"><div class="logo">LOGO</div><h1>شركة دبلان</h1></div>
+  <div class="brand"><div class="logo">LOGO</div><h1>نسق الطاقة</h1></div>
   <div class="tabs"><button id="tab-login" class="on" onclick="switchAuth('login')">دخول</button><button id="tab-reg" onclick="switchAuth('reg')">حساب جديد</button></div>
   <div class="card">
     <div class="msg" id="auth_msg"></div>
@@ -328,7 +328,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title" style="margin-top:22px">بيانات الفاتورة الضريبية</h2>
       <div class="hint">تُطبع هذي البيانات في الفاتورة الضريبية وتُدمج في رمز QR المعتمد. أدخلها مرة واحدة.</div>
       <div class="card">
-        <div class="field"><label>الاسم النظامي للشركة (البائع)</label><input id="t_co_name" placeholder="شركة دبلان"></div>
+        <div class="field"><label>الاسم النظامي للشركة (البائع)</label><input id="t_co_name" placeholder="شركة نسق الطاقة"></div>
         <div class="field"><label>الرقم الضريبي (15 رقم)</label><input id="t_vat_no" inputmode="numeric" placeholder="3XXXXXXXXXXXXX3"></div>
         <div class="row"><div class="field"><label>السجل التجاري</label><input id="t_cr_no" inputmode="numeric"></div></div>
         <div class="field"><label>العنوان الوطني</label><input id="t_address" placeholder="المدينة، الحي، الشارع"></div>
@@ -457,7 +457,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 </style>
 <div id="intro">
   <div class="intro-logo"><svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#fff"/></svg></div>
-  <div class="intro-title">شركة دبلان</div>
+  <div class="intro-title">نسق الطاقة</div>
   <div class="intro-bar"><span></span></div>
 </div>
 
@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='140';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='141';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1166,7 +1166,7 @@ function viewAdjustments(id,name){const adj=(window._payAdj||[]).filter(a=>a.emp
   openModal(`<h3 style="margin-bottom:12px">حركات ${name||''} — ${monthKey()}</h3>${adj.length?adj.map(a=>{const plus=(a.type==='overtime'||a.type==='bonus');const lbl={deduction:'خصم',advance:'سلفة',overtime:'أوفر تايم',bonus:'مكافأة'}[a.type];return `<div class="item"><div class="meta"><b>${lbl}${a.note?' — '+a.note:''}</b><small>${a.created_at?locDate(a.created_at):''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill ${plus?'ok':'susp'}">${plus?'+':'−'} ${fmt(a.amount)}</span><button class="btn danger sm" style="flex:none;width:36px" onclick="delAdjustment('${a.id}')">✕</button></div></div>`;}).join(''):'<div class="empty">لا حركات هذا الشهر</div>'}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 async function delAdjustment(id){const{error}=await sb.from('payroll_adjustments').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadPayroll();}
 function exportPayrollOLD(){const rows=window._payRows||[];if(!rows.length){toast('لا بيانات');return;}
-  const aoa=[['كشف الرواتب — شركة دبلان'],['الشهر',monthKey()],[],['الموظف','أيام الحضور','الأساسي','خصم التأخير','أوفر تايم/إضافات','خصومات وسلف','الصافي']];
+  const aoa=[['كشف الرواتب — شركة نسق الطاقة'],['الشهر',monthKey()],[],['الموظف','أيام الحضور','الأساسي','خصم التأخير','أوفر تايم/إضافات','خصومات وسلف','الصافي']];
   rows.forEach(r=>aoa.push([r.name,r.days,r.base,r.lateDed,r.add,r.sub,r.net]));
   aoa.push([],['','','','','','الإجمالي',rows.reduce((s,r)=>s+r.net,0)]);
   const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:18},{wch:11},{wch:12},{wch:12},{wch:14},{wch:13},{wch:12}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
@@ -1284,7 +1284,7 @@ function _paySheet(wb,name,title2,headers,widths,dataRows,moneyCols,netCol,sumCo
   const BOX={top:{style:'thin'},left:{style:'thin'},bottom:{style:'thin'},right:{style:'thin'}},CEN={horizontal:'center',vertical:'center'};
   const ws=wb.addWorksheet(name,{views:[{rightToLeft:true}]});ws.columns=widths.map(w=>w?{width:w}:{});
   const N=headers.length,last=_PCOL[N-1];
-  ws.mergeCells('A1:'+last+'1');let a1=ws.getCell('A1');a1.value='شركة دبلان';a1.font={name:'Arial',size:20,bold:true,color:{argb:'FFFFFFFF'}};a1.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2A4A'}};a1.alignment=CEN;ws.getRow(1).height=32;
+  ws.mergeCells('A1:'+last+'1');let a1=ws.getCell('A1');a1.value='نسق الطاقة';a1.font={name:'Arial',size:20,bold:true,color:{argb:'FFFFFFFF'}};a1.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F2A4A'}};a1.alignment=CEN;ws.getRow(1).height=32;
   ws.mergeCells('A2:'+last+'2');let a2=ws.getCell('A2');a2.value=title2;a2.font={name:'Arial',size:16,bold:true,color:{argb:'FFFFFFFF'}};a2.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F3864'}};a2.alignment=CEN;ws.getRow(2).height=31.5;
   headers.forEach((h,i)=>{const c=ws.getCell(3,i+1);c.value=h;c.font={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFC9A227'}};c.alignment={horizontal:'center',vertical:'center',wrapText:true};c.border=BOX;});ws.getRow(3).height=37.5;
   let r=4;dataRows.forEach(vals=>{ws.getRow(r).height=21.75;vals.forEach((v,i)=>{const col=i+1;const c=ws.getCell(r,col);c.value=v;c.alignment=CEN;c.border=BOX;
@@ -1339,7 +1339,7 @@ function _payHtml(){
   const TOT='padding:7px 5px;border:1px solid #b7c3d6;background:#D9E1F2;color:#1F3864;font-weight:bold;font-size:11px;text-align:center';
   function tbl(title,headers,rows,netIdx,totCells){
     return `<table style="border-collapse:collapse;width:100%;font-family:Arial;margin-bottom:26px">
-      <tr><td colspan="${headers.length}" style="background:#0F2A4A;color:#fff;font-weight:bold;font-size:17px;text-align:center;padding:9px">شركة دبلان</td></tr>
+      <tr><td colspan="${headers.length}" style="background:#0F2A4A;color:#fff;font-weight:bold;font-size:17px;text-align:center;padding:9px">نسق الطاقة</td></tr>
       <tr><td colspan="${headers.length}" style="background:${NAVY};color:#fff;font-weight:bold;font-size:14px;text-align:center;padding:8px">${title}</td></tr>
       <tr>${headers.map(h=>`<td style="${TH()}">${h}</td>`).join('')}</tr>
       ${rows.map(cells=>`<tr>${cells.map((v,i)=>`<td style="${i===netIdx?TDN:TD}">${v}</td>`).join('')}</tr>`).join('')}
@@ -1619,7 +1619,7 @@ async function backupFiles(){
 async function backupData(){
   const btn=document.getElementById('bkBtn');const old=btn.innerHTML;btn.disabled=true;btn.innerHTML='<span class="spin"></span> جارٍ التجهيز…';
   const tables=['profiles','employees','documents','employee_dues','due_payments','payslips','payroll_adjustments','expenses','invoices','tax_invoices','attendance','entries','entry_finance','projects','zones','catalog_items','assignments','crews','crew_members','settings','notifications','station_photos'];
-  const out={app:'شركة دبلان',app_version:APP_VER,created_at:new Date().toISOString(),tables:{}};
+  const out={app:'نسق الطاقة',app_version:APP_VER,created_at:new Date().toISOString(),tables:{}};
   let ok=0;const fail=[];
   for(const t of tables){
     try{const{data,error}=await sb.from(t).select('*');if(error)throw error;out.tables[t]=data||[];ok++;}
@@ -1804,7 +1804,7 @@ async function waStPhotos(phase){
   const files=[];const lbl=phase==='before'?'قبل':'بعد';
   for(let i=0;i<arr.length;i++){try{const{data,error}=await sb.storage.from('photos').download(arr[i]);if(error)throw error;files.push(new File([data],(d.stName+'_'+lbl+'_'+(i+1)+'.jpg'),{type:data.type||'image/jpeg'}));}catch(_){}}
   if(!files.length){toast('تعذّر تجهيز الصور');return;}
-  if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:'صور '+lbl+' — شركة دبلان'});}catch(e){if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة: '+(e.message||''));}}
+  if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:'صور '+lbl+' — نسق الطاقة'});}catch(e){if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة: '+(e.message||''));}}
   else{toast('جهازك لا يدعم مشاركة عدة صور مرة واحدة — نزّلتها لك');for(const f of files){const u=URL.createObjectURL(f);const a=document.createElement('a');a.href=u;a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),6000);}}
 }
 async function delStPhoto(id,path){
@@ -1833,7 +1833,7 @@ async function dlStPhoto(path,name){
 async function waStPhoto(path,name){
   try{const{data,error}=await sb.storage.from('photos').download(path);if(error)throw error;
     const file=new File([data],name,{type:data.type||'image/jpeg'});
-    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'صورة محطة — شركة دبلان'});}
+    if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'صورة محطة — نسق الطاقة'});}
     else{const url=URL.createObjectURL(data);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast('جهازك لا يدعم المشاركة المباشرة — نزّلت الصورة، أرفقها في واتساب');}
   }catch(e){if(e&&e.name==='AbortError')return;toast('تعذّرت المشاركة: '+(e&&e.message||e));}
 }
@@ -1852,7 +1852,7 @@ async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
 async function exportWO(){await ensureLib('xlsx');const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
-  const aoa=[['أمر عمل — شركة دبلان'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
+  const aoa=[['أمر عمل — شركة نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
   let total=0;const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   Object.keys(byP).forEach(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};byP[pid].forEach(e=>{total+=e.amount;aoa.push([p.name||'',p.code||'',(e.item_code||''),(e.item_name_full||e.item_name),Number(e.qty),e.unit,e.rate,e.amount,e.work_date,e.worker_name||'',(e.photo_before&&e.photo_after)?'نعم':'—']);});});
   aoa.push([],['','','','','','','','الإجمالي',total]);
