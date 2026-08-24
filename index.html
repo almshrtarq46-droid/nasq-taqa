@@ -485,7 +485,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='143';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='144';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1253,6 +1253,20 @@ function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
     <div class="card" style="margin-top:10px;padding:12px;background:#eef6f2;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>الصافي</span><span id="pmNet" style="color:var(--green)">${fmt(c.net)} ﷼</span></div></div>
     <button class="btn" style="margin-top:12px" onclick="renderPayroll();closeModal()">تم</button>`);
 }
+async function _upsertPayslip(rec){
+  // يحفظ الأعمدة الموجودة ويتجاوز أي عمود غير موجود في الجدول، حتى لا يسقط الحفظ بالكامل
+  const CORE={employee_id:1,period:1,net:1};
+  let r=Object.assign({},rec);
+  for(let attempt=0;attempt<12;attempt++){
+    const{error}=await sb.from('payslips').upsert(r,{onConflict:'employee_id,period'});
+    if(!error)return;
+    const m=(error.message||'')+' '+(error.details||'')+' '+(error.hint||'');
+    const mm=m.match(/'([a-zA-Z_]+)' column/)||m.match(/column "([a-zA-Z_]+)"/)||m.match(/([a-zA-Z_]+) column of/);
+    const col=mm&&mm[1];
+    if(col&&(col in r)&&!CORE[col]){delete r[col];continue;}
+    throw error;
+  }
+}
 async function savePayroll(){
   if(!PAY_ROWS.length){toast('لا بيانات');return;}
   toast('جارٍ الحفظ…');
@@ -1262,7 +1276,7 @@ async function savePayroll(){
       absent_days:r.absent,absence_ded:c.absDed,late_hours:r.lateH,late_ded:c.lateDed,
       overtime_hours:r.otH,overtime:c.otVal,deductions:r.deductions,deduction_reason:r.reason,other_ded:r.deductions,
       dues_ded:newDed,rejeeh:r.rejeeh,net:c.net};
-    const{error}=await sb.from('payslips').upsert(rec,{onConflict:'employee_id,period'});if(error)throw error;
+    await _upsertPayslip(rec);
     const upd={};if(Number(e.monthly_salary||0)!==r.base)upd.monthly_salary=r.base;if(Number(e.housing_allowance||0)!==r.housing)upd.housing_allowance=r.housing;if(Number(e.transport_allowance||0)!==r.transport)upd.transport_allowance=r.transport;
     if(Object.keys(upd).length){try{await sb.from('employees').update(upd).eq('id',e.id);Object.assign(e,upd);}catch(_){}}
     // مزامنة الذمم بالفرق: أي خصم (جزئي/كامل، زيادة/تقليل) يُحدّث الذمة فورًا
