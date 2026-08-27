@@ -486,7 +486,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='152';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='153';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1525,7 +1525,7 @@ function openProject(p){
     <div class="field"><label>الإسناد (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
     <div class="hint">البنود والأسعار تُدار مركزياً من "البنود والأسعار". الموظف يضيف البنود عند العمل على المحطة. (غالباً المحطات تُنشأ تلقائياً من رفع الموظف — هذي الشاشة للتعديل فقط.)</div>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
-    ${p&&PROFILE.role==='admin'?`<button class="btn danger" style="margin-top:9px" onclick="confirmDelStation('${p.id}',${JSON.stringify((p.name||'')+(p.code?' · '+p.code:'')).replace(/'/g,"&#39;")})">حذف المحطة نهائياً</button>`:''}
+    ${p&&PROFILE.role==='admin'?`<button class="btn danger" style="margin-top:9px" onclick="confirmDelStation('${p.id}')">حذف المحطة نهائياً</button>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function fillProjLocFromGPS(){try{toast('جارٍ تحديد الموقع…');const p=await getPos();document.getElementById('m_lat').value=p.lat.toFixed(6);document.getElementById('m_lng').value=p.lng.toFixed(6);toast('تم ✓ (دقة ~'+p.acc+'م)');}catch(e){toast(e.message);}}
 function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editItems.map((it,i)=>`<div style="border:1px solid var(--line);border-radius:11px;padding:9px;margin-bottom:8px">
@@ -1540,10 +1540,12 @@ async function saveProject(id){const name=document.getElementById('m_name').valu
     closeModal();toast('تم الحفظ ✓');refreshAfterProject();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');const mw=document.getElementById('v-my-works');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();else if(mw&&mw.classList.contains('on'))loadMyWorks();}
-function confirmDelStation(id,label){
+function confirmDelStation(id){
   if(!PROFILE||PROFILE.role!=='admin'){toast('الحذف النهائي للمدير فقط');return;}
+  const p=(PROJECTS||[]).find(x=>x.id===id)||{};
+  const label=(p.name||'المحطة')+(p.code?' · رقم '+p.code:'');
   openModal(`<h3 style="margin-bottom:8px;color:var(--bad)">حذف المحطة نهائياً</h3>
-    <p style="font-size:14px;line-height:1.7;margin-bottom:6px">سيتم حذف <b>${label||'المحطة'}</b> وكل أعمالها وصورها نهائياً — لا يمكن التراجع.</p>
+    <p style="font-size:14px;line-height:1.7;margin-bottom:6px">سيتم حذف <b>${label}</b> وكل أعمالها وصورها نهائياً — لا يمكن التراجع.</p>
     <button class="btn danger" onclick="delProject('${id}')">نعم، احذف نهائياً</button>
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
 }
@@ -1814,7 +1816,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td>${_adm?`<td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td>`:''}</tr>`;}).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}',${JSON.stringify((p.name||'')+(p.code?' · '+p.code:'')).replace(/'/g,"&#39;")})">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');}
 async function viewStationPhotos(pid){
