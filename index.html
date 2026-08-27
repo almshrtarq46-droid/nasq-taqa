@@ -486,7 +486,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='150';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='151';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1549,13 +1549,21 @@ function confirmDelStation(id,label){
 }
 async function delProject(id){
   if(!PROFILE||PROFILE.role!=='admin'){toast('الحذف النهائي للمدير فقط');return;}
+  closeModal();
+  const cards=[document.getElementById('st_'+id),document.getElementById('ov_st_'+id)].filter(Boolean);
   try{
-    await sb.from('station_photos').delete().eq('project_id',id);
-    await sb.from('entries').delete().eq('project_id',id);
+    await Promise.all([
+      sb.from('station_photos').delete().eq('project_id',id),
+      sb.from('entries').delete().eq('project_id',id)
+    ]);
     const{data,error}=await sb.from('projects').delete().eq('id',id).select();
     if(error)throw error;
     if(!data||!data.length){toast('لم تُحذف المحطة — نفّذ كود «صلاحية حذف المحطات» (SQL) في Supabase');return;}
-    closeModal();toast('تم حذف المحطة نهائياً');refreshAfterProject();
+    try{PROJECTS=PROJECTS.filter(p=>p.id!==id);}catch(_){}
+    if(window._woRows)window._woRows=window._woRows.filter(e=>e.project_id!==id);
+    if(window._myEnts)window._myEnts=window._myEnts.filter(e=>e.project_id!==id);
+    toast('تم حذف المحطة نهائياً');
+    if(cards.length){cards.forEach(c=>_animateRemove(c,null));}else{refreshAfterProject();}
   }catch(e){toast('خطأ: '+(e&&e.message||e));}}
 
 /* ===== settings menu (accordion) ===== */
