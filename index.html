@@ -113,7 +113,7 @@ header{background:linear-gradient(135deg,var(--green),var(--green-d));color:#fff
 header .who b{font-size:15px}header .who span{font-size:12px;opacity:.85;display:block}
 .hamb{background:rgba(255,255,255,.15);width:38px;height:38px;border-radius:10px;display:grid;place-items:center;color:#fff}
 .hamb svg{width:20px;height:20px}
-main{padding:15px 14px 90px;max-width:860px;margin:0 auto}
+main{padding:15px 14px 90px;max-width:860px;margin:0 auto;overflow-x:hidden}
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:30}
 nav button{flex:1;background:none;padding:10px 2px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-size:10.5px;font-weight:700}
 nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.on{color:var(--green)}nav button{transition:color .22s ease}nav button.on svg{transform:translateY(-2px) scale(1.08)}nav button:active{transform:scale(.94)}
@@ -173,8 +173,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 #map{height:230px;border-radius:14px;margin-bottom:13px;z-index:0}
 .locbar{display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;padding:9px 11px;border-radius:11px;margin-bottom:12px}
 .locbar.ok2{background:#e6f6ed;color:var(--ok)}.locbar.wait{background:#eef2f0;color:var(--muted)}.locbar.bad2{background:#fbecea;color:var(--bad)}
-.seg{display:flex;gap:5px;background:#eef2f0;border-radius:11px;padding:4px;margin-bottom:14px}
-.seg button{flex:1;background:none;padding:9px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
+.seg{display:flex;gap:5px;background:#eef2f0;border-radius:11px;padding:4px;margin-bottom:14px;overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{flex:1 0 auto;white-space:nowrap;background:none;padding:9px 14px;border-radius:9px;font-weight:700;font-size:13px;color:var(--muted);transition:background .25s ease,color .25s ease,box-shadow .25s ease,transform .12s ease}
 .seg button.on{background:#fff;color:var(--green);box-shadow:0 0 0 2px rgba(15,107,79,.7),0 4px 12px rgba(11,77,56,.22)}
 .seg button:active{transform:scale(.96)}
 @media(hover:hover){.seg button:not(.on):hover{color:var(--green);background:rgba(255,255,255,.7);box-shadow:0 0 0 2px rgba(15,107,79,.5)}}
@@ -494,7 +495,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='158';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='159';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
