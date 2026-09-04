@@ -495,7 +495,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='161';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='162';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -859,7 +859,7 @@ function renderEmpDir(){
   const ncell=d=>{const n=_empDays(d);if(n===null)return `<td style="${TD}">—</td>`;const c=_empCol(n);return `<td style="${TD};background:${c.bg};color:${c.fg};font-weight:700">${n} يوم</td>`;};
   const nameCell=e=>`<td style="${TD};font-weight:700">${e.name||''}${e.user_id?'<div style="font-size:10px;color:var(--green);font-weight:600">مرتبط: '+(pn[e.user_id]||'حساب')+'</div>':''}</td>`;
   const editCell=e=>`<td style="${TD}"><button class="link" onclick='openEmployee(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></td>`;
-  const leaveCell=e=>{const li=_leaveInfo(e);return li?`<td style="${TD};font-weight:700;color:${li.remaining<=0?'var(--bad)':'var(--green)'}">${fmt(li.remaining)} يوم</td>`:`<td style="${TD};color:var(--muted)">—</td>`;};
+  const leaveCell=e=>{const li=_leaveInfo(e);if(!li)return `<td style="${TD};color:var(--muted)">—</td>`;return `<td style="${TD}"><div style="font-weight:800;color:${li.remaining<=0?'var(--bad)':'var(--green)'}">متبقّي ${fmt(li.remaining)}</div><div style="font-size:10px;color:var(--muted)">من 21 · مستخدم ${fmt(li.taken)}</div></td>`;};
   let head,rows;
   if(saudi){
     head=['م','اسم الموظف','رقم الهوية','الجنسية','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','رصيد الإجازة','ملاحظات',''];
@@ -896,7 +896,7 @@ function openEmployee(e){
       <label style="font-size:12.5px;color:var(--muted);display:block;margin-bottom:6px">الإجازة السنوية (21 يوم/سنة من بداية العقد)</label>
       <div class="row"><div class="field"><label>تاريخ بداية العقد</label><input id="em_cstart" type="date" value="${e?(e.contract_start||''):''}"></div>
         <div class="field"><label>أيام إجازة مُستخدمة</label><input id="em_leavetaken" type="number" inputmode="decimal" value="${e?(e.leave_taken||0):0}"></div></div>
-      ${e&&_leaveInfo(e)?`<div class="hint" style="margin-top:4px">المستحق حتى الآن: ${fmt(_leaveInfo(e).accrued)} يوم · المتبقّي: <b style="color:${_leaveInfo(e).remaining<=0?'var(--bad)':'var(--green)'}">${fmt(_leaveInfo(e).remaining)} يوم</b></div>`:'<div class="hint" style="margin-top:4px">أدخل تاريخ بداية العقد ليُحسب الرصيد.</div>'}
+      ${e&&_leaveInfo(e)?(()=>{const li=_leaveInfo(e);return `<div class="hint" style="margin-top:4px">سنة العقد الحالية (${li.yrStart} → ${li.yrEnd}): المستحق 21 يوم · المستخدم ${fmt(li.taken)} · المتبقّي <b style="color:${li.remaining<=0?'var(--bad)':'var(--green)'}">${fmt(li.remaining)} يوم</b>. عند بداية سنة عقد جديدة صفّر «أيام إجازة مُستخدمة».</div>`;})():'<div class="hint" style="margin-top:4px">أدخل تاريخ بداية العقد ليُحسب الرصيد (21 يوم لكل سنة عقد).</div>'}
     </div>
     <div class="field"><label>ربط بحساب دخول (اختياري)</label><select id="em_user">${opts}</select></div>
     <div class="field"><label>ملاحظات</label><input id="em_notes" value="${e?(e.notes||'').replace(/"/g,'&quot;'):''}"></div>
@@ -924,8 +924,13 @@ async function saveEmployee(id){
 }
 function _leaveInfo(e){
   if(!e||!e.contract_start)return null;const start=new Date(e.contract_start);if(isNaN(start.getTime()))return null;
-  const days=Math.max(0,(Date.now()-start.getTime())/86400000);const accrued=21*(days/365);const taken=Number(e.leave_taken||0);
-  return {accrued:Math.round(accrued*10)/10,taken,remaining:Math.round((accrued-taken)*10)/10};
+  const now=new Date();const msYear=365.25*86400000;
+  const yearsElapsed=Math.max(0,Math.floor((now.getTime()-start.getTime())/msYear));
+  const yrStart=new Date(start);yrStart.setFullYear(start.getFullYear()+yearsElapsed);
+  const yrEnd=new Date(yrStart);yrEnd.setFullYear(yrStart.getFullYear()+1);
+  const entitlement=21;const taken=Number(e.leave_taken||0);
+  const remaining=Math.round((entitlement-taken)*10)/10;
+  return {entitlement,taken,remaining,yearNo:yearsElapsed+1,yrStart:locDate(yrStart.toISOString()),yrEnd:locDate(yrEnd.toISOString())};
 }
 function deleteEmployee(id){openConfirm('حذف الموظف','متأكد من حذف هذا الموظف؟ يمكن استرجاعه لاحقاً من «المحذوفات».',async()=>{
   try{await softDelete('employees',id);closeModal();toast('تم حذف الموظف');loadEmpDir();
