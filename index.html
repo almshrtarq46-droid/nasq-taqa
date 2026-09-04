@@ -367,6 +367,13 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="catCount" style="font-size:12px;color:var(--muted);margin:0 2px 8px"></div>
       <div id="catList"></div>
     </div>
+    <div class="view" id="v-inventory">
+      <h2 class="section-title">المخزون</h2>
+      <div class="hint">جرد المواد: كل مادة برصيدها الحالي. عند رفع بند مرتبط بمادة يُخصم تلقائياً من الرصيد. التوريد والصرف اليدوي متاحان أيضاً.</div>
+      <button class="btn" style="margin-bottom:10px" onclick="openMaterial()">+ إضافة مادة</button>
+      <input id="invSearch" placeholder="بحث باسم المادة…" oninput="renderInventory()" style="margin-bottom:12px">
+      <div id="invList"></div>
+    </div>
     <div class="view" id="v-assignments">
       <h2 class="section-title">الإسنادات</h2>
       <div class="hint">الإسناد = دفعة عمل (مثلاً صيانة الشمال). الموظف يختار الإسناد ثم يكتب رقم المحطة عند العمل.</div>
@@ -486,7 +493,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='153';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='154';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -708,6 +715,7 @@ const NAV_MAIN=[
   {v:'hr',l:'الموارد البشرية',i:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
+  {v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},
   {v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'}
 ];
 const NAV_SET_CHILDREN=[
@@ -736,13 +744,13 @@ function buildNav(role){
   hamb.style.display='grid';nav.style.display='none';
   const isAdmin=role==='admin',isEntry=PROFILE&&PROFILE.role==='data_entry';
   let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET; let first=isAdmin?'overview':'home';
-  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},...NAV_WORKER.slice(1)];first='home';}
+  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
   html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
-  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','att-worker','field','my-att','my-works','company','my-info','workorders']:['home','att-worker','field','my-att','my-works','company','my-info']);
+  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','att-worker','field','my-att','my-works','company','my-info','workorders','inventory']:['home','att-worker','field','my-att','my-works','company','my-info']);
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -756,7 +764,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
+  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -1677,7 +1685,7 @@ async function backupData(){
 }
 
 /* ===== catalog (global price list) ===== */
-async function loadCatalogAdmin(){await loadCatalog();document.getElementById('catSearch').value='';renderCatalog();}
+async function loadCatalogAdmin(){await Promise.all([loadCatalog(),loadMaterials()]);document.getElementById('catSearch').value='';renderCatalog();}
 function renderCatalog(){const q=(document.getElementById('catSearch').value||'').trim();
   const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('catCount').textContent=`${CATALOG.length} بند${q?` · ${list.length} مطابق`:''}`;
@@ -1687,15 +1695,89 @@ function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'ت�
   <div class="field"><label>الاسم المختصر (يظهر للعامل بالجوال)</label><input id="ci_name" value="${it?it.name:''}" placeholder="دهان جدران"></div>
   <div class="field"><label>الاسم المفصل (يظهر في أمر العمل لشركة الكهرباء)</label><textarea id="ci_name_full" rows="2" placeholder="الاسم الرسمي بالنص والحرف كما تطلبه شركة الكهرباء">${it?(it.name_full||''):''}</textarea></div>
   <div class="field"><label>السعر (﷼)</label><input id="ci_rate" type="number" value="${it?it.rate:''}"></div>
+  <div class="card" style="padding:12px;background:#f6f8f7;box-shadow:none;margin-bottom:2px">
+    <label style="font-size:12.5px;color:var(--muted);display:block;margin-bottom:6px">ربط بمادة من المخزون (خصم تلقائي عند رفع البند)</label>
+    <div class="row"><div class="field"><label>المادة</label><select id="ci_material"><option value="">— بدون —</option>${MATERIALS.map(m=>`<option value="${m.id}" ${it&&it.material_id===m.id?'selected':''}>${m.name} (${m.unit||'قطعة'})</option>`).join('')}</select></div>
+      <div class="field"><label>الكمية المستهلكة لكل وحدة</label><input id="ci_matper" type="number" inputmode="decimal" value="${it?(it.material_per_unit||''):''}" placeholder="مثال: 1"></div></div>
+    <div class="hint" style="margin-top:4px">مثال: بند تأريض → المادة «كابل»، الكمية 1 (يعني كل وحدة من البند تستهلك 1 متر كابل).</div>
+  </div>
   <button class="btn" id="ciSave" onclick="saveCatalogItem('${it?it.id:''}')">حفظ</button>
   ${it?`<button class="btn danger" style="margin-top:9px" onclick="delCatalogItem('${it.id}')">حذف</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function saveCatalogItem(id){const name=document.getElementById('ci_name').value.trim();if(!name){toast('أدخل اسم البند');return;}
-  const rec={code:document.getElementById('ci_code').value.trim(),name,name_full:document.getElementById('ci_name_full').value.trim(),unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0};
+  const rec={code:document.getElementById('ci_code').value.trim(),name,name_full:document.getElementById('ci_name_full').value.trim(),unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0,material_id:document.getElementById('ci_material').value||null,material_per_unit:parseFloat(document.getElementById('ci_matper').value)||0};
   const btn=document.getElementById('ciSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{if(id){const{error}=await sb.from('catalog_items').update(rec).eq('id',id);if(error)throw error;}else{const{error}=await sb.from('catalog_items').insert(rec);if(error)throw error;}
+  const save=async r=>{if(id){return await sb.from('catalog_items').update(r).eq('id',id);}return await sb.from('catalog_items').insert(r);};
+  try{let{error}=await save(rec);
+    if(error&&/material/i.test(error.message||'')){delete rec.material_id;delete rec.material_per_unit;({error}=await save(rec));toast('حُفظ البند — لتفعيل ربط المخزون نفّذ كود المخزون (SQL)');}
+    if(error)throw error;
     closeModal();toast('تم الحفظ ✓');loadCatalogAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delCatalogItem(id){const{error}=await sb.from('catalog_items').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadCatalogAdmin();}
+
+/* ===== المخزون / الجرد ===== */
+let MATERIALS=[];
+async function loadMaterials(){try{const{data}=await sb.from('materials').select('*').order('name');MATERIALS=(data||[]).filter(x=>!x.deleted_at);}catch(e){MATERIALS=[];}}
+async function initInventory(){await loadMaterials();const s=document.getElementById('invSearch');if(s)s.value='';renderInventory();}
+function renderInventory(){
+  const box=document.getElementById('invList');if(!box)return;
+  const q=(document.getElementById('invSearch')?.value||'').trim();
+  const list=q?MATERIALS.filter(m=>(m.name||'').includes(q)):MATERIALS;
+  if(!MATERIALS.length){box.innerHTML='<div class="empty">لا مواد بعد — أضف أول مادة</div>';return;}
+  if(!list.length){box.innerHTML='<div class="empty">لا مادة بهذا الاسم</div>';return;}
+  box.innerHTML=list.map(m=>{const qty=Number(m.qty||0),low=Number(m.min_alert||0)>0&&qty<=Number(m.min_alert);
+    return `<div class="card" style="padding:13px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><b style="font-size:15px">${m.name}</b><div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}</small></div></div>
+        <div style="text-align:left"><div style="font-weight:900;font-size:20px;color:${low?'var(--bad)':'var(--green)'}">${fmt(qty)}</div><small style="color:var(--muted)">${m.unit||'قطعة'}</small></div>
+      </div>
+      ${low?'<div style="margin-top:6px"><span class="pill susp">⚠ الرصيد منخفض</span></div>':''}
+      <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:6px">
+        <button class="btn sm" style="flex:1;background:var(--ok)" onclick="materialMove('${m.id}','in')">＋ توريد</button>
+        <button class="btn sm" style="flex:1;background:var(--copper)" onclick="materialMove('${m.id}','out')">− صرف</button>
+        <button class="link" onclick="materialLedger('${m.id}')">📜 السجل</button>
+        <button class="link" onclick='openMaterial(${JSON.stringify(m).replace(/'/g,"&#39;")})'>⚙ تعديل</button>
+      </div></div>`;}).join('');
+}
+function openMaterial(m){openModal(`<h3 style="margin-bottom:14px">${m?'تعديل مادة':'مادة جديدة'}</h3>
+  <div class="field"><label>اسم المادة</label><input id="mt_name" value="${m?(m.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: مروحة شفط / كابل نحاس"></div>
+  <div class="row"><div class="field"><label>الوحدة</label><input id="mt_unit" value="${m?(m.unit||''):''}" placeholder="قطعة / متر / لفة"></div>
+    <div class="field"><label>حد التنبيه للنقص</label><input id="mt_min" type="number" inputmode="decimal" value="${m?(m.min_alert||0):0}"></div></div>
+  ${m?'':'<div class="field"><label>الرصيد الابتدائي</label><input id="mt_qty" type="number" inputmode="decimal" value="0"></div>'}
+  <button class="btn" id="mtSave" onclick="saveMaterial('${m?m.id:''}')">حفظ</button>
+  ${m?`<button class="btn danger" style="margin-top:9px" onclick="delMaterial('${m.id}')">حذف المادة</button>`:''}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveMaterial(id){const name=(document.getElementById('mt_name').value||'').trim();if(!name){toast('أدخل اسم المادة');return;}
+  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0};
+  if(!id)rec.qty=parseFloat(document.getElementById('mt_qty').value)||0;
+  const btn=document.getElementById('mtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{if(id){const{error}=await sb.from('materials').update(rec).eq('id',id);if(error)throw error;}
+    else{const{data,error}=await sb.from('materials').insert(rec).select('id').single();if(error)throw error;
+      if(rec.qty)try{await sb.from('material_moves').insert({material_id:data.id,delta:rec.qty,reason:'رصيد ابتدائي',source:'manual',created_by:ME.id});}catch(_){}}
+    closeModal();toast('تم الحفظ ✓');initInventory();
+  }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent='حفظ';}}
+async function delMaterial(id){await softDelete('materials',id);closeModal();toast('تم حذف المادة');initInventory();}
+function materialMove(id,dir){const m=MATERIALS.find(x=>x.id===id)||{};const inn=dir==='in';
+  openModal(`<h3 style="margin-bottom:6px">${inn?'توريد إلى':'صرف من'} ${m.name||'المخزون'}</h3>
+    <small style="color:var(--muted);display:block;margin-bottom:12px">الرصيد الحالي: ${fmt(m.qty||0)} ${m.unit||'قطعة'}</small>
+    <div class="field"><label>الكمية (${m.unit||'قطعة'})</label><input id="mv_qty" type="number" inputmode="decimal" placeholder="0"></div>
+    <div class="field"><label>البيان / السبب</label><input id="mv_reason" placeholder="${inn?'مثال: توريد من المورّد':'مثال: صرف يدوي لمحطة'}"></div>
+    <button class="btn" id="mvSave" style="${inn?'':'background:var(--copper)'}" onclick="saveMaterialMove('${id}','${dir}')">${inn?'توريد':'صرف'}</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function saveMaterialMove(id,dir){const q=parseFloat(document.getElementById('mv_qty').value);if(!q||q<=0){toast('أدخل كمية صحيحة');return;}
+  const reason=(document.getElementById('mv_reason').value||'').trim();const m=MATERIALS.find(x=>x.id===id)||{};
+  const delta=dir==='in'?q:-q;const newQty=Number(m.qty||0)+delta;
+  const btn=document.getElementById('mvSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const{error}=await sb.from('materials').update({qty:newQty}).eq('id',id);if(error)throw error;
+    try{await sb.from('material_moves').insert({material_id:id,delta,reason:reason||(dir==='in'?'توريد':'صرف'),source:'manual',created_by:ME.id});}catch(_){}
+    closeModal();toast('تم ✓');initInventory();
+  }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent=dir==='in'?'توريد':'صرف';}}
+async function materialLedger(id){const m=MATERIALS.find(x=>x.id===id)||{};
+  openModal(`<h3 style="margin-bottom:4px">سجل ${m.name||''}</h3><small style="color:var(--muted);display:block;margin-bottom:12px">الرصيد الحالي: ${fmt(m.qty||0)} ${m.unit||'قطعة'}</small><div id="mlWrap" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  const{data}=await sb.from('material_moves').select('*').eq('material_id',id).order('created_at',{ascending:false}).limit(100);
+  const w=document.getElementById('mlWrap');if(!w)return;
+  if(!data||!data.length){w.innerHTML='<div class="empty">لا حركات بعد</div>';return;}
+  w.innerHTML=data.map(x=>{const inn=Number(x.delta)>=0;return `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line)"><div><b style="font-size:13px">${x.reason||(inn?'توريد':'صرف')}</b><div><small style="color:var(--muted)">${x.created_at?locDT(x.created_at):''}${x.source==='auto'?' · تلقائي':''}</small></div></div><span class="pill ${inn?'ok':'susp'}">${inn?'+':'−'} ${fmt(Math.abs(Number(x.delta)))}</span></div>`;}).join('');
+}
 
 /* ===== assignments ===== */
 async function loadAssignmentsAdmin(){await loadAssignments();
