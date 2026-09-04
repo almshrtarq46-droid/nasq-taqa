@@ -267,7 +267,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="hr_crew" class="hrbox" style="display:none"><div class="hint">حدّد كل فرقة: مسؤول + أعضاء. مسؤول الفرقة هو اللي يسجّل حضور الفرقة بسيلفي جماعي، والأعضاء ما يسجّلون بأنفسهم.</div><button class="btn" style="margin-bottom:13px" onclick="openCrew()">+ فرقة جديدة</button><div id="crewList"></div></div>
       <div id="hr_att" class="hrbox" style="display:none"><div class="field"><label>عرض حضور يوم</label><input type="date" id="att_date_admin" onchange="loadAttAdmin()"></div><div id="map"></div><div id="attAdminList"></div></div>
       <div id="hr_pay" class="hrbox" style="display:none">
-        <div class="row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>شهر الرواتب</label><input type="month" id="pay_month"></div>
+        <div class="row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>شهر الرواتب</label><select id="pay_month" onchange="loadPayroll()"></select></div>
           <div class="field" style="margin:0"><label>&nbsp;</label><button class="btn sm" style="width:100%" onclick="loadPayroll()">عرض</button></div></div>
         <div class="hint">الصافي = الراتب − خصم الغياب − خصم التأخير − قسط الذمم − خصومات أخرى + أوفر تايم. خصم التأخير تلقائي للموظفين المحدّدين، وقسط الذمم يُخصم تلقائيًا من رصيد كل موظف.</div>
         <div style="margin:10px 0 6px"><button class="btn sm" style="width:100%" onclick="openEmployee()">+ إضافة موظف</button></div>
@@ -495,7 +495,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='160';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='161';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1021,7 +1021,7 @@ async function exportEmployeesPdf(){await ensureLib('jspdf','html2canvas');
 function initHR(){hrTab('dir',document.querySelector('#v-hr>.seg button'));}
 function hrTab(t,btn){document.querySelectorAll('#v-hr>.seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
   ['dir','pay','dues','emp','crew','att'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
-  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay')loadPayroll();if(t==='dues')loadDues();}
+  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay'){_fillPayMonths();enhanceSelects(document.getElementById('hr_pay'));loadPayroll();}if(t==='dues')loadDues();}
 async function loadCrews(){
   const{data:crews}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').order('created_at',{ascending:false});
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
@@ -1202,6 +1202,10 @@ function exportPayrollOLD(){const rows=window._payRows||[];if(!rows.length){toas
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الرواتب');XLSX.writeFile(wb,'رواتب_'+monthKey()+'.xlsx');toast('تم التصدير ✓');}
 /* ===== الرواتب — مطابق للقالب (ملخص + سعوديين + مقيمين) ===== */
 let PAY_ROWS=[],PAY_PERIOD='',DUES_EMPS=[];
+const _MONTHS_AR=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
+function _fillPayMonths(){const sel=document.getElementById('pay_month');if(!sel)return;const cur=(sel.value)||monthKey();
+  const now=new Date();const opts=[];for(let i=-1;i<24;i++){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const v=d.getFullYear()+'-'+_pad2(d.getMonth()+1);opts.push(`<option value="${v}">${_MONTHS_AR[d.getMonth()]} ${d.getFullYear()}</option>`);}
+  sel.innerHTML=opts.join('');sel.value=cur;if(!sel.value)sel.value=monthKey();}
 function _payMonth(){const m=document.getElementById('pay_month');if(m&&!m.value)m.value=monthKey();return (m&&m.value)||monthKey();}
 function _pDaily(b){return (Number(b)||0)/30;}
 function _pLateHr(b){return (Number(b)||0)/240;}
