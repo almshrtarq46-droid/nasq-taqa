@@ -395,7 +395,6 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <button class="btn wbig" onclick="goView('field')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M2 12h20"/></svg>رفع محطة جديدة</button>
       <button class="btn wbig" id="deAllStationsBtn" style="display:none;background:#6a4c93" onclick="goView('workorders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>كل المحطات</button>
       <button class="btn copper wbig" onclick="goView('att-worker')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v5l3 2"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>الحضور والانصراف</button>
-      <button class="btn wbig" style="background:#2a6f97" onclick="goView('my-info')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>بياناتي</button>
       <button class="btn ghost" id="pushBtn" style="display:none;margin-top:12px" onclick="enablePush()">🔔 تفعيل إشعارات الجوال</button>
       <div id="workerNotifs" style="margin-top:14px"></div>
     </div>
@@ -495,7 +494,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='162';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='163';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -729,8 +728,7 @@ const NAV_SET_CHILDREN=[
   {v:'backup',l:'النسخة الاحتياطية',i:'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3'}
 ];
 const NAV_WORKER=[
-  {v:'home',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'},
-  {v:'my-info',l:'بياناتي',i:'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z'}
+  {v:'home',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'}
 ];
 const NAV_WORKER_SET=[
   {v:'my-att',l:'أيام حضوري هذا الشهر',i:'M16 2v4 M8 2v4 M3 10h18 M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2'},
@@ -752,7 +750,7 @@ function buildNav(role){
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
-  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','att-worker','field','my-att','my-works','company','my-info','workorders','inventory']:['home','att-worker','field','my-att','my-works','company','my-info']);
+  const _valid=isAdmin?['overview','workorders','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','att-worker','field','my-att','my-works','company','workorders','inventory']:['home','att-worker','field','my-att','my-works','company']);
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
