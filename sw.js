@@ -40,6 +40,17 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // --- فهرس مواقع المحطات: cache-first (فتح فوري + بدون إنترنت) + تحديث بالخلفية ---
+  if (/stations\.json/.test(url)) {
+    e.respondWith(caches.open('nasq-stations-v1').then(c =>
+      c.match(req).then(hit => {
+        const net = fetch(req).then(resp => { if (resp && resp.ok) { try { c.put(req, resp.clone()); } catch (_) {} } return resp; }).catch(() => null);
+        return hit || net.then(x => x || Response.error());
+      })
+    ));
+    return;
+  }
+
   // --- CDN libs & fonts: cache-first ---
   if (CDN.test(url)) {
     e.respondWith(caches.open(CDN_CACHE).then(c =>
