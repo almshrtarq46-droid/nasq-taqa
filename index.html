@@ -269,7 +269,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div class="row" style="margin-bottom:10px"><div class="field" style="margin:0"><label>شهر الرواتب</label><input type="month" id="pay_month"></div>
           <div class="field" style="margin:0"><label>&nbsp;</label><button class="btn sm" style="width:100%" onclick="loadPayroll()">عرض</button></div></div>
         <div class="hint">الصافي = الراتب − خصم الغياب − خصم التأخير − قسط الذمم − خصومات أخرى + أوفر تايم. خصم التأخير تلقائي للموظفين المحدّدين، وقسط الذمم يُخصم تلقائيًا من رصيد كل موظف.</div>
-        <div style="display:flex;gap:8px;margin:10px 0"><button class="btn" style="flex:1" onclick="savePayroll()">💾 اعتماد وحفظ كشف الشهر</button><button class="btn copper sm" style="flex:1" onclick="exportPayroll()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportPayrollPdf()">📄 PDF</button></div>
+        <div style="margin:10px 0 6px"><button class="btn sm" style="width:100%" onclick="openEmployee()">+ إضافة موظف</button></div>
+        <div style="display:flex;gap:8px;margin:0 0 10px"><button class="btn" style="flex:1" onclick="savePayroll()">💾 اعتماد وحفظ كشف الشهر</button><button class="btn copper sm" style="flex:1" onclick="exportPayroll()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportPayrollPdf()">📄 PDF</button></div>
         <div id="payList"></div></div>
       <div id="hr_dues" class="hrbox" style="display:none">
         <div class="hint">حقوق الشركة على الموظفين (مخالفات، غياب، سلف…). لكل ذمة مبلغ كامل + قسط شهري. الأقساط تُخصم <b>تلقائيًا من الراتب فقط</b> عند اعتماد كشف رواتب الشهر. «يُخصم كامل المرة الجاية» = اجعل القسط = المبلغ الكامل.</div>
@@ -493,7 +494,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='154';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='155';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -857,13 +858,14 @@ function renderEmpDir(){
   const ncell=d=>{const n=_empDays(d);if(n===null)return `<td style="${TD}">—</td>`;const c=_empCol(n);return `<td style="${TD};background:${c.bg};color:${c.fg};font-weight:700">${n} يوم</td>`;};
   const nameCell=e=>`<td style="${TD};font-weight:700">${e.name||''}${e.user_id?'<div style="font-size:10px;color:var(--green);font-weight:600">مرتبط: '+(pn[e.user_id]||'حساب')+'</div>':''}</td>`;
   const editCell=e=>`<td style="${TD}"><button class="link" onclick='openEmployee(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></td>`;
+  const leaveCell=e=>{const li=_leaveInfo(e);return li?`<td style="${TD};font-weight:700;color:${li.remaining<=0?'var(--bad)':'var(--green)'}">${fmt(li.remaining)} يوم</td>`:`<td style="${TD};color:var(--muted)">—</td>`;};
   let head,rows;
   if(saudi){
-    head=['م','اسم الموظف','رقم الهوية','الجنسية','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','ملاحظات',''];
-    rows=list.map((e,i)=>`<tr><td style="${TD}">${e.seq||i+1}</td>${nameCell(e)}<td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>${dcell(e.medical_expiry)}${ncell(e.medical_expiry)}${dcell(e.contract_expiry)}${ncell(e.contract_expiry)}<td style="${TD}">${e.notes||''}</td>${editCell(e)}</tr>`).join('');
+    head=['م','اسم الموظف','رقم الهوية','الجنسية','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','رصيد الإجازة','ملاحظات',''];
+    rows=list.map((e,i)=>`<tr><td style="${TD}">${e.seq||i+1}</td>${nameCell(e)}<td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>${dcell(e.medical_expiry)}${ncell(e.medical_expiry)}${dcell(e.contract_expiry)}${ncell(e.contract_expiry)}${leaveCell(e)}<td style="${TD}">${e.notes||''}</td>${editCell(e)}</tr>`).join('');
   }else{
-    head=['م','اسم الموظف','رقم الإقامة','الجنسية','انتهاء الإقامة','المتبقّي','انتهاء الرخصة','المتبقّي','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','ملاحظات',''];
-    rows=list.map((e,i)=>`<tr><td style="${TD}">${e.seq||i+1}</td>${nameCell(e)}<td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>${dcell(e.iqama_expiry)}${ncell(e.iqama_expiry)}${dcell(e.work_permit_expiry)}${ncell(e.work_permit_expiry)}${dcell(e.medical_expiry)}${ncell(e.medical_expiry)}${dcell(e.contract_expiry)}${ncell(e.contract_expiry)}<td style="${TD}">${e.notes||''}</td>${editCell(e)}</tr>`).join('');
+    head=['م','اسم الموظف','رقم الإقامة','الجنسية','انتهاء الإقامة','المتبقّي','انتهاء الرخصة','المتبقّي','انتهاء التأمين','المتبقّي','انتهاء العقد','المتبقّي','رصيد الإجازة','ملاحظات',''];
+    rows=list.map((e,i)=>`<tr><td style="${TD}">${e.seq||i+1}</td>${nameCell(e)}<td style="${TD}">${e.iqama_number||''}</td><td style="${TD}">${e.nationality||''}</td>${dcell(e.iqama_expiry)}${ncell(e.iqama_expiry)}${dcell(e.work_permit_expiry)}${ncell(e.work_permit_expiry)}${dcell(e.medical_expiry)}${ncell(e.medical_expiry)}${dcell(e.contract_expiry)}${ncell(e.contract_expiry)}${leaveCell(e)}<td style="${TD}">${e.notes||''}</td>${editCell(e)}</tr>`).join('');
   }
   box.innerHTML=`<div style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px"><table style="border-collapse:collapse;min-width:100%">
     <thead><tr>${head.map(h=>`<th style="${TH}">${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
@@ -889,6 +891,12 @@ function openEmployee(e){
     <div class="field"><label>رقم الإيبان (IBAN)</label><input id="em_iban" value="${e?(e.iban||''):''}" placeholder="SA.........................."></div>
     <div id="em_resFields"><div class="row"><div class="field"><label>انتهاء الإقامة</label><input id="em_iqexp" type="date" value="${e?(e.iqama_expiry||''):''}"></div><div class="field"><label>انتهاء رخصة العمل</label><input id="em_wpexp" type="date" value="${e?(e.work_permit_expiry||''):''}"></div></div></div>
     <div class="row"><div class="field"><label>انتهاء التأمين الطبي</label><input id="em_medexp" type="date" value="${e?(e.medical_expiry||''):''}"></div><div class="field"><label>انتهاء عقد العمل</label><input id="em_ctexp" type="date" value="${e?(e.contract_expiry||''):''}"></div></div>
+    <div class="card" style="padding:12px;background:#f6f8f7;box-shadow:none;margin-bottom:2px">
+      <label style="font-size:12.5px;color:var(--muted);display:block;margin-bottom:6px">الإجازة السنوية (21 يوم/سنة من بداية العقد)</label>
+      <div class="row"><div class="field"><label>تاريخ بداية العقد</label><input id="em_cstart" type="date" value="${e?(e.contract_start||''):''}"></div>
+        <div class="field"><label>أيام إجازة مُستخدمة</label><input id="em_leavetaken" type="number" inputmode="decimal" value="${e?(e.leave_taken||0):0}"></div></div>
+      ${e&&_leaveInfo(e)?`<div class="hint" style="margin-top:4px">المستحق حتى الآن: ${fmt(_leaveInfo(e).accrued)} يوم · المتبقّي: <b style="color:${_leaveInfo(e).remaining<=0?'var(--bad)':'var(--green)'}">${fmt(_leaveInfo(e).remaining)} يوم</b></div>`:'<div class="hint" style="margin-top:4px">أدخل تاريخ بداية العقد ليُحسب الرصيد.</div>'}
+    </div>
     <div class="field"><label>ربط بحساب دخول (اختياري)</label><select id="em_user">${opts}</select></div>
     <div class="field"><label>ملاحظات</label><input id="em_notes" value="${e?(e.notes||'').replace(/"/g,'&quot;'):''}"></div>
     <button class="btn" id="emSave" onclick="saveEmployee('${e?e.id:''}')">حفظ</button>
@@ -902,15 +910,26 @@ async function saveEmployee(id){
   const rec={seq:parseInt(g('em_seq'))||null,name,nationality:g('em_nat').trim(),iqama_number:g('em_iqama').trim(),
     iqama_expiry:sa?null:(g('em_iqexp')||null),work_permit_expiry:sa?null:(g('em_wpexp')||null),medical_expiry:g('em_medexp')||null,contract_expiry:g('em_ctexp')||null,
     user_id:g('em_user')||null,notes:g('em_notes').trim(),
+    contract_start:(g('em_cstart')||null),leave_taken:parseFloat(g('em_leavetaken'))||0,
     monthly_salary:parseFloat(g('em_salary'))||0,late_deduction:document.getElementById('em_late').checked,
     housing_allowance:parseFloat(g('em_housing'))||0,transport_allowance:parseFloat(g('em_transport'))||0,iban:g('em_iban').trim()};
   const btn=document.getElementById('emSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{if(id){const{error}=await sb.from('employees').update(rec).eq('id',id);if(error)throw error;}
-    else{rec.created_by=ME.id;const{error}=await sb.from('employees').insert(rec);if(error)throw error;}
-    closeModal();toast('تم الحفظ ✓');loadEmpDir();
+  const save=async r=>{if(id){return await sb.from('employees').update(r).eq('id',id);}r.created_by=ME.id;return await sb.from('employees').insert(r);};
+  try{let{error}=await save(rec);
+    if(error&&/(contract_start|leave_taken)/i.test(error.message||'')){delete rec.contract_start;delete rec.leave_taken;({error}=await save(rec));toast('حُفظ — لتفعيل الإجازة السنوية نفّذ كود الموظفين (SQL)');}
+    if(error)throw error;
+    closeModal();toast('تم الحفظ ✓');loadEmpDir();if(window.PAY_ROWS&&PAY_ROWS.length&&typeof loadPayroll==='function')loadPayroll();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}
 }
-async function deleteEmployee(id){closeModal();await softDelete('employees',id);}
+function _leaveInfo(e){
+  if(!e||!e.contract_start)return null;const start=new Date(e.contract_start);if(isNaN(start.getTime()))return null;
+  const days=Math.max(0,(Date.now()-start.getTime())/86400000);const accrued=21*(days/365);const taken=Number(e.leave_taken||0);
+  return {accrued:Math.round(accrued*10)/10,taken,remaining:Math.round((accrued-taken)*10)/10};
+}
+function deleteEmployee(id){openConfirm('حذف الموظف','متأكد من حذف هذا الموظف؟ يمكن استرجاعه لاحقاً من «المحذوفات».',async()=>{
+  try{await softDelete('employees',id);closeModal();toast('تم حذف الموظف');loadEmpDir();
+    if(window.PAY_ROWS&&PAY_ROWS.length&&typeof loadPayroll==='function')loadPayroll();
+  }catch(e){toast('تعذّر الحذف: '+(e&&e.message||e));}});}
 /* تصدير Excel لدليل الموظفين — مطابق للقالب 100% */
 function buildEmpWorkbook(list){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('بيانات الموظفين',{views:[{rightToLeft:true}]});
@@ -1260,7 +1279,8 @@ function openPaySlip(i){const r=PAY_ROWS[i],c=_pCalc(r),sa=r.saudi;
     <div class="field"><label>سبب الخصومات</label><input value="${(r.reason||'').replace(/"/g,'&quot;')}" oninput="paySetText(${i},'reason',this.value)" style="${inp}" placeholder="مثال: سلفة + مخالفة"></div>
     ${r.duesTotal>0?`<div class="card" style="padding:12px;background:#f6ecdf;box-shadow:none;margin-bottom:2px"><div style="display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px"><span style="color:var(--copper)">إجمالي الذمم المستحقة</span><span style="color:var(--copper)">${fmt(r.duesTotal)} ﷼</span></div><label style="font-size:12.5px;color:var(--muted)">خصم من الذمم هذا الشهر</label><input type="number" inputmode="decimal" value="${r.duesDeduct||''}" oninput="paySetDues(${i},this)" style="${inp}"><div class="hint" style="margin-top:6px">يُخصم من المبلغ ويُنقص المتبقّي تلقائيًا عند اعتماد الكشف.</div></div>`:''}
     <div class="card" style="margin-top:10px;padding:12px;background:#eef6f2;box-shadow:none"><div style="display:flex;justify-content:space-between;font-weight:800;font-size:15px"><span>الصافي</span><span id="pmNet" style="color:var(--green)">${fmt(c.net)} ﷼</span></div></div>
-    <button class="btn" style="margin-top:12px" onclick="renderPayroll();closeModal()">تم</button>`);
+    <button class="btn" style="margin-top:12px" onclick="renderPayroll();closeModal()">تم</button>
+    <button class="btn danger" style="margin-top:9px" onclick="deleteEmployee('${r.emp.id}')">🗑 حذف الموظف من النظام</button>`);
 }
 async function _upsertPayslip(rec){
   // يحفظ الأعمدة الموجودة ويتجاوز أي عمود غير موجود في الجدول، حتى لا يسقط الحفظ بالكامل
