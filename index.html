@@ -297,7 +297,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     </div>
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
-      <div class="seg"><button class="on" onclick="finTab2('in',this)">الفواتير الواردة</button><button onclick="finTab2('tax',this)">إصدار فاتورة ضريبية</button></div>
+      <div class="seg"><button class="on" onclick="finTab2('in',this)">الفواتير الواردة</button><button onclick="finTab2('sup',this)">الموردين</button><button onclick="finTab2('tax',this)">إصدار فاتورة ضريبية</button></div>
       <div id="finBody"></div>
     </div>
 
@@ -504,7 +504,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='168';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='169';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1571,7 +1571,7 @@ async function printProductivityReport(period){
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 /* ===== سلة المحذوفات (حذف قابل للاسترجاع) ===== */
-const RELOADERS={employees:()=>loadEmpDir(),employee_dues:()=>loadDues(),expenses:()=>initExpenses(),invoices:()=>loadInvoices()};
+const RELOADERS={employees:()=>loadEmpDir(),employee_dues:()=>loadDues(),expenses:()=>initExpenses(),invoices:()=>_finReloadInv()};
 function toastUndo(msg,cb){let el=document.getElementById('undoToast');
   if(!el){el=document.createElement('div');el.id='undoToast';el.style.cssText='position:fixed;bottom:82px;left:50%;transform:translateX(-50%);background:#182420;color:#fff;padding:10px 16px;border-radius:30px;font-size:13.5px;font-weight:600;z-index:135;display:flex;align-items:center;gap:14px;box-shadow:0 10px 28px rgba(0,0,0,.34);opacity:0;transition:.25s;pointer-events:auto;max-width:90%';document.body.appendChild(el);}
   el.innerHTML=`<span>${msg}</span><button style="background:none;border:none;color:#6fd3a3;font-weight:800;cursor:pointer;font-size:13.5px;padding:0">↩ تراجع</button>`;
@@ -2240,8 +2240,17 @@ async function deleteEntry(id){
 let finFilter='all';
 function initFinance(){finTab2('in');}
 function finTab2(tab,btn){
+  window._finSub=tab;
   document.querySelectorAll('#v-finance .seg button').forEach((b,i)=>b.classList.toggle('on',btn?b===btn:i===0));
   const body=document.getElementById('finBody');
+  if(tab==='sup'){
+    body.innerHTML=`<div class="hint">ابحث باسم المورّد لتشوف كل مشترياتك وفواتيرك منه — لليوم أو الأسبوع أو الشهر أو الكل.</div>
+      <div class="row" style="margin-bottom:8px"><div class="field" style="margin:0"><label>الفترة</label><select id="sup_period" onchange="renderSuppliers()"><option value="all">الكل</option><option value="today">اليوم</option><option value="week">الأسبوع (آخر 7 أيام)</option><option value="month">هذا الشهر</option></select></div></div>
+      <input id="sup_search" placeholder="ابحث باسم المورّد… (مثال: العصيمي)" oninput="renderSuppliers()" style="margin-bottom:12px">
+      <div id="supSummary"></div>
+      <div id="supList"><div class="empty">جارٍ التحميل…</div></div>`;
+    loadSuppliers();return;
+  }
   if(tab==='tax'){
     body.innerHTML=`<div class="hint">الفاتورة الضريبية تُصدرها لعملائك — الأسعار غير شاملة الضريبة ويُضاف 15% تلقائياً. تُحفظ كلها.</div>
       <button class="btn copper" onclick="openTaxInvoice()">🧾 إصدار فاتورة ضريبية جديدة</button>
@@ -2264,6 +2273,36 @@ async function loadInvoices(){
   box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
     <div style="text-align:left;display:flex;align-items:center;gap:6px">${i._exp?`<span class="pill" style="background:#e6f6ed;color:var(--green)">ضمن المصروفات</span>`:`<span class="pill" style="background:#eee;color:var(--muted)">غير محتسبة</span>`}<span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+}
+function _finReloadInv(){if(window._finSub==='sup')loadSuppliers();else loadInvoices();}
+function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,10);if(period==='all')return true;if(period==='today')return d===todayKey();if(period==='week')return d>=daysAgo(7);if(period==='month')return d.slice(0,7)===monthKey();return true;}
+async function loadSuppliers(){
+  const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
+  window._SUPINV=(data||[]).filter(x=>!x.deleted_at);renderSuppliers();
+}
+function renderSuppliers(){
+  const all=window._SUPINV||[];
+  const period=(document.getElementById('sup_period')||{}).value||'all';
+  const term=(document.getElementById('sup_search')?.value||'').trim().toLowerCase();
+  let inv=all.filter(i=>_supInPeriod(i,period));
+  if(term)inv=inv.filter(i=>String(i.party||'').toLowerCase().includes(term));
+  const g={};inv.forEach(i=>{const key=(String(i.party||'').trim())||'مورّد غير مسمّى';(g[key]=g[key]||[]).push(i);});
+  const groups=Object.entries(g).map(([name,arr])=>({name,arr,total:arr.reduce((s,i)=>s+Number(i.amount||0),0),vat:arr.reduce((s,i)=>s+Number(i.vat||0),0)})).sort((a,b)=>b.total-a.total);
+  const grand=groups.reduce((s,x)=>s+x.total,0);
+  const _pl={all:'الكل',today:'اليوم',week:'آخر 7 أيام',month:'هذا الشهر'}[period]||'الكل';
+  const sum=document.getElementById('supSummary');
+  if(sum)sum.innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${groups.length}</b><span>عدد الموردين (${_pl})</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي المشتريات ﷼</span></div></div>`;
+  const box=document.getElementById('supList');if(!box)return;
+  if(!groups.length){box.innerHTML='<div class="empty">'+(term?'لا يوجد مورّد بهذا الاسم في هذه الفترة':'لا توجد فواتير موردين في هذه الفترة')+'</div>';return;}
+  box.innerHTML=groups.map((grp,gi)=>{const id='supg_'+gi;const openCls=(term&&groups.length===1)?' open':'';
+    return `<div class="station${openCls}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
+      <div><b>${_stEsc(grp.name)}</b><div><small style="color:var(--muted)">${grp.arr.length} فاتورة · ضريبة مدخلات ${fmt(grp.vat)} ﷼</small></div></div>
+      <div style="text-align:left"><div class="pill role">${fmt(grp.total)} ﷼</div><div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
+      <div class="body"><table class="tbl"><thead><tr><th>التاريخ</th><th>رقم الفاتورة</th><th style="text-align:center">الضريبة</th><th style="text-align:left">المبلغ</th><th></th></tr></thead><tbody>
+      ${grp.arr.map(i=>`<tr><td>${i.invoice_date||'—'}</td><td>${i.number?_stEsc(String(i.number)):'—'}</td><td style="text-align:center">${fmt(i.vat)}</td><td style="text-align:left;font-weight:700">${fmt(i.amount)}</td><td style="text-align:left;white-space:nowrap">${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','فاتورة')">📎</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button></td></tr>`).join('')}
+      <tr><td style="font-weight:800" colspan="3">الإجمالي</td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(grp.total)}</td><td></td></tr>
+      </tbody></table></div></div>`;
+  }).join('');
 }
 function openConfirm(title,msg,onYes,yesLabel){openModal(`<h3 style="margin-bottom:10px">${title}</h3><p style="color:var(--muted);font-size:14px;line-height:1.85;margin-bottom:16px">${msg}</p><button class="btn danger" id="cfmYes">${yesLabel||'نعم، احذف'}</button><button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);const y=document.getElementById('cfmYes');if(y)y.onclick=()=>{closeModal();onYes&&onYes();};}
 function delInvoice(id){openConfirm('تأكيد حذف الفاتورة','هل أنت متأكد من حذف هذه الفاتورة؟ تقدر تسترجعها لاحقًا من سلة المحذوفات.',()=>softDelete('invoices',id));}
@@ -2310,7 +2349,7 @@ async function saveInvoice(){
           await sb.from('expenses').delete().eq('invoice_id',invEditId);
         }
       }catch(_){}
-      closeModal();toast('تم تعديل الفاتورة ✓');loadInvoices();return;
+      closeModal();toast('تم تعديل الفاتورة ✓');_finReloadInv();return;
     }
     rec.created_by=ME.id;
     const{data:ins,error}=await sb.from('invoices').insert(rec).select().single();
@@ -2319,9 +2358,9 @@ async function saveInvoice(){
     if(asExp&&asExp.checked){
       const net=+(amount-vat).toFixed(2);
       const{error:e2}=await sb.from('expenses').insert({expense_date:idate,category:'مشتريات',amount:net,description:'فاتورة واردة'+(num?' رقم '+num:'')+(party?' — '+party:''),invoice_id:ins.id,created_by:ME.id});
-      if(e2){closeModal();toast('حُفظت الفاتورة، لكن ربطها بالمصروفات يحتاج تنفيذ كود الربط (SQL)');loadInvoices();return;}
+      if(e2){closeModal();toast('حُفظت الفاتورة، لكن ربطها بالمصروفات يحتاج تنفيذ كود الربط (SQL)');_finReloadInv();return;}
     }
-    closeModal();toast('تم حفظ الفاتورة ✓');loadInvoices();
+    closeModal();toast('تم حفظ الفاتورة ✓');_finReloadInv();
   }catch(e){console.error('saveInvoice',e);const m=(e&&e.message)||String(e);alert('⚠️ لم تُحفظ الفاتورة:\n\n'+m);btn.disabled=false;btn.textContent=oldLbl||'حفظ الفاتورة';}}
 async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'+(title||'الملف')+'</h3><div id="phwrap" style="color:var(--muted);text-align:center">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
   try{const{data}=await sb.storage.from('photos').createSignedUrl(p,3600);const url=data.signedUrl;const isPdf=/\.pdf($|\?)/i.test(p);
