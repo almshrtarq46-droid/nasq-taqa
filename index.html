@@ -505,7 +505,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='178';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='179';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2113,15 +2113,15 @@ async function _renderStPhotos(pid){
   const addBefore=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','before')">➕ إضافة صور قبل</button>`:'';
   const addAfter=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','after')">➕ إضافة صور بعد</button>`:'';
   wrap.innerHTML=`
-    <div style="background:#eaf3ee;border:1px solid #cfe3d8;border-radius:13px;padding:12px;margin-bottom:4px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:10px;height:10px;border-radius:50%;background:#2a6f97;flex:none"></span><b style="font-size:15px">📸 صور قبل التنفيذ (${before.length})</b></div>
+    <div style="background:#e2f1e8;border:2px solid #2f9e6e;border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#2f9e6e;flex:none"></span><b style="font-size:15px;color:#1c7a52">📸 صور قبل التنفيذ (${before.length})</b></div>
       ${shareAll('before',before.length)}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(before,'قبل')}</div>
       ${addBefore}
     </div>
-    <div style="display:flex;align-items:center;gap:8px;margin:16px 2px"><div style="flex:1;height:3px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--muted) 0 8px,transparent 8px 14px)"></div><span style="font-size:11.5px;color:var(--muted);font-weight:800;white-space:nowrap">الفاصل — قبل / بعد</span><div style="flex:1;height:3px;border-radius:3px;background:repeating-linear-gradient(90deg,var(--muted) 0 8px,transparent 8px 14px)"></div></div>
-    <div style="background:#f4efe6;border:1px solid #e6dcc8;border-radius:13px;padding:12px;margin-top:4px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:10px;height:10px;border-radius:50%;background:var(--copper);flex:none"></span><b style="font-size:15px">📸 صور بعد التنفيذ (${after.length})</b></div>
+    <div style="height:2px;background:var(--line);border-radius:2px;margin:16px 0"></div>
+    <div style="background:#fceadd;border:2px solid #d98a3d;border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#d98a3d;flex:none"></span><b style="font-size:15px;color:#b56a22">📸 صور بعد التنفيذ (${after.length})</b></div>
       ${shareAll('after',after.length)}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(after,'بعد')}</div>
       ${addAfter}
