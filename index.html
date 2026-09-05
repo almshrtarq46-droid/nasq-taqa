@@ -504,7 +504,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='169';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='170';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2260,6 +2260,7 @@ function finTab2(tab,btn){
   body.innerHTML=`<div class="hint">سجّل فواتير المشتريات الواردة من الموردين — لخصم ضريبة المدخلات في الإقرار الضريبي. أرفق صورة الفاتورة.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" style="flex:1" onclick="openInvoice()">+ إضافة فاتورة واردة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('invoices','الفواتير',i=>(i.party||'مورّد')+' — '+fmt(i.amount)+' ﷼')">🗑 المحذوفات</button></div>
     <div class="grid2" id="finKpis" style="margin-bottom:13px"></div>
+    <input id="inv_search" placeholder="ابحث باسم المورّد أو رقم الفاتورة…" oninput="renderInvList()" style="margin-bottom:12px">
     <div id="invList"></div>`;
   loadInvoices();
 }
@@ -2268,17 +2269,27 @@ async function loadInvoices(){
   const inc=(data||[]).filter(x=>!x.deleted_at);const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
   let _lset=new Set();try{const{data:_ex}=await sb.from('expenses').select('invoice_id').is('deleted_at',null).not('invoice_id','is',null);(_ex||[]).forEach(r=>r.invoice_id&&_lset.add(r.invoice_id));}catch(_){}
   inc.forEach(i=>{i._exp=_lset.has(i.id);});
+  window._INVALL=inc;
+  const _nm=new Set();inc.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
   const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>إجمالي المشتريات ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div>`;
-  const box=document.getElementById('invList');if(!box)return;
-  box.innerHTML=inc.length?inc.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
+  renderInvList();
+}
+function renderInvList(){
+  const inc=window._INVALL||[];const box=document.getElementById('invList');if(!box)return;
+  const term=(document.getElementById('inv_search')?.value||'').trim().toLowerCase();
+  const list=term?inc.filter(i=>String(i.party||'').toLowerCase().includes(term)||String(i.number||'').toLowerCase().includes(term)):inc;
+  box.innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.number?'رقم '+i.number+' · ':''}${i.invoice_date} · ضريبة ${fmt(i.vat)}</small></div>
-    <div style="text-align:left;display:flex;align-items:center;gap:6px">${i._exp?`<span class="pill" style="background:#e6f6ed;color:var(--green)">ضمن المصروفات</span>`:`<span class="pill" style="background:#eee;color:var(--muted)">غير محتسبة</span>`}<span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">لا توجد فواتير واردة — أضف أول فاتورة</div>';
+    <div style="text-align:left;display:flex;align-items:center;gap:6px">${i._exp?`<span class="pill" style="background:#e6f6ed;color:var(--green)">ضمن المصروفات</span>`:`<span class="pill" style="background:#eee;color:var(--muted)">غير محتسبة</span>`}<span class="pill role">${fmt(i.amount)} ﷼</span>${i.photo?`<button class="link" onclick="viewInvPhoto('${i.photo}','ملف الفاتورة')">📎 عرض</button>`:''}<button class="link" onclick='openInvoice(${JSON.stringify(i).replace(/'/g,"&#39;")})'>تعديل</button><button class="link" style="color:var(--bad)" onclick="delInvoice('${i.id}')">حذف</button></div></div>`).join(''):'<div class="empty">'+(term?'لا توجد فاتورة بهذا المورّد أو الرقم':'لا توجد فواتير واردة — أضف أول فاتورة')+'</div>';
 }
 function _finReloadInv(){if(window._finSub==='sup')loadSuppliers();else loadInvoices();}
+function _supNames(){if(window._SUPNAMES&&window._SUPNAMES.length)return window._SUPNAMES;const src=window._INVALL||window._SUPINV||[];const s=new Set();src.forEach(i=>{const p=String(i.party||'').trim();if(p)s.add(p);});return [...s].sort();}
 function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,10);if(period==='all')return true;if(period==='today')return d===todayKey();if(period==='week')return d>=daysAgo(7);if(period==='month')return d.slice(0,7)===monthKey();return true;}
 async function loadSuppliers(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  window._SUPINV=(data||[]).filter(x=>!x.deleted_at);renderSuppliers();
+  window._SUPINV=(data||[]).filter(x=>!x.deleted_at);
+  const _nm=new Set();window._SUPINV.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
+  renderSuppliers();
 }
 function renderSuppliers(){
   const all=window._SUPINV||[];
@@ -2308,7 +2319,7 @@ function openConfirm(title,msg,onYes,yesLabel){openModal(`<h3 style="margin-bott
 function delInvoice(id){openConfirm('تأكيد حذف الفاتورة','هل أنت متأكد من حذف هذه الفاتورة؟ تقدر تسترجعها لاحقًا من سلة المحذوفات.',()=>softDelete('invoices',id));}
 function openInvoice(inv){invPhoto=null;invFile=null;invIsPdf=false;invEditId=inv&&inv.id?inv.id:null;invExistingPhoto=inv?(inv.photo||''):'';
   openModal(`<h3 style="margin-bottom:14px">${invEditId?'تعديل فاتورة واردة':'فاتورة واردة (مشتريات)'}</h3>
-  <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" placeholder="اسم المورّد" value="${inv?(inv.party||'').replace(/"/g,'&quot;'):''}"></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number" value="${inv?String(inv.number||'').replace(/"/g,'&quot;'):''}"></div></div>
+  <div class="row"><div class="field"><label>المورّد</label><input id="iv_party" list="supNamesDL" autocomplete="off" placeholder="ابحث أو اكتب اسم المورّد" value="${inv?(inv.party||'').replace(/"/g,'&quot;'):''}"><datalist id="supNamesDL">${_supNames().map(n=>'<option value="'+String(n).replace(/"/g,'&quot;')+'">').join('')}</datalist></div><div class="field"><label>رقم الفاتورة</label><input id="iv_number" value="${inv?String(inv.number||'').replace(/"/g,'&quot;'):''}"></div></div>
   <div class="row"><div class="field"><label>المبلغ الإجمالي ﷼</label><input id="iv_amount" type="number" inputmode="decimal" oninput="autoVat()" value="${inv?(inv.amount||''):''}"></div><div class="field"><label>الضريبة (15%) ﷼</label><input id="iv_vat" type="number" inputmode="decimal" value="${inv?(inv.vat||''):''}"></div></div>
   <div class="field"><label>التاريخ</label><input id="iv_date" type="date" value="${inv?(inv.invoice_date||todayKey()):todayKey()}"></div>
   <label style="display:flex;align-items:center;gap:9px;margin:2px 2px 12px;cursor:pointer;font-size:14px"><input type="checkbox" id="iv_asexp" ${(!invEditId||(inv&&inv._exp))?'checked':''} style="width:18px;height:18px;accent-color:var(--brand)"> احتساب هذه الفاتورة ضمن المصروفات — بقيمتها قبل الضريبة</label>
