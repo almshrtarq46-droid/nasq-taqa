@@ -505,7 +505,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='180';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='181';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1718,7 +1718,9 @@ function addItemRow(){editItems.push({name:'',unit:'',rate:0,code:''});renderIte
 async function saveProject(id){const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المحطة');return;}
   const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{if(id){const{error}=await sb.from('projects').update(rec).eq('id',id);if(error)throw error;}else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
+  try{if(id){const{error,count}=await sb.from('projects').update(rec,{count:'exact'}).eq('id',id);if(error)throw error;
+      if(count===0){toast('لم يُحفظ — تحتاج صلاحية التعديل (نفّذ كود SQL)');btn.disabled=false;btn.textContent='حفظ';return;}
+    }else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');refreshAfterProject();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');const mw=document.getElementById('v-my-works');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();else if(mw&&mw.classList.contains('on'))loadMyWorks();}
