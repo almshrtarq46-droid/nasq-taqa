@@ -505,7 +505,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='179';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='180';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2224,9 +2224,11 @@ function openStationEntries(pid){
       <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date}${isAdm?' · '+fmt(e.amount)+' ﷼':''}</small>
       ${editItems?`<div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
       <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate||0})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div>`:`<div style="font-size:13px;color:var(--muted)">${fmt(e.qty)} ${e.unit}</div>`}</div>`).join('')||'<div class="empty">لا أعمال</div>'}
-    ${editItems?`<div class="card" style="padding:12px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:13.5px;display:block;margin-bottom:8px">➕ إضافة بند من القائمة</b>
-      <input id="si_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="siLoadItems()" style="margin-bottom:6px">
-      <div class="row"><select id="si_item" style="flex:2"></select><input type="number" id="si_qty" inputmode="decimal" placeholder="الكمية" style="flex:1"><button class="btn sm" style="flex:none;width:46px" onclick="addStationItem('${pid}')">+</button></div></div>`:''}
+    ${editItems?`<div class="card" style="padding:14px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:14px;display:block;margin-bottom:10px">➕ إضافة بند من القائمة</b>
+      <div class="field" style="margin-bottom:10px"><label>ابحث عن البند</label><input id="si_search" placeholder="بالاسم أو الرقم…" oninput="siLoadItems()"></div>
+      <div class="field" style="margin-bottom:10px"><label>اختر البند</label><select id="si_item"></select></div>
+      <div class="field" style="margin-bottom:12px"><label>الكمية المنفّذة</label><input type="number" id="si_qty" inputmode="decimal" placeholder="أدخل الكمية"></div>
+      <button class="btn" style="width:100%" onclick="addStationItem('${pid}')">➕ إضافة البند</button></div>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
   if(editItems)siLoadItems();
 }
