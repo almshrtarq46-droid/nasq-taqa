@@ -504,7 +504,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='170';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='171';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -726,7 +726,7 @@ const NAV_MAIN=[
   {g:'العمليات'},
   {v:'workorders',l:'جميع المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'},
-  {v:'hr',l:'الموارد البشرية',i:'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 0 .01 M23 21v-2a4 4 0 0 0-3-3.87'},
+  {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
   {v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},
@@ -2244,8 +2244,10 @@ function finTab2(tab,btn){
   document.querySelectorAll('#v-finance .seg button').forEach((b,i)=>b.classList.toggle('on',btn?b===btn:i===0));
   const body=document.getElementById('finBody');
   if(tab==='sup'){
+    window._supPeriod='all';
     body.innerHTML=`<div class="hint">ابحث باسم المورّد لتشوف كل مشترياتك وفواتيرك منه — لليوم أو الأسبوع أو الشهر أو الكل.</div>
-      <div class="row" style="margin-bottom:8px"><div class="field" style="margin:0"><label>الفترة</label><select id="sup_period" onchange="renderSuppliers()"><option value="all">الكل</option><option value="today">اليوم</option><option value="week">الأسبوع (آخر 7 أيام)</option><option value="month">هذا الشهر</option></select></div></div>
+      <label style="font-size:12px;color:var(--muted);display:block;margin:0 2px 6px">الفترة</label>
+      <div class="seg" id="supSeg" style="margin-bottom:12px"><button class="on" onclick="supPeriod('all',this)">الكل</button><button onclick="supPeriod('today',this)">اليوم</button><button onclick="supPeriod('week',this)">آخر 7 أيام</button><button onclick="supPeriod('month',this)">آخر 30 يوم</button></div>
       <input id="sup_search" placeholder="ابحث باسم المورّد… (مثال: العصيمي)" oninput="renderSuppliers()" style="margin-bottom:12px">
       <div id="supSummary"></div>
       <div id="supList"><div class="empty">جارٍ التحميل…</div></div>`;
@@ -2284,7 +2286,8 @@ function renderInvList(){
 }
 function _finReloadInv(){if(window._finSub==='sup')loadSuppliers();else loadInvoices();}
 function _supNames(){if(window._SUPNAMES&&window._SUPNAMES.length)return window._SUPNAMES;const src=window._INVALL||window._SUPINV||[];const s=new Set();src.forEach(i=>{const p=String(i.party||'').trim();if(p)s.add(p);});return [...s].sort();}
-function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,10);if(period==='all')return true;if(period==='today')return d===todayKey();if(period==='week')return d>=daysAgo(7);if(period==='month')return d.slice(0,7)===monthKey();return true;}
+function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,10);if(period==='all')return true;if(period==='today')return d===todayKey();if(period==='week')return d>=daysAgo(7);if(period==='month')return d>=daysAgo(30);return true;}
+function supPeriod(p,btn){window._supPeriod=p;document.querySelectorAll('#supSeg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderSuppliers();}
 async function loadSuppliers(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
   window._SUPINV=(data||[]).filter(x=>!x.deleted_at);
@@ -2293,14 +2296,14 @@ async function loadSuppliers(){
 }
 function renderSuppliers(){
   const all=window._SUPINV||[];
-  const period=(document.getElementById('sup_period')||{}).value||'all';
+  const period=window._supPeriod||'all';
   const term=(document.getElementById('sup_search')?.value||'').trim().toLowerCase();
   let inv=all.filter(i=>_supInPeriod(i,period));
   if(term)inv=inv.filter(i=>String(i.party||'').toLowerCase().includes(term));
   const g={};inv.forEach(i=>{const key=(String(i.party||'').trim())||'مورّد غير مسمّى';(g[key]=g[key]||[]).push(i);});
   const groups=Object.entries(g).map(([name,arr])=>({name,arr,total:arr.reduce((s,i)=>s+Number(i.amount||0),0),vat:arr.reduce((s,i)=>s+Number(i.vat||0),0)})).sort((a,b)=>b.total-a.total);
   const grand=groups.reduce((s,x)=>s+x.total,0);
-  const _pl={all:'الكل',today:'اليوم',week:'آخر 7 أيام',month:'هذا الشهر'}[period]||'الكل';
+  const _pl={all:'الكل',today:'اليوم',week:'آخر 7 أيام',month:'آخر 30 يوم'}[period]||'الكل';
   const sum=document.getElementById('supSummary');
   if(sum)sum.innerHTML=`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${groups.length}</b><span>عدد الموردين (${_pl})</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي المشتريات ﷼</span></div></div>`;
   const box=document.getElementById('supList');if(!box)return;
