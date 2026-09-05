@@ -505,7 +505,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='177';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='178';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2224,19 +2224,20 @@ function openStationEntries(pid){
       <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date}${isAdm?' · '+fmt(e.amount)+' ﷼':''}</small>
       ${editItems?`<div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
       <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate||0})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div>`:`<div style="font-size:13px;color:var(--muted)">${fmt(e.qty)} ${e.unit}</div>`}</div>`).join('')||'<div class="empty">لا أعمال</div>'}
-    ${editItems?`<div class="card" style="padding:12px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:13.5px;display:block;margin-bottom:8px">➕ إضافة بند جديد</b>
-      <div class="field" style="margin-bottom:8px"><input id="ni_name" placeholder="اسم البند (مثال: دهان جدار)"></div>
-      <div class="row"><input id="ni_qty" type="number" placeholder="الكمية" style="flex:2"><input id="ni_unit" placeholder="الوحدة (M2/متر/EA)" style="flex:2"></div>
-      <button class="btn sm" style="width:100%;margin-top:8px" onclick="addStationItem('${pid}')">إضافة البند</button></div>`:''}
+    ${editItems?`<div class="card" style="padding:12px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:13.5px;display:block;margin-bottom:8px">➕ إضافة بند من القائمة</b>
+      <input id="si_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="siLoadItems()" style="margin-bottom:6px">
+      <div class="row"><select id="si_item" style="flex:2"></select><input type="number" id="si_qty" inputmode="decimal" placeholder="الكمية" style="flex:1"><button class="btn sm" style="flex:none;width:46px" onclick="addStationItem('${pid}')">+</button></div></div>`:''}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  if(editItems)siLoadItems();
 }
+function siLoadItems(){const el=document.getElementById('si_item');if(!el)return;const q=(document.getElementById('si_search')?.value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||String(i.code||'').includes(q)):CATALOG;
+  el.innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' · ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 async function addStationItem(pid){
-  const name=(document.getElementById('ni_name').value||'').trim();
-  const qty=parseFloat(document.getElementById('ni_qty').value);
-  const unit=(document.getElementById('ni_unit').value||'').trim();
-  if(!name){toast('اكتب اسم البند');return;}
-  if(!qty||qty<=0){toast('أدخل كمية صحيحة');return;}
-  try{const rec={project_id:pid,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:name,item_name_full:name,item_code:'',unit:unit||'EA',qty,work_date:todayKey()};
+  const it=CATALOG.find(i=>i.id===document.getElementById('si_item').value);
+  const q=parseFloat(document.getElementById('si_qty').value);
+  if(!it){toast('اختر بند من القائمة');return;}
+  if(!q||q<=0){toast('أدخل كمية صحيحة');return;}
+  try{const rec={project_id:pid,item_id:it.id,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:q,work_date:todayKey()};
     let{error}=await sb.from('entries').insert(rec);
     if(error&&/worker_name/i.test(error.message||'')){delete rec.worker_name;({error}=await sb.from('entries').insert(rec));}
     if(error)throw error;
