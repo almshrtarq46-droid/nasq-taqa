@@ -504,7 +504,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='172';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='173';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2089,7 +2089,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
     <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
-function canEditPhotos(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');}
+function canEditPhotos(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'||isCrewLeader());}
 async function viewStationPhotos(pid){
   window._phPid=pid;
   openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><input type="file" id="phAddInput" accept="image/*" multiple style="display:none"><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
@@ -2195,17 +2195,19 @@ async function viewStationDetail(pid){
     <div style="font-size:12.5px;margin:10px 2px;color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)} ﷼</b> <small>(غير شامل الضريبة)</small></div>
     <button class="btn ghost sm" style="width:100%;margin-top:6px" onclick="viewStationPhotos('${pid}')">📷 عرض الصور</button>`:'<div class="empty">لا توجد بنود</div>';
 }
-function isCrewLeader(){return !!(window.MY_CREW_LED&&MY_CREW_LED.length);}
-function canEditItems(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');}
-function canEditStation(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');}
+function isCrewLeader(){return !!(typeof MY_CREW_LED!=='undefined'&&MY_CREW_LED&&MY_CREW_LED.length);}
+function canEditItems(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'||isCrewLeader());}
+function canEditStation(){return PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'||isCrewLeader());}
+function _entriesFor(pid){const src=(window._woRows&&window._woRows.length)?window._woRows:(window._myEnts||[]);return src.filter(e=>e.project_id===pid);}
+function _refreshStations(){let v='';try{v=sessionStorage.getItem('nasqView')||'';}catch(_){}if(v==='my-works')loadMyWorks();else loadWorkOrders();}
 function openStationEntries(pid){
-  const es=(window._woRows||[]).filter(e=>e.project_id===pid);const p=PROJECTS.find(x=>x.id===pid)||{};
+  const es=_entriesFor(pid);const p=PROJECTS.find(x=>x.id===pid)||{};
   const edit=canEditItems();
   openModal(`<h3 style="margin-bottom:12px">أعمال ${p.name||''} (${es.length})</h3>
     ${es.map(e=>`<div class="card" style="padding:12px;margin-bottom:9px"><b style="font-size:14px">${e.item_code?e.item_code+' · ':''}${e.item_name_full||e.item_name}</b>
       <small style="color:var(--muted);display:block;margin:2px 0 8px">${e.work_date}${PROFILE.role==='admin'?' · '+fmt(e.amount)+' ﷼':''}</small>
       ${edit?`<div class="row"><input type="number" id="eq_${e.id}" value="${e.qty}" style="flex:2"><span style="align-self:center;color:var(--muted);font-size:13px">${e.unit}</span>
-      <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div>`:`<div style="font-size:13px;color:var(--muted)">${fmt(e.qty)} ${e.unit}</div>`}</div>`).join('')||'<div class="empty">لا أعمال</div>'}
+      <button class="btn sm" onclick="saveEntryQty('${e.id}',${e.rate||0})">حفظ الكمية</button><button class="btn danger sm" style="flex:none;width:46px" onclick="deleteEntry('${e.id}')">🗑</button></div>`:`<div style="font-size:13px;color:var(--muted)">${fmt(e.qty)} ${e.unit}</div>`}</div>`).join('')||'<div class="empty">لا أعمال</div>'}
     ${edit?`<div class="card" style="padding:12px;margin-top:6px;background:#f6f8f7;box-shadow:none"><b style="font-size:13.5px;display:block;margin-bottom:8px">➕ إضافة بند جديد</b>
       <div class="field" style="margin-bottom:8px"><input id="ni_name" placeholder="اسم البند (مثال: دهان جدار)"></div>
       <div class="row"><input id="ni_qty" type="number" placeholder="الكمية" style="flex:2"><input id="ni_unit" placeholder="الوحدة (M2/متر/EA)" style="flex:2"></div>
@@ -2222,18 +2224,22 @@ async function addStationItem(pid){
     let{error}=await sb.from('entries').insert(rec);
     if(error&&/worker_name/i.test(error.message||'')){delete rec.worker_name;({error}=await sb.from('entries').insert(rec));}
     if(error)throw error;
-    toast('تم إضافة البند ✓');closeModal();loadWorkOrders();
+    toast('تم إضافة البند ✓');closeModal();_refreshStations();
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 async function saveEntryQty(id,rate){
   const q=parseFloat(document.getElementById('eq_'+id).value);if(!q||q<=0){toast('كمية غير صحيحة');return;}
-  const{error}=await sb.from('entries').update({qty:q}).eq('id',id);if(error){toast('خطأ: '+error.message);return;}
-  await sb.from('entry_finance').update({amount:q*rate}).eq('entry_id',id);
-  toast('تم التعديل ✓');closeModal();loadWorkOrders();
+  const{error,count}=await sb.from('entries').update({qty:q},{count:'exact'}).eq('id',id);
+  if(error){toast('خطأ: '+error.message);return;}
+  if(count===0){toast('لم يتم الحفظ — تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
+  if(rate&&rate>0){try{await sb.from('entry_finance').update({amount:q*rate}).eq('entry_id',id);}catch(_){}}
+  toast('تم التعديل ✓');closeModal();_refreshStations();
 }
 async function deleteEntry(id){
-  const{error}=await sb.from('entries').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}
-  toast('تم حذف العمل');closeModal();loadWorkOrders();
+  const{error,count}=await sb.from('entries').delete({count:'exact'}).eq('id',id);
+  if(error){toast('خطأ: '+error.message);return;}
+  if(count===0){toast('لم يتم الحذف — تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
+  toast('تم حذف العمل');closeModal();_refreshStations();
 }
 
 /* ===== FINANCE ===== */
@@ -2599,7 +2605,7 @@ function renderMyWorks(){
   let keys=Object.keys(byP);
   if(term)keys=keys.filter(pid=>String((pm[pid]||{}).code||'').includes(term));
   const ed=canEditStation();
-  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}${ed?`<div class="row" style="margin-top:9px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ تعديل المحطة</button><small style="align-self:center;color:var(--muted);font-size:11px">للبنود: «كل المحطات»</small></div>`:''}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
+  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}${ed?`<div class="row" style="margin-top:9px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 تعديل الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ تعديل البنود</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ تعديل المحطة</button></div>`:''}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
 }
 async function loadMyInfo(){
   const box=document.getElementById('myInfoBox');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
