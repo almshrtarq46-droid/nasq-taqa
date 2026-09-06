@@ -288,23 +288,10 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="mrList"></div>
     </div>
 
-    <div class="view" id="v-ai">
-      <h2 class="section-title">المساعد الذكي</h2>
-      <div class="hint">تحليلات وتنبيهات دقيقة (الأرقام محسوبة بالكود لا بالتخمين) + مساعد يجاوب أسئلتك بالعربية. المساعد <b>يقترح وينبّه فقط، لا يقرّر</b> — راجع أي رقم قبل الاعتماد.</div>
-      <div class="seg"><button class="on" onclick="aiTab('fin',this)">المالية</button><button onclick="aiTab('hr',this)">الموارد البشرية</button></div>
-      <div id="aiInsights"><div class="empty">جارٍ التحليل…</div></div>
-      <div class="card" style="margin-top:14px">
-        <b style="display:block;margin-bottom:8px">💬 اسأل المساعد</b>
-        <div id="aiAnswer" style="margin-bottom:10px"></div>
-        <textarea id="aiQ" rows="2" placeholder="مثال: مين أكثر مورّد صرفنا عليه هذا الشهر؟ · وش ملاحظاتك على رواتب هذا الشهر؟"></textarea>
-        <button class="btn" id="aiAskBtn" style="width:100%;margin-top:8px" onclick="askAI()">اسأل المساعد</button>
-        <div class="hint" style="margin:8px 0 0">الإجابات مبنية على أرقام شركتك المحسوبة. راجعها دائماً — الذكاء الاصطناعي قد يخطئ في الصياغة، والقرار لك.</div>
-      </div>
-    </div>
-
     <div class="view" id="v-hr">
       <h2 class="section-title">الموارد البشرية</h2>
-      <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('pay',this)">الرواتب</button><button onclick="hrTab('dues',this)">ذمم الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button></div>
+      <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('pay',this)">الرواتب</button><button onclick="hrTab('dues',this)">ذمم الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button><button onclick="hrTab('ai',this)">🤖 المساعد الذكي</button></div>
+      <div id="hr_ai" class="hrbox" style="display:none"></div>
       <div id="hr_dir" class="hrbox">
         <div class="seg" id="empSubSeg" style="margin-bottom:12px"><button class="on" onclick="switchEmpSub('res',this)">المقيمين</button><button onclick="switchEmpSub('sau',this)">السعوديين</button></div>
         <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn sm" style="flex:1" onclick="openEmployee()">+ إضافة موظف</button><button class="btn copper sm" style="flex:1" onclick="exportEmployees()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportEmployeesPdf()">📄 PDF</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('employees','الموظفين',e=>e.name||'—')">🗑</button></div>
@@ -334,7 +321,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     </div>
     <div class="view" id="v-finance">
       <h2 class="section-title">المالية</h2>
-      <div class="seg"><button class="on" onclick="finTab2('in',this)">الفواتير الواردة</button><button onclick="finTab2('sup',this)">الموردين</button><button onclick="finTab2('tax',this)">إصدار فاتورة ضريبية</button></div>
+      <div class="seg"><button class="on" onclick="finTab2('in',this)">الفواتير الواردة</button><button onclick="finTab2('sup',this)">الموردين</button><button onclick="finTab2('tax',this)">إصدار فاتورة ضريبية</button><button onclick="finTab2('ai',this)">🤖 المساعد الذكي</button></div>
       <div id="finBody"></div>
     </div>
 
@@ -543,7 +530,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='184';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='185';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -766,7 +753,6 @@ const NAV_MAIN=[
   {v:'workorders',l:'جميع المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'},
   {v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},
-  {v:'ai',l:'المساعد الذكي',i:'M12 2a5 5 0 0 1 5 5v1a4 4 0 0 1 0 8v1a5 5 0 0 1-10 0v-1a4 4 0 0 1 0-8V7a5 5 0 0 1 5-5z M9 9h.01 M15 9h.01 M9 14h6'},
   {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
@@ -804,7 +790,7 @@ function buildNav(role){
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
-  const _valid=isAdmin?['overview','workorders','station-search','dispatch','ai','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory']:['home','station-search','myroute','att-worker','field','my-att','my-works','company']);
+  const _valid=isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory']:['home','station-search','myroute','att-worker','field','my-att','my-works','company']);
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -818,7 +804,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,dispatch:loadDispatch,myroute:loadMyRoute,ai:loadAI,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
+  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -964,21 +950,31 @@ async function markRoute(dispId,num,done){
 /* ===== المساعد الذكي: تحليلات دقيقة (بالكود) + مساعد محادثة ===== */
 const _aiN=n=>(Number(n)||0).toLocaleString('en-US',{maximumFractionDigits:2});
 const _prevMonthKey=()=>{const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);return d.toISOString().slice(0,7);};
-async function loadAI(){window._aiTab=window._aiTab||'fin';document.getElementById('aiInsights').innerHTML='<div class="empty">جارٍ جمع الأرقام…</div>';
-  try{
-    const[inv,exp,emps,slips,dues,att]=await Promise.all([
-      sb.from('invoices').select('*').eq('kind','in').is('deleted_at',null),
-      sb.from('expenses').select('*').is('deleted_at',null),
-      sb.from('employees').select('*').is('deleted_at',null),
-      sb.from('payslips').select('*').eq('period',monthKey()),
-      sb.from('employee_dues').select('*').is('deleted_at',null),
-      sb.from('attendance').select('worker_id,work_date,is_late,penalty_hours').gte('work_date',monthKey()+'-01')
-    ]);
-    window._aiData={inv:inv.data||[],exp:exp.data||[],emps:emps.data||[],slips:slips.data||[],dues:dues.data||[],att:att.data||[]};
-  }catch(e){window._aiData=null;document.getElementById('aiInsights').innerHTML='<div class="empty">تعذّر جمع البيانات: '+(e&&e.message||e)+'</div>';return;}
-  document.getElementById('aiAnswer').innerHTML='';renderAI();
+function assistantHTML(mode){const isHr=mode==='hr';return `<div class="hint">تحليلات وتنبيهات دقيقة (الأرقام محسوبة بالكود لا بالتخمين) + مساعد يجاوب أسئلتك بالعربية. المساعد <b>يقترح وينبّه فقط، لا يقرّر</b> — راجع أي رقم قبل الاعتماد.</div>
+  <div id="aiIns_${mode}"><div class="empty">جارٍ التحليل…</div></div>
+  <div class="card" style="margin-top:14px">
+    <b style="display:block;margin-bottom:8px">💬 اسأل مساعد ${isHr?'الموارد البشرية':'المالية'}</b>
+    <div id="aiAns_${mode}" style="margin-bottom:10px"></div>
+    <textarea id="aiQ_${mode}" rows="2" placeholder="${isHr?'مثال: وش ملاحظاتك على رواتب هذا الشهر؟ · مين قربت إقامته؟':'مثال: مين أكثر مورّد صرفنا عليه؟ · وش ملاحظاتك على مصروفات الشهر؟'}"></textarea>
+    <button class="btn" id="aiAsk_${mode}" style="width:100%;margin-top:8px" onclick="askAI('${mode}')">اسأل المساعد</button>
+    <div class="hint" style="margin:8px 0 0">الإجابات مبنية على أرقام شركتك المحسوبة. راجعها دائماً — القرار لك.</div>
+  </div>`;}
+async function _aiFetch(){
+  const[inv,exp,emps,slips,dues,att]=await Promise.all([
+    sb.from('invoices').select('*').eq('kind','in').is('deleted_at',null),
+    sb.from('expenses').select('*').is('deleted_at',null),
+    sb.from('employees').select('*').is('deleted_at',null),
+    sb.from('payslips').select('*').eq('period',monthKey()),
+    sb.from('employee_dues').select('*').is('deleted_at',null),
+    sb.from('attendance').select('worker_id,work_date,is_late,penalty_hours').gte('work_date',monthKey()+'-01')
+  ]);
+  window._aiData={inv:inv.data||[],exp:exp.data||[],emps:emps.data||[],slips:slips.data||[],dues:dues.data||[],att:att.data||[]};
 }
-function aiTab(t,btn){window._aiTab=t;document.querySelectorAll('#v-ai .seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');document.getElementById('aiAnswer').innerHTML='';renderAI();}
+async function loadAssistant(mode){
+  const ins=document.getElementById('aiIns_'+mode);if(ins)ins.innerHTML='<div class="empty">جارٍ جمع الأرقام…</div>';
+  try{await _aiFetch();}catch(e){window._aiData=null;if(ins)ins.innerHTML='<div class="empty">تعذّر جمع البيانات: '+(e&&e.message||e)+'</div>';return;}
+  renderAssistantInsights(mode);
+}
 function _aiFin(){const d=window._aiData;const mk=monthKey(),pmk=_prevMonthKey();
   const inM=d.inv.filter(i=>String(i.invoice_date||'').slice(0,7)===mk);
   const purch=inM.reduce((s,i)=>s+Number(i.amount||0),0),vat=inM.reduce((s,i)=>s+Number(i.vat||0),0);
@@ -1022,21 +1018,21 @@ function _aiHr(){const d=window._aiData;const mk=monthKey();
   topLate.forEach(([nm,c])=>{if(c>=3)alerts.push(['amber','«'+nm+'» تأخّر '+c+' مرات هذا الشهر — قد يستحق متابعة.']);});
   return{figs,alerts,extra:{totalSalary,duesRem,topLate,count:d.emps.length}};
 }
-function renderAI(){const box=document.getElementById('aiInsights');if(!box)return;if(!window._aiData){box.innerHTML='<div class="empty">لا بيانات</div>';return;}
-  const r=window._aiTab==='hr'?_aiHr():_aiFin();window._aiComputed=r;
+function renderAssistantInsights(mode){const box=document.getElementById('aiIns_'+mode);if(!box)return;if(!window._aiData){box.innerHTML='<div class="empty">لا بيانات</div>';return;}
+  const r=mode==='hr'?_aiHr():_aiFin();window['_aiComputed_'+mode]=r;
   const kpis='<div class="grid2" style="margin-bottom:12px">'+r.figs.map(f=>`<div class="kpi"><b style="font-size:19px">${f[1]}</b><span>${f[0]}</span></div>`).join('')+'</div>';
   let al;
   if(!r.alerts.length)al='<div class="card" style="background:#e2f1e8;border:1px solid #7fc0a0"><b style="color:#1c7a52">✓ لا ملاحظات — الأرقام تبدو سليمة هذا الشهر.</b></div>';
   else{const order={red:0,amber:1,green:2};al='<b style="display:block;margin:4px 2px 8px">🔔 التنبيهات والملاحظات ('+r.alerts.length+')</b>'+r.alerts.sort((a,b)=>order[a[0]]-order[b[0]]).map(a=>{const c=a[0]==='red'?['#fdeae8','#d9534f','#b23b34']:['#fdf3e2','#e0a641','#a9741a'];return `<div class="card" style="padding:11px 13px;margin-bottom:8px;background:${c[0]};border:1px solid ${c[1]}"><div style="font-size:13.5px;color:${c[2]};font-weight:600;line-height:1.7">${a[0]==='red'?'🔴':'🟡'} ${a[1]}</div></div>`;}).join('');}
   box.innerHTML=kpis+al;
 }
-function _aiContext(){const r=window._aiComputed||{};const d=window._aiData||{};const mode=window._aiTab||'fin';
+function _aiContext(mode){const r=window['_aiComputed_'+mode]||{};const d=window._aiData||{};
   if(mode==='hr')return{mode:'hr',month:monthKey(),figures:Object.fromEntries((r.figs||[]).map(f=>[f[0],f[1]])),employees_count:(d.emps||[]).length,total_salary_est:r.extra&&r.extra.totalSalary,dues_outstanding:r.extra&&r.extra.duesRem,most_late:(r.extra&&r.extra.topLate)||[],alerts:(r.alerts||[]).map(a=>a[1]),employees:(d.emps||[]).slice(0,60).map(e=>({name:e.name,salary:e.monthly_salary,nationality:e.nationality,iqama_expiry:e.iqama_expiry,contract_expiry:e.contract_expiry}))};
   return{mode:'finance',month:monthKey(),figures:Object.fromEntries((r.figs||[]).map(f=>[f[0],f[1]])),top_suppliers:(r.extra&&r.extra.topSup||[]).map(s=>({supplier:s[0],total:s[1]})),expenses_by_category:r.extra&&r.extra.byCat,expenses_prev_month:r.extra&&r.extra.expPrev,alerts:(r.alerts||[]).map(a=>a[1])};
 }
-async function askAI(){const q=(document.getElementById('aiQ').value||'').trim();if(!q){toast('اكتب سؤالك');return;}
-  const ans=document.getElementById('aiAnswer'),btn=document.getElementById('aiAskBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';ans.innerHTML='<div style="color:var(--muted)">يفكّر ويحلّل الأرقام…</div>';
-  try{const{data,error}=await sb.functions.invoke('ai-assistant',{body:{mode:window._aiTab||'fin',question:q,context:_aiContext()}});
+async function askAI(mode){const q=(document.getElementById('aiQ_'+mode).value||'').trim();if(!q){toast('اكتب سؤالك');return;}
+  const ans=document.getElementById('aiAns_'+mode),btn=document.getElementById('aiAsk_'+mode);btn.disabled=true;btn.innerHTML='<span class="spin"></span>';ans.innerHTML='<div style="color:var(--muted)">يفكّر ويحلّل الأرقام…</div>';
+  try{const{data,error}=await sb.functions.invoke('ai-assistant',{body:{mode,question:q,context:_aiContext(mode)}});
     if(error)throw error;const txt=(data&&(data.answer||data.text))||'';if(!txt)throw new Error('no answer');
     ans.innerHTML='<div class="card" style="background:#f0f6f3;border:1px solid #cfe3d8;white-space:pre-wrap;line-height:1.95;font-size:14px">'+_stEsc(txt)+'</div>';
   }catch(e){ans.innerHTML='<div class="card" style="background:#fdf3e2;border:1px solid #e0a641;font-size:13px;line-height:1.8">المحادثة غير مُفعّلة بعد. تعمل التحليلات والتنبيهات أعلاه بدون إعداد. لتفعيل الأسئلة بالكلام، يلزم ربط مفتاح ذكاء اصطناعي في Supabase (أرسلت لك الخطوات).</div>';}
@@ -1298,8 +1294,8 @@ async function exportEmployeesPdf(){await ensureLib('jspdf','html2canvas');
 }
 function initHR(){hrTab('dir',document.querySelector('#v-hr>.seg button'));}
 function hrTab(t,btn){document.querySelectorAll('#v-hr>.seg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');
-  ['dir','pay','dues','emp','crew','att'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
-  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay'){_fillPayMonths();enhanceSelects(document.getElementById('hr_pay'));loadPayroll();}if(t==='dues')loadDues();}
+  ['dir','pay','dues','emp','crew','att','ai'].forEach(x=>document.getElementById('hr_'+x).style.display=x===t?'block':'none');
+  if(t==='dir')loadEmpDir();if(t==='emp')loadEmployees();if(t==='crew')loadCrews();if(t==='att')loadAttAdmin();if(t==='pay'){_fillPayMonths();enhanceSelects(document.getElementById('hr_pay'));loadPayroll();}if(t==='dues')loadDues();if(t==='ai'){document.getElementById('hr_ai').innerHTML=assistantHTML('hr');loadAssistant('hr');}}
 async function loadCrews(){
   const{data:crews}=await sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').order('created_at',{ascending:false});
   const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
@@ -2466,6 +2462,7 @@ function finTab2(tab,btn){
   window._finSub=tab;
   document.querySelectorAll('#v-finance .seg button').forEach((b,i)=>b.classList.toggle('on',btn?b===btn:i===0));
   const body=document.getElementById('finBody');
+  if(tab==='ai'){body.innerHTML=assistantHTML('fin');loadAssistant('fin');return;}
   if(tab==='sup'){
     window._supPeriod='all';
     body.innerHTML=`<div class="hint">ابحث باسم المورّد لتشوف كل مشترياتك وفواتيرك منه — لليوم أو الأسبوع أو الشهر أو الكل.</div>
