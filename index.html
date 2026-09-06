@@ -265,6 +265,29 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="ssList"></div>
     </div>
 
+    <div class="view" id="v-dispatch">
+      <h2 class="section-title">توزيع المحطات (المسار الذكي)</h2>
+      <div class="hint">أسند مجموعة محطات لفرقة. مسؤول الفرقة يفتح مساره فتترتّب له المحطات <b>الأقرب فالأقرب</b> حسب موقعه الحالي — يوفّر وقت وبنزين.</div>
+      <div class="card">
+        <div class="field"><label>الفرقة / المسؤول</label><select id="dp_assignee"></select></div>
+        <div class="field"><label>عنوان المسار (اختياري)</label><input id="dp_title" placeholder="مثال: مسار شمال الرياض"></div>
+        <div class="field"><label>التاريخ</label><input type="date" id="dp_date"></div>
+        <div class="field"><label>أرقام المحطات</label><textarea id="dp_stations" rows="4" placeholder="اكتب أرقام المحطات مفصولة بمسافة أو فاصلة أو سطر جديد… مثال: 21849 35746 50714"></textarea></div>
+        <div id="dp_parsed" style="font-size:12.5px;color:var(--muted);margin:-4px 2px 10px"></div>
+        <button class="btn" id="dpSaveBtn" onclick="saveDispatch()">📍 إسناد المسار للفرقة</button>
+      </div>
+      <h3 class="section-title" style="font-size:16px;margin:20px 0 8px">مسارات اليوم</h3>
+      <div id="dpList"></div>
+    </div>
+
+    <div class="view" id="v-myroute">
+      <h2 class="section-title">مسار اليوم</h2>
+      <div class="hint">المحطات مرتّبة الأقرب فالأقرب حسب موقعك الحالي. أنجز الأقرب، علّمها «تم»، ويتحدّث الترتيب تلقائياً.</div>
+      <div id="mrStatus" style="font-size:13px;color:var(--muted);margin:0 2px 10px"></div>
+      <button class="btn ghost sm" style="width:100%;margin-bottom:12px" onclick="loadMyRoute()">🔄 رتّب المحطات حسب موقعي الآن</button>
+      <div id="mrList"></div>
+    </div>
+
     <div class="view" id="v-hr">
       <h2 class="section-title">الموارد البشرية</h2>
       <div class="seg"><button class="on" onclick="hrTab('dir',this)">بيانات الموظفين</button><button onclick="hrTab('pay',this)">الرواتب</button><button onclick="hrTab('dues',this)">ذمم الموظفين</button><button onclick="hrTab('emp',this)">المستخدمين</button><button onclick="hrTab('crew',this)">الفرق</button><button onclick="hrTab('att',this)">الحضور</button></div>
@@ -403,6 +426,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
       <button class="btn wbig" onclick="goView('field')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M2 12h20"/></svg>رفع محطة جديدة</button>
       <button class="btn wbig" id="deAllStationsBtn" style="display:none;background:#6a4c93" onclick="goView('workorders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>كل المحطات</button>
+      <button class="btn wbig" id="myRouteBtn" style="display:none;background:#0f7a52" onclick="goView('myroute')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>مسار اليوم (الأقرب فالأقرب)</button>
       <button class="btn wbig" style="background:#2a6f97" onclick="goView('station-search')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>البحث عن المحطة</button>
       <button class="btn copper wbig" onclick="goView('att-worker')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 7v5l3 2"/><path d="M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z"/></svg>الحضور والانصراف</button>
       <button class="btn wbig" id="myWorksBtn" style="display:none;background:#5a4a7a" onclick="goView('my-works')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>محطاتي المرفوعة (تعديل الصور والبنود)</button>
@@ -505,7 +529,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='182';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='183';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -727,6 +751,7 @@ const NAV_MAIN=[
   {g:'العمليات'},
   {v:'workorders',l:'جميع المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'},
+  {v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},
   {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
@@ -758,13 +783,13 @@ function buildNav(role){
   hamb.style.display='grid';nav.style.display='none';
   const isAdmin=role==='admin',isEntry=PROFILE&&PROFILE.role==='data_entry';
   let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET; let first=isAdmin?'overview':'home';
-  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
+  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
   html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
-  const _valid=isAdmin?['overview','workorders','station-search','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','station-search','att-worker','field','my-att','my-works','company','workorders','inventory']:['home','station-search','att-worker','field','my-att','my-works','company']);
+  const _valid=isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory']:['home','station-search','myroute','att-worker','field','my-att','my-works','company']);
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -778,7 +803,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
   window.scrollTo(0,0);
-  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
+  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
@@ -845,6 +870,80 @@ function _ssRun(){
       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>الموقع</a>
     </div>`;
   }).join('');
+}
+
+/* ===== المسار الذكي: توزيع المحطات الأقرب فالأقرب ===== */
+let _stByNum=null;
+function _buildStByNum(){if(_stByNum||!_stIdx)return;_stByNum=new Map();for(const s of _stIdx){if(!s.k)continue;if(!_stByNum.has(s.k))_stByNum.set(s.k,s);const z=String(Number(s.k));if(z&&z!=='NaN'&&!_stByNum.has(z))_stByNum.set(z,s);}}
+function _resolveStation(num){const d=String(num||'').replace(/\D/g,'');if(!d||!_stByNum)return null;return _stByNum.get(d)||_stByNum.get(String(Number(d)))||null;}
+function _parseNums(txt){return [...new Set(String(txt||'').split(/[^0-9]+/).map(x=>x.trim()).filter(Boolean))];}
+function _dirUrl(la,lo){return 'https://www.google.com/maps/dir/?api=1&destination='+la+','+lo+'&travelmode=driving';}
+async function loadDispatch(){
+  const sel=document.getElementById('dp_assignee');
+  const dt=document.getElementById('dp_date');if(dt&&!dt.value)dt.value=todayKey();
+  const ta=document.getElementById('dp_stations');if(ta){ta.oninput=()=>{const n=_parseNums(ta.value);const p=document.getElementById('dp_parsed');if(p)p.textContent=n.length?('عدد المحطات: '+n.length):'';};}
+  try{const{data}=await sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active').order('full_name');
+    sel.innerHTML=(data||[]).map(p=>`<option value="${p.id}">${p.full_name||'—'}</option>`).join('')||'<option value="">لا يوجد عمال</option>';}catch(e){sel.innerHTML='<option value="">تعذّر التحميل</option>';}
+  loadStationIndex().then(()=>_buildStByNum()).catch(()=>{});
+  renderDispatchList();
+}
+async function renderDispatchList(){
+  const box=document.getElementById('dpList');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  const{data,error}=await sb.from('dispatches').select('*').eq('dispatch_date',todayKey()).is('deleted_at',null).order('created_at',{ascending:false});
+  if(error){box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
+  const rows=data||[];const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
+  box.innerHTML=rows.length?rows.map(d=>{const done=(d.done_nos||[]).length,tot=(d.station_nos||[]).length;return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${d.title||'مسار'}</b><div><small style="color:var(--muted)">${pn[d.assignee_id]||'—'} · ${tot} محطة · أُنجز ${done}/${tot}</small></div></div><button class="link" style="color:var(--bad)" onclick="delDispatch('${d.id}')">حذف</button></div><div style="font-size:12px;color:var(--muted);margin-top:6px;direction:ltr;text-align:right">${(d.station_nos||[]).join(' · ')}</div></div>`;}).join(''):'<div class="empty">لا مسارات اليوم</div>';
+}
+async function saveDispatch(){
+  const assignee=document.getElementById('dp_assignee').value;
+  const nums=_parseNums(document.getElementById('dp_stations').value);
+  if(!assignee){toast('اختر الفرقة/المسؤول');return;}
+  if(!nums.length){toast('أدخل أرقام المحطات');return;}
+  const btn=document.getElementById('dpSaveBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const rec={assignee_id:assignee,title:document.getElementById('dp_title').value.trim()||null,station_nos:nums,done_nos:[],dispatch_date:document.getElementById('dp_date').value||todayKey(),created_by:ME.id};
+    const{error}=await sb.from('dispatches').insert(rec);if(error)throw error;
+    toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');document.getElementById('dp_stations').value='';document.getElementById('dp_title').value='';document.getElementById('dp_parsed').textContent='';renderDispatchList();
+    try{await sb.from('notifications').insert({employee_id:assignee,title:'🚗 مسار جديد',body:'أُسند لك '+nums.length+' محطة اليوم. افتح «مسار اليوم» لتترتّب الأقرب فالأقرب.',kind:'info'});}catch(_){}
+  }catch(e){toast('خطأ: '+(e&&e.message||e)+' — تأكد من تنفيذ كود SQL');}
+  btn.disabled=false;btn.textContent='📍 إسناد المسار للفرقة';
+}
+function delDispatch(id){openConfirm('حذف المسار','متأكد من حذف هذا المسار؟',async()=>{try{await sb.from('dispatches').update({deleted_at:new Date().toISOString()}).eq('id',id);toast('تم الحذف');renderDispatchList();}catch(e){toast('خطأ: '+e.message);}},'نعم، احذف');}
+async function loadMyRoute(){
+  const st=document.getElementById('mrStatus'),box=document.getElementById('mrList');if(!st||!box)return;
+  st.textContent='جارٍ تحديد موقعك وتحميل المحطات…';box.innerHTML='';
+  await loadStationIndex().catch(()=>{});_buildStByNum();
+  const{data,error}=await sb.from('dispatches').select('*').eq('assignee_id',ME.id).eq('dispatch_date',todayKey()).is('deleted_at',null).order('created_at');
+  if(error){st.textContent='';box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
+  const disp=data||[];window._myDisp=disp;
+  if(!disp.length){st.textContent='';box.innerHTML='<div class="empty">لا يوجد مسار مُسند لك اليوم</div>';return;}
+  let pos=null;try{pos=await getPos();}catch(e){st.textContent='⚠ '+e.message+' — رُتّبت بدون موقعك.';}
+  const items=[];disp.forEach(d=>{(d.station_nos||[]).forEach(num=>{const isdone=(d.done_nos||[]).includes(num);const s=_resolveStation(num);items.push({num,dispId:d.id,done:isdone,la:s?s.la:null,lo:s?s.lo:null,dist:(s&&pos)?haversine(pos.lat,pos.lng,s.la,s.lo):null});});});
+  window._myRouteItems=items;window._myPos=pos;renderMyRoute();
+}
+function renderMyRoute(){
+  const st=document.getElementById('mrStatus'),box=document.getElementById('mrList');if(!box)return;
+  const items=window._myRouteItems||[],pos=window._myPos;
+  const pending=items.filter(x=>!x.done),done=items.filter(x=>x.done);
+  pending.sort((a,b)=>{if(a.dist==null&&b.dist==null)return 0;if(a.dist==null)return 1;if(b.dist==null)return -1;return a.dist-b.dist;});
+  if(pos)st.innerHTML='📍 موقعك محدَّد · '+pending.length+' متبقّية · '+done.length+' منجزة';
+  else if(!/⚠/.test(st.textContent||''))st.textContent=pending.length+' محطة متبقّية · '+done.length+' منجزة';
+  const km=m=>m==null?'—':(m<1000?Math.round(m)+' م':(m/1000).toFixed(1)+' كم');
+  const row=(x,i,isNext)=>{const found=x.la!=null;return `<div class="card" style="padding:12px;${isNext?'border:2px solid #0f7a52;background:#eefaf3':''}">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+      <div style="min-width:0"><div style="display:flex;align-items:center;gap:8px">${isNext?'<span style="background:#0f7a52;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px">التالي ➜</span>':`<span style="color:var(--muted);font-weight:800">${i}</span>`}<b style="font-size:18px">محطة ${x.num}</b></div>
+      <div style="font-size:12.5px;color:${found?'var(--muted)':'var(--bad)'};margin-top:3px">${found?('على بُعد '+km(x.dist)+' (مباشرة)'):'⚠ لا يوجد موقع لهذا الرقم في الفهرس'}</div></div>
+      <div style="display:flex;flex-direction:column;gap:6px;flex:none">${found?`<a href="${_dirUrl(x.la,x.lo)}" target="_blank" rel="noopener" class="btn sm" style="text-decoration:none;background:#2a6f97;white-space:nowrap">🧭 اذهب</a>`:''}<button class="btn sm" style="background:#0f7a52;white-space:nowrap" onclick="markRoute('${x.dispId}','${x.num}',true)">✓ تم</button></div>
+    </div></div>`;};
+  let html=pending.length?pending.map((x,idx)=>row(x,idx+1,idx===0&&x.dist!=null)).join(''):'<div class="card" style="text-align:center;color:var(--ok);font-weight:800;padding:16px">🎉 أنجزت كل محطات المسار</div>';
+  if(done.length)html+=`<h3 class="section-title" style="font-size:15px;margin:16px 0 8px">✅ المنجزة (${done.length})</h3>`+done.map(x=>`<div class="card" style="padding:10px 12px;opacity:.7;display:flex;justify-content:space-between;align-items:center"><b style="font-size:15px;text-decoration:line-through">محطة ${x.num}</b><button class="link" onclick="markRoute('${x.dispId}','${x.num}',false)">تراجع</button></div>`).join('');
+  box.innerHTML=html;
+}
+async function markRoute(dispId,num,done){
+  const disp=(window._myDisp||[]).find(d=>d.id===dispId);if(!disp)return;
+  const dn=new Set(disp.done_nos||[]);if(done)dn.add(num);else dn.delete(num);const arr=[...dn];
+  try{const{error}=await sb.from('dispatches').update({done_nos:arr}).eq('id',dispId);if(error)throw error;
+    disp.done_nos=arr;const it=(window._myRouteItems||[]).find(x=>x.dispId===dispId&&x.num===num);if(it)it.done=done;renderMyRoute();
+  }catch(e){toast('خطأ: '+(e&&e.message||e)+' — نفّذ كود SQL');}
 }
 
 /* ===== overview ===== */
@@ -2600,6 +2699,7 @@ async function loadWorkerHome(){
   const de=document.getElementById('deAllStationsBtn');if(de)de.style.display=(PROFILE&&PROFILE.role==='data_entry')?'':'none';
   const mw=document.getElementById('myWorksBtn');if(mw)mw.style.display='';
   updatePushBtn();loadWorkerNotifs();
+  try{const{count}=await sb.from('dispatches').select('id',{count:'exact',head:true}).eq('assignee_id',ME.id).eq('dispatch_date',todayKey()).is('deleted_at',null);const rb=document.getElementById('myRouteBtn');if(rb)rb.style.display=(count&&count>0)?'':'none';}catch(_){}
 }
 const daysAgo=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
 async function loadMyAttendance(){
