@@ -530,7 +530,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='186';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='187';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2953,6 +2953,7 @@ async function doCrewCheck(dir){
         if(late){try{await sb.from('notifications').insert({employee_id:mid,title:'تأخير في الحضور',body:`تأخرت الفرقة ${minutesLate(now)} دقيقة اليوم، وتم خصم ${ph} ساعة عمل من راتبك.`,kind:'deduction'});}catch(_){}}}
       else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',mid).eq('work_date',todayKey());if(error)throw error;}
     }
+    try{await sb.rpc('notify_station_upload',{p_title:dir==='in'?'🟢 تسجيل حضور':'🔴 تسجيل انصراف',p_body:`${PROFILE.full_name||'مسؤول الفرقة'} سجّل ${dir==='in'?'حضور':'انصراف'} فرقة «${crew.name||''}» (${present.length} فرد) الساعة ${hm(now.toISOString())}.`});}catch(_){}
     toast('تم تسجيل الفرقة ✓'+(dir==='in'&&late?` — متأخر، خصم ${ph} ساعة`:''));
     attSelfie=null;attSelfiePos=null;initAttWorker();
   }catch(e){toast('خطأ: '+e.message);const b=document.getElementById('att_btn');if(b){b.disabled=false;b.textContent=dir==='in'?'تسجيل حضور الفرقة':'تسجيل انصراف الفرقة';}}
@@ -3005,6 +3006,7 @@ async function doCheck(dir){
       if(late){try{await sb.from('notifications').insert({employee_id:ME.id,title:'تأخير في الحضور',body:`تأخرت اليوم ${minutesLate(now)} دقيقة، وتم خصم ${ph} ساعة عمل من راتبك.`,kind:'deduction'});}catch(_){}}
       toast(late?`تم الحضور — متأخر ${minutesLate(now)}د، خصم ${ph} ساعة`:'تم تسجيل الحضور ✓');}
     else{const{error}=await sb.from('attendance').update({check_out:now.toISOString(),out_lat:pos.lat,out_lng:pos.lng,out_photo:photoPath}).eq('worker_id',ME.id).eq('work_date',todayKey());if(error)throw error;toast('تم تسجيل الانصراف ✓');}
+    try{await sb.rpc('notify_station_upload',{p_title:dir==='in'?'🟢 تسجيل حضور':'🔴 تسجيل انصراف',p_body:`${PROFILE.full_name||'موظف'} سجّل ${dir==='in'?'حضور':'انصراف'} الساعة ${hm(now.toISOString())}.`});}catch(_){}
     attSelfie=null;attSelfiePos=null;document.getElementById('pb_selfie').querySelector('img')?.remove();
     await loadAttToday();
   }catch(e){toast(e.message);lb.className='locbar bad2';lb.textContent='⛔ '+e.message;const b=document.getElementById('att_btn');if(b){b.disabled=false;}renderAttWorker();}
