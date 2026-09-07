@@ -530,7 +530,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='188';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='189';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -883,8 +883,11 @@ async function loadDispatch(){
   const sel=document.getElementById('dp_assignee');
   const dt=document.getElementById('dp_date');if(dt&&!dt.value)dt.value=todayKey();
   const ta=document.getElementById('dp_stations');if(ta){ta.oninput=()=>{const n=_parseNums(ta.value);const p=document.getElementById('dp_parsed');if(p)p.textContent=n.length?('عدد المحطات: '+n.length):'';};}
-  try{const{data}=await sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active').order('full_name');
-    sel.innerHTML=(data||[]).map(p=>`<option value="${p.id}">${p.full_name||'—'}</option>`).join('')||'<option value="">لا يوجد عمال</option>';}catch(e){sel.innerHTML='<option value="">تعذّر التحميل</option>';}
+  let people=[];
+  try{const{data,error}=await sb.rpc('list_dispatch_targets');if(error)throw error;people=data||[];}
+  catch(e){try{const{data}=await sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active').order('full_name');people=data||[];}catch(_){}}
+  window._dispPeople=people;
+  sel.innerHTML=people.length?people.map(p=>`<option value="${p.id}">${p.full_name||'—'}</option>`).join(''):'<option value="">لا يوجد عمال — نفّذ كود SQL</option>';
   loadStationIndex().then(()=>_buildStByNum()).catch(()=>{});
   renderDispatchList();
 }
@@ -892,7 +895,7 @@ async function renderDispatchList(){
   const box=document.getElementById('dpList');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data,error}=await sb.from('dispatches').select('*').eq('dispatch_date',todayKey()).is('deleted_at',null).order('created_at',{ascending:false});
   if(error){box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
-  const rows=data||[];const{data:profs}=await sb.from('profiles').select('id,full_name');const pn={};(profs||[]).forEach(p=>pn[p.id]=p.full_name);
+  const rows=data||[];const pn={};(window._dispPeople||[]).forEach(p=>pn[p.id]=p.full_name);
   box.innerHTML=rows.length?rows.map(d=>{const done=(d.done_nos||[]).length,tot=(d.station_nos||[]).length;return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${d.title||'مسار'}</b><div><small style="color:var(--muted)">${pn[d.assignee_id]||'—'} · ${tot} محطة · أُنجز ${done}/${tot}</small></div></div><button class="link" style="color:var(--bad)" onclick="delDispatch('${d.id}')">حذف</button></div><div style="font-size:12px;color:var(--muted);margin-top:6px;direction:ltr;text-align:right">${(d.station_nos||[]).join(' · ')}</div></div>`;}).join(''):'<div class="empty">لا مسارات اليوم</div>';
 }
 async function saveDispatch(){
