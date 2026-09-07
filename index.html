@@ -530,7 +530,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='189';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='190';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -916,10 +916,12 @@ async function loadMyRoute(){
   const st=document.getElementById('mrStatus'),box=document.getElementById('mrList');if(!st||!box)return;
   st.textContent='جارٍ تحديد موقعك وتحميل المحطات…';box.innerHTML='';
   await loadStationIndex().catch(()=>{});_buildStByNum();
-  const{data,error}=await sb.from('dispatches').select('*').eq('assignee_id',ME.id).eq('dispatch_date',todayKey()).is('deleted_at',null).order('created_at');
+  const{data,error}=await sb.from('dispatches').select('*').eq('assignee_id',ME.id).is('deleted_at',null).gte('dispatch_date',daysAgo(14)).order('dispatch_date',{ascending:false});
   if(error){st.textContent='';box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
-  const disp=data||[];window._myDisp=disp;
-  if(!disp.length){st.textContent='';box.innerHTML='<div class="empty">لا يوجد مسار مُسند لك اليوم</div>';return;}
+  // نعرض المسارات التي بها محطات غير منجزة (اليوم أو خلال آخر أسبوعين)
+  const disp=(data||[]).filter(d=>(d.station_nos||[]).some(n=>!((d.done_nos||[]).includes(n))));
+  window._myDisp=disp;
+  if(!disp.length){st.textContent='';box.innerHTML='<div class="empty">لا يوجد مسار مُسند لك حالياً</div>';return;}
   let pos=null;try{pos=await getPos();}catch(e){st.textContent='⚠ '+e.message+' — رُتّبت بدون موقعك.';}
   const items=[];disp.forEach(d=>{(d.station_nos||[]).forEach(num=>{const isdone=(d.done_nos||[]).includes(num);const s=_resolveStation(num);items.push({num,dispId:d.id,done:isdone,la:s?s.la:null,lo:s?s.lo:null,dist:(s&&pos)?haversine(pos.lat,pos.lng,s.la,s.lo):null});});});
   window._myRouteItems=items;window._myPos=pos;renderMyRoute();
@@ -2804,7 +2806,7 @@ async function loadWorkerHome(){
   const de=document.getElementById('deAllStationsBtn');if(de)de.style.display=(PROFILE&&PROFILE.role==='data_entry')?'':'none';
   const mw=document.getElementById('myWorksBtn');if(mw)mw.style.display='';
   updatePushBtn();loadWorkerNotifs();
-  try{const{count}=await sb.from('dispatches').select('id',{count:'exact',head:true}).eq('assignee_id',ME.id).eq('dispatch_date',todayKey()).is('deleted_at',null);const rb=document.getElementById('myRouteBtn');if(rb)rb.style.display=(count&&count>0)?'':'none';}catch(_){}
+  const rb=document.getElementById('myRouteBtn');if(rb)rb.style.display='';
 }
 const daysAgo=n=>new Date(Date.now()-n*86400000).toISOString().slice(0,10);
 async function loadMyAttendance(){
