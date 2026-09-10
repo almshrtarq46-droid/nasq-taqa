@@ -531,7 +531,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='193';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='194';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1764,7 +1764,7 @@ async function printProductivityReport(period){
       <div style="display:flex;justify-content:space-between;background:${NAVY};color:#fff;font-weight:800;padding:12px 16px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.12)"><span>إجمالي المبلغ</span><span>${fmt(total)} ر.س</span></div>
       <div style="display:flex;justify-content:space-between;background:${GRAY};color:#fff;font-weight:800;padding:12px 16px;font-size:14px;border-bottom:1px solid rgba(255,255,255,.12)"><span>خصم المقاول 25%</span><span>− ${fmt(contractor)} ر.س</span></div>
       <div style="display:flex;justify-content:space-between;background:${RED};color:#fff;font-weight:800;padding:12px 16px;font-size:14px"><span>المصروفات</span><span>− ${fmt(expenses)} ر.س</span></div>
-      <div style="display:flex;justify-content:space-between;background:${GREEN};color:#fff;font-weight:800;padding:14px 16px;font-size:16px"><span>الصافي</span><span>${fmt(net)} ر.س</span></div>
+      <div style="display:flex;justify-content:space-between;background:${net<0?RED:GREEN};color:#fff;font-weight:800;padding:14px 16px;font-size:16px"><span>الصافي</span><span>${fmt(net)} ر.س</span></div>
       <div style="text-align:center;color:#8a97a0;font-size:11px;padding:14px">تاريخ الإصدار: ${locDT(new Date().toISOString())}</div>
     </div>`;
     const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:720px;background:#fff';wrap.innerHTML=html;document.body.appendChild(wrap);
