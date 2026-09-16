@@ -531,7 +531,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='198';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='199';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -903,8 +903,21 @@ async function renderDispatchList(){
   const box=document.getElementById('dpList');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data,error}=await sb.from('dispatches').select('*').eq('dispatch_date',todayKey()).is('deleted_at',null).order('created_at',{ascending:false});
   if(error){box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
-  const rows=data||[];const pn={};(window._dispPeople||[]).forEach(p=>pn[p.id]=p.full_name);
-  box.innerHTML=rows.length?rows.map(d=>{const done=(d.done_nos||[]).length,tot=(d.station_nos||[]).length;const wk=d.works||{};const lst=(d.station_nos||[]).map(n=>wk[n]?(n+' — '+wk[n]):n).join(' · ');return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${d.title||'مسار'}</b><div><small style="color:var(--muted)">${pn[d.assignee_id]||'—'} · ${tot} محطة · أُنجز ${done}/${tot}</small></div></div><button class="link" style="color:var(--bad)" onclick="delDispatch('${d.id}')">حذف</button></div><div style="font-size:12px;color:var(--muted);margin-top:6px;text-align:right">${_stEsc(lst)}</div></div>`;}).join(''):'<div class="empty">لا مسارات اليوم</div>';
+  const rows=data||[];window._dispRows=rows;const pn={};(window._dispPeople||[]).forEach(p=>pn[p.id]=p.full_name);
+  box.innerHTML=rows.length?rows.map(d=>{const done=(d.done_nos||[]).length,tot=(d.station_nos||[]).length;const wk=d.works||{};const dn=d.done_nos||[];
+    const chips=(d.station_nos||[]).map(n=>{const w=wk[n];const isd=dn.includes(n);return `<span style="display:inline-flex;align-items:center;gap:5px;background:${isd?'#e2f1e8':'#eef2f5'};border:1px solid var(--line);border-radius:20px;padding:3px 4px 3px 9px;margin:0 0 6px 6px;font-size:12.5px">${_stEsc(String(n))}${w?' · '+_stEsc(w):''}${isd?' ✅':''}<button title="حذف المحطة من المسار" onclick="removeDispatchStation('${d.id}','${n}')" style="background:none;border:none;color:var(--bad);font-weight:900;cursor:pointer;padding:0 3px;font-size:15px;line-height:1">✕</button></span>`;}).join('')||'<small style="color:var(--muted)">لا محطات</small>';
+    return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${d.title||'مسار'}</b><div><small style="color:var(--muted)">${pn[d.assignee_id]||'—'} · ${tot} محطة · أُنجز ${done}/${tot}</small></div></div><button class="link" style="color:var(--bad)" onclick="delDispatch('${d.id}')">حذف المسار</button></div><div style="margin-top:8px">${chips}</div></div>`;}).join(''):'<div class="empty">لا مسارات اليوم</div>';
+}
+async function removeDispatchStation(dispId,num){
+  const d=(window._dispRows||[]).find(x=>x.id===dispId);if(!d)return;
+  const nos=(d.station_nos||[]).filter(n=>String(n)!==String(num));
+  const works=Object.assign({},d.works||{});delete works[num];delete works[String(num)];
+  const done=(d.done_nos||[]).filter(n=>String(n)!==String(num));
+  try{
+    if(!nos.length){const{error,count}=await sb.from('dispatches').update({deleted_at:new Date().toISOString()},{count:'exact'}).eq('id',dispId);if(error)throw error;if(count===0)throw new Error('لا صلاحية');toast('حُذفت آخر محطة — أُلغي المسار');}
+    else{const{error,count}=await sb.from('dispatches').update({station_nos:nos,works,done_nos:done},{count:'exact'}).eq('id',dispId);if(error)throw error;if(count===0)throw new Error('لا صلاحية');toast('تم حذف المحطة من المسار ✓');}
+    renderDispatchList();
+  }catch(e){toast('تعذّر الحذف: '+(e&&e.message||e));}
 }
 async function saveDispatch(){
   const assignee=document.getElementById('dp_assignee').value;
