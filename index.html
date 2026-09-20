@@ -272,8 +272,11 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div class="field"><label>الفرقة / المسؤول</label><select id="dp_assignee"></select></div>
         <div class="field"><label>عنوان المسار (اختياري)</label><input id="dp_title" placeholder="مثال: مسار شمال الرياض"></div>
         <div class="field"><label>التاريخ</label><input type="date" id="dp_date"></div>
-        <div class="field"><label>المحطات (كل محطة في سطر)</label><textarea id="dp_stations" rows="5" placeholder="كل سطر: رقم المحطة - رقم الإشعار - العمل&#10;مثال:&#10;21849 - 55231 - دهان&#10;565 - 55232 - ترقيم ودهان&#10;50714 - 55233"></textarea></div>
-        <div class="hint" style="margin:-2px 2px 10px">افصل بشرطة ( - ): رقم المحطة ثم رقم الإشعار ثم العمل. رقم الإشعار والعمل اختياريان. تقدر تكتب الرقم فقط لو ما عندك إشعار.</div>
+        <div class="field"><label>المحطات</label>
+          <div id="dp_rows"></div>
+          <button class="btn ghost sm" type="button" onclick="addDispatchRow()" style="width:100%;margin-top:2px">➕ إضافة محطة</button>
+        </div>
+        <div class="hint" style="margin:6px 2px 10px">لكل محطة خانة مستقلة: اكتب <b>رقم المحطة</b> (إجباري) و<b>رقم الإشعار</b> (اختياري) والعمل (اختياري). الذهاب للموقع يعتمد على رقم المحطة تلقائياً. تقدر تلصق قائمة أرقام في خانة «رقم المحطة» فتتوزّع على صفوف تلقائياً.</div>
         <div id="dp_parsed" style="font-size:12.5px;color:var(--muted);margin:-4px 2px 10px"></div>
         <button class="btn" id="dpSaveBtn" onclick="saveDispatch()">📍 إسناد المسار للفرقة</button>
       </div>
@@ -532,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='204';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='205';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -896,10 +899,31 @@ function _parseStations(txt){const nums=[],works={},notices={},seen=new Set();
     else{(line.match(/\d+/g)||[]).forEach(n=>{if(!seen.has(n)){seen.add(n);nums.push(n);}});}
   });return {nums,works,notices};}
 function _dirUrl(la,lo){return 'https://www.google.com/maps/dir/?api=1&destination='+la+','+lo+'&travelmode=driving';}
+function _dpRowHtml(){return `<div class="dpRow" style="border:1px solid var(--line);border-radius:10px;padding:8px;margin-bottom:8px;background:#fafbfc">
+    <div style="display:flex;gap:6px;align-items:center">
+      <input class="dpNum" inputmode="numeric" placeholder="رقم المحطة *" onpaste="_dpPaste(event,this)" oninput="_dpCount()" style="flex:1;min-width:0">
+      <input class="dpNotice" inputmode="numeric" placeholder="رقم الإشعار" style="flex:1;min-width:0">
+      <button type="button" title="حذف المحطة" onclick="this.closest('.dpRow').remove();_dpEnsure();_dpCount()" style="background:none;border:none;color:var(--bad);font-weight:900;font-size:18px;cursor:pointer;padding:0 4px;flex:none;line-height:1">✕</button>
+    </div>
+    <input class="dpWork" placeholder="العمل (اختياري)" style="width:100%;margin-top:6px"></div>`;}
+function addDispatchRow(num,notice,work){const box=document.getElementById('dp_rows');if(!box)return null;box.insertAdjacentHTML('beforeend',_dpRowHtml());const r=box.lastElementChild;if(num!=null)r.querySelector('.dpNum').value=num;if(notice!=null)r.querySelector('.dpNotice').value=notice;if(work!=null)r.querySelector('.dpWork').value=work;_dpCount();return r;}
+function _dpEnsure(){const box=document.getElementById('dp_rows');if(box&&!box.querySelector('.dpRow'))addDispatchRow();}
+function _dpReset(){const box=document.getElementById('dp_rows');if(box){box.innerHTML='';addDispatchRow();addDispatchRow();addDispatchRow();}_dpCount();}
+function _collectDispatchRows(){const nums=[],works={},notices={},seen=new Set();
+  document.querySelectorAll('#dp_rows .dpRow').forEach(r=>{
+    const stM=((r.querySelector('.dpNum')||{}).value||'').match(/\d+/);if(!stM)return;const n=stM[0];if(seen.has(n))return;seen.add(n);nums.push(n);
+    const ntM=((r.querySelector('.dpNotice')||{}).value||'').match(/\d+/);if(ntM)notices[n]=ntM[0];
+    const w=((r.querySelector('.dpWork')||{}).value||'').trim();if(w)works[n]=w;
+  });return {nums,works,notices};}
+function _dpCount(){const {nums}=_collectDispatchRows();const p=document.getElementById('dp_parsed');if(p)p.textContent=nums.length?('عدد المحطات: '+nums.length):'';}
+function _dpPaste(e,inp){try{const cd=e.clipboardData||window.clipboardData;const txt=cd?cd.getData('text'):'';if(!txt||!/[\n\r,،;\-–—|]/.test(txt))return;e.preventDefault();
+    const {nums,works,notices}=_parseStations(txt);if(!nums.length)return;
+    const row=inp.closest('.dpRow');inp.value=nums[0];const nEl=row.querySelector('.dpNotice');if(nEl&&notices[nums[0]])nEl.value=notices[nums[0]];const wEl=row.querySelector('.dpWork');if(wEl&&works[nums[0]])wEl.value=works[nums[0]];
+    for(let i=1;i<nums.length;i++)addDispatchRow(nums[i],notices[nums[i]],works[nums[i]]);_dpCount();}catch(_){}}
 async function loadDispatch(){
   const sel=document.getElementById('dp_assignee');
   const dt=document.getElementById('dp_date');if(dt&&!dt.value)dt.value=todayKey();
-  const ta=document.getElementById('dp_stations');if(ta){ta.oninput=()=>{const n=_parseStations(ta.value).nums;const p=document.getElementById('dp_parsed');if(p)p.textContent=n.length?('عدد المحطات: '+n.length):'';};}
+  const box=document.getElementById('dp_rows');if(box&&!box.querySelector('.dpRow')){addDispatchRow();addDispatchRow();addDispatchRow();}_dpCount();
   let people=[];
   try{const{data,error}=await sb.rpc('list_dispatch_targets');if(error)throw error;people=data||[];}
   catch(e){try{const{data}=await sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active').order('full_name');people=data||[];}catch(_){}}
@@ -931,7 +955,7 @@ async function removeDispatchStation(dispId,num){
 }
 async function saveDispatch(){
   const assignee=document.getElementById('dp_assignee').value;
-  const {nums,works,notices}=_parseStations(document.getElementById('dp_stations').value);
+  const {nums,works,notices}=_collectDispatchRows();
   if(!assignee){toast('اختر الفرقة/المسؤول');return;}
   if(!nums.length){toast('أدخل أرقام المحطات');return;}
   const btn=document.getElementById('dpSaveBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
@@ -939,7 +963,7 @@ async function saveDispatch(){
     let ins=await sb.from('dispatches').insert(rec);
     if(ins.error&&/notices|column/i.test(ins.error.message||'')){const r2={...rec};delete r2.notices;ins=await sb.from('dispatches').insert(r2);}
     if(ins.error)throw ins.error;
-    toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');document.getElementById('dp_stations').value='';document.getElementById('dp_title').value='';document.getElementById('dp_parsed').textContent='';renderDispatchList();
+    toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');_dpReset();document.getElementById('dp_title').value='';renderDispatchList();
     try{await sb.from('notifications').insert({employee_id:assignee,title:'🚗 مسار جديد',body:'أُسند لك '+nums.length+' محطة اليوم. افتح «مسار اليوم» لتترتّب الأقرب فالأقرب.',kind:'info'});}catch(_){}
   }catch(e){toast('خطأ: '+(e&&e.message||e)+' — تأكد من تنفيذ كود SQL');}
   btn.disabled=false;btn.textContent='📍 إسناد المسار للفرقة';
