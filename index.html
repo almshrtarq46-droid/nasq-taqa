@@ -456,6 +456,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div class="card">
         <div class="field"><label>الإسناد</label><select id="f_assign"></select></div>
         <div class="row"><div class="field"><label>رقم المحطة</label><input id="f_station_no" placeholder="مثال: 47558"></div><div class="field"><label>نوع المحطة</label><select id="f_station_type"><option value="">اختر النوع…</option><option value="غرفة">غرفة</option><option value="بكج">بكج</option><option value="ميني بيلر">ميني بيلر</option></select></div></div>
+        <div class="row"><div class="field"><label>رقم الإشعار <span style="color:var(--bad)">*</span></label><input id="f_notice_no" inputmode="numeric" placeholder="إجباري"></div><div class="field"><label>رقم أمر العمل</label><input id="f_wo_no" inputmode="numeric" placeholder="اختياري"></div></div>
         <label>صور قبل التنفيذ</label>
         <div id="beforeThumbs" class="thumbs"></div>
         <input type="file" accept="image/*" multiple id="beforeInput" style="display:none" onchange="onFieldPhoto(this,'before')">
@@ -531,7 +532,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='199';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='200';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1924,6 +1925,7 @@ function openProject(p){
     <div class="field"><label>اسم/وصف المحطة</label><input id="m_name" value="${p?p.name:''}"></div>
     <div class="row"><div class="field"><label>الجهة</label><input id="m_client" value="${p?(p.client||''):'الشركة السعودية للكهرباء'}"></div><div class="field"><label>رقم المحطة</label><input id="m_code" value="${p?(p.code||''):''}"></div></div>
     <div class="field"><label>الإسناد (للتجميع)</label><input id="m_assign" value="${p?(p.assignment||''):''}" placeholder="مثال: صيانة الشمال 2026"></div>
+    <div class="row"><div class="field"><label>رقم الإشعار</label><input id="m_notice" value="${p?(p.notice_no||''):''}"></div><div class="field"><label>رقم أمر العمل</label><input id="m_wo" value="${p?(p.wo_number||''):''}"></div></div>
     <div class="hint">البنود والأسعار تُدار مركزياً من "البنود والأسعار". الموظف يضيف البنود عند العمل على المحطة. (غالباً المحطات تُنشأ تلقائياً من رفع الموظف — هذي الشاشة للتعديل فقط.)</div>
     <button class="btn" id="saveProjBtn" onclick="saveProject('${p?p.id:''}')">حفظ</button>
     ${p&&PROFILE.role==='admin'?`<button class="btn danger" style="margin-top:9px" onclick="confirmDelStation('${p.id}')">حذف المحطة نهائياً</button>`:''}
@@ -1936,10 +1938,14 @@ function renderItemRows(){document.getElementById('itemsWrap').innerHTML=editIte
 function addItemRow(){editItems.push({name:'',unit:'',rate:0,code:''});renderItemRows();}
 async function saveProject(id){const name=document.getElementById('m_name').value.trim();if(!name){toast('أدخل اسم المحطة');return;}
   const rec={name,client:document.getElementById('m_client').value.trim(),code:document.getElementById('m_code').value.trim(),assignment:document.getElementById('m_assign').value.trim()};
+  const _nn=document.getElementById('m_notice');if(_nn)rec.notice_no=_nn.value.trim();const _wo=document.getElementById('m_wo');if(_wo)rec.wo_number=_wo.value.trim();
+  const _strip=r=>{const c={...r};delete c.notice_no;delete c.wo_number;return c;};
   const btn=document.getElementById('saveProjBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{if(id){const{error,count}=await sb.from('projects').update(rec,{count:'exact'}).eq('id',id);if(error)throw error;
+  try{if(id){let{error,count}=await sb.from('projects').update(rec,{count:'exact'}).eq('id',id);
+      if(error&&/notice_no|wo_number|column/i.test(error.message||'')){({error,count}=await sb.from('projects').update(_strip(rec),{count:'exact'}).eq('id',id));}
+      if(error)throw error;
       if(count===0){toast('لم يُحفظ — تحتاج صلاحية التعديل (نفّذ كود SQL)');btn.disabled=false;btn.textContent='حفظ';return;}
-    }else{rec.created_by=ME.id;const{error}=await sb.from('projects').insert(rec);if(error)throw error;}
+    }else{rec.created_by=ME.id;let{error}=await sb.from('projects').insert(rec);if(error&&/notice_no|wo_number|column/i.test(error.message||'')){({error}=await sb.from('projects').insert(_strip(rec)));}if(error)throw error;}
     closeModal();toast('تم الحفظ ✓');refreshAfterProject();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function refreshAfterProject(){await loadProjectsCache();const wo=document.getElementById('v-workorders');const mw=document.getElementById('v-my-works');if(wo&&wo.classList.contains('on'))loadWorkOrders();else if(document.getElementById('v-projects').classList.contains('on'))loadProjects();else if(mw&&mw.classList.contains('on'))loadMyWorks();}
@@ -2303,7 +2309,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
   const stage=p.wo_stage||'قيد التنفيذ';
   return `<div class="station" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
-    <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'}${p.station_type?' · '+p.station_type:''} · ${es.length} بند</small></div><div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
+    <div><b>${p.name}</b><div><small style="color:var(--muted)">${p.assignment?p.assignment+' · ':''}رقم ${p.code||'—'}${p.station_type?' · '+p.station_type:''} · ${es.length} بند</small></div>${(p.notice_no||p.wo_number)?`<div><small style="color:var(--copper)">${p.notice_no?'إشعار: '+p.notice_no:''}${p.wo_number?(p.notice_no?' · ':'')+'أمر عمل: '+p.wo_number:''}</small></div>`:''}<div style="margin-top:4px"><span class="pill pend">${stage}</span></div></div>
     <div style="text-align:left">${_adm?`<div class="pill role">${fmt(tot)} ﷼</div>`:`<div class="pill role">${es.length} بند</div>`}<div><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
     <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_adm?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
     ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td>${_adm?`<td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td>`:''}</tr>`;}).join('')}
@@ -3050,6 +3056,7 @@ let beforePhotos=[],afterPhotos=[],fieldItems=[];
 function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   document.getElementById('f_assign').innerHTML=ASSIGNMENTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')||'<option value="">لا توجد إسنادات — راجع المدير</option>';
   document.getElementById('f_station_no').value='';document.getElementById('f_station_type').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
+  const _nn=document.getElementById('f_notice_no');if(_nn)_nn.value='';const _wo=document.getElementById('f_wo_no');if(_wo)_wo.value='';
   const sv=document.getElementById('f_save');if(sv){sv.disabled=false;sv.textContent='رفع العمل';}
   const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
@@ -3080,17 +3087,23 @@ async function saveFieldReport(){
   const assign=ASSIGNMENTS.find(a=>a.id===document.getElementById('f_assign').value);
   const stationNo=document.getElementById('f_station_no').value.trim();
   const stationType=document.getElementById('f_station_type').value.trim();
+  const noticeNo=(document.getElementById('f_notice_no')?.value||'').trim();
+  const woNo=(document.getElementById('f_wo_no')?.value||'').trim();
   if(!assign){toast('اختر الإسناد');return;}
   if(!stationNo){toast('اكتب رقم المحطة');return;}
   if(!stationType){toast('اختر نوع المحطة');return;}
+  if(!noticeNo){toast('اكتب رقم الإشعار (إجباري)');return;}
   if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
   if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
   if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{
     let pid;const{data:ex}=await sb.from('projects').select('id').eq('assignment',assign.name).eq('code',stationNo).limit(1);
-    if(ex&&ex.length){pid=ex[0].id;}
-    else{const{data,error}=await sb.from('projects').insert({name:'محطة '+stationNo,code:stationNo,station_type:stationType,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id}).select('id').single();if(error)throw error;pid=data.id;}
+    if(ex&&ex.length){pid=ex[0].id;try{await sb.from('projects').update({notice_no:noticeNo,wo_number:woNo||null}).eq('id',pid);}catch(_){}}
+    else{const baseRec={name:'محطة '+stationNo,code:stationNo,station_type:stationType,assignment:assign.name,client:'الشركة السعودية للكهرباء',created_by:ME.id};
+      let ins=await sb.from('projects').insert({...baseRec,notice_no:noticeNo,wo_number:woNo||null}).select('id').single();
+      if(ins.error&&/notice_no|wo_number|column/i.test(ins.error.message||'')){ins=await sb.from('projects').insert(baseRec).select('id').single();}
+      if(ins.error)throw ins.error;pid=ins.data.id;}
     const wd=todayKey();
     const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
