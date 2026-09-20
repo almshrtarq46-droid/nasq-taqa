@@ -272,8 +272,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div class="field"><label>الفرقة / المسؤول</label><select id="dp_assignee"></select></div>
         <div class="field"><label>عنوان المسار (اختياري)</label><input id="dp_title" placeholder="مثال: مسار شمال الرياض"></div>
         <div class="field"><label>التاريخ</label><input type="date" id="dp_date"></div>
-        <div class="field"><label>المحطات والعمل المطلوب (كل محطة في سطر)</label><textarea id="dp_stations" rows="5" placeholder="اكتب كل محطة في سطر: الرقم ثم العمل المطلوب.&#10;مثال:&#10;21849 دهان&#10;565 ترقيم ودهان وخطر&#10;50714"></textarea></div>
-        <div class="hint" style="margin:-2px 2px 10px">كل سطر = محطة. اكتب رقم المحطة ثم العمل بجانبه (اختياري). لو حطيت عدة أرقام في سطر واحد بدون كتابة، تُعتبر محطات بدون وصف عمل.</div>
+        <div class="field"><label>المحطات (كل محطة في سطر)</label><textarea id="dp_stations" rows="5" placeholder="كل سطر: رقم المحطة - رقم الإشعار - العمل&#10;مثال:&#10;21849 - 55231 - دهان&#10;565 - 55232 - ترقيم ودهان&#10;50714 - 55233"></textarea></div>
+        <div class="hint" style="margin:-2px 2px 10px">افصل بشرطة ( - ): رقم المحطة ثم رقم الإشعار ثم العمل. رقم الإشعار والعمل اختياريان. تقدر تكتب الرقم فقط لو ما عندك إشعار.</div>
         <div id="dp_parsed" style="font-size:12.5px;color:var(--muted);margin:-4px 2px 10px"></div>
         <button class="btn" id="dpSaveBtn" onclick="saveDispatch()">📍 إسناد المسار للفرقة</button>
       </div>
@@ -532,7 +532,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='200';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='201';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -880,13 +880,21 @@ let _stByNum=null;
 function _buildStByNum(){if(_stByNum||!_stIdx)return;_stByNum=new Map();for(const s of _stIdx){if(!s.k)continue;if(!_stByNum.has(s.k))_stByNum.set(s.k,s);const z=String(Number(s.k));if(z&&z!=='NaN'&&!_stByNum.has(z))_stByNum.set(z,s);}}
 function _resolveStation(num){const d=String(num||'').replace(/\D/g,'');if(!d||!_stByNum)return null;return _stByNum.get(d)||_stByNum.get(String(Number(d)))||null;}
 function _parseNums(txt){return [...new Set(String(txt||'').split(/[^0-9]+/).map(x=>x.trim()).filter(Boolean))];}
-function _parseStations(txt){const nums=[],works={},seen=new Set();
+function _parseStations(txt){const nums=[],works={},notices={},seen=new Set();
   String(txt||'').split(/\r?\n/).forEach(line=>{line=line.trim();if(!line)return;
+    const parts=line.split(/\s*[-–—|]\s*/);
+    if(parts.length>=2){
+      const st=(parts[0].match(/\d+/)||[])[0];if(!st)return;if(!seen.has(st)){seen.add(st);nums.push(st);}
+      const noticeRaw=parts[1];const notice=(noticeRaw.match(/\d+/)||[])[0];const noticeIsNum=/^\s*\d+\s*$/.test(noticeRaw);
+      if(notice&&noticeIsNum){notices[st]=notice;const w=parts.slice(2).join(' - ').trim();if(w)works[st]=w;}
+      else{const w=parts.slice(1).join(' - ').trim();if(w)works[st]=w;}
+      return;
+    }
     const hasText=/[^\d\s,،.\-–—:]/.test(line);
     if(hasText){const m=line.match(/\d+/);if(!m)return;const n=m[0];if(!seen.has(n)){seen.add(n);nums.push(n);}
       const w=line.replace(m[0],' ').replace(/^[\s:،,\-–—]+|[\s:،,\-–—]+$/g,'').replace(/\s+/g,' ').trim();if(w)works[n]=w;}
     else{(line.match(/\d+/g)||[]).forEach(n=>{if(!seen.has(n)){seen.add(n);nums.push(n);}});}
-  });return {nums,works};}
+  });return {nums,works,notices};}
 function _dirUrl(la,lo){return 'https://www.google.com/maps/dir/?api=1&destination='+la+','+lo+'&travelmode=driving';}
 async function loadDispatch(){
   const sel=document.getElementById('dp_assignee');
@@ -906,28 +914,31 @@ async function renderDispatchList(){
   if(error){box.innerHTML='<div class="empty">تعذّر التحميل — نفّذ كود SQL أولاً.</div>';return;}
   const rows=data||[];window._dispRows=rows;const pn={};(window._dispPeople||[]).forEach(p=>pn[p.id]=p.full_name);
   box.innerHTML=rows.length?rows.map(d=>{const done=(d.done_nos||[]).length,tot=(d.station_nos||[]).length;const wk=d.works||{};const dn=d.done_nos||[];
-    const chips=(d.station_nos||[]).map(n=>{const w=wk[n];const isd=dn.includes(n);return `<span style="display:inline-flex;align-items:center;gap:5px;background:${isd?'#e2f1e8':'#eef2f5'};border:1px solid var(--line);border-radius:20px;padding:3px 4px 3px 9px;margin:0 0 6px 6px;font-size:12.5px">${_stEsc(String(n))}${w?' · '+_stEsc(w):''}${isd?' ✅':''}<button title="حذف المحطة من المسار" onclick="removeDispatchStation('${d.id}','${n}')" style="background:none;border:none;color:var(--bad);font-weight:900;cursor:pointer;padding:0 3px;font-size:15px;line-height:1">✕</button></span>`;}).join('')||'<small style="color:var(--muted)">لا محطات</small>';
+    const nt=d.notices||{};const chips=(d.station_nos||[]).map(n=>{const w=wk[n];const ntc=nt[n];const isd=dn.includes(n);return `<span style="display:inline-flex;align-items:center;gap:5px;background:${isd?'#e2f1e8':'#eef2f5'};border:1px solid var(--line);border-radius:20px;padding:3px 4px 3px 9px;margin:0 0 6px 6px;font-size:12.5px">${_stEsc(String(n))}${ntc?' · إشعار '+_stEsc(ntc):''}${w?' · '+_stEsc(w):''}${isd?' ✅':''}<button title="حذف المحطة من المسار" onclick="removeDispatchStation('${d.id}','${n}')" style="background:none;border:none;color:var(--bad);font-weight:900;cursor:pointer;padding:0 3px;font-size:15px;line-height:1">✕</button></span>`;}).join('')||'<small style="color:var(--muted)">لا محطات</small>';
     return `<div class="card"><div style="display:flex;justify-content:space-between;align-items:start"><div><b>${d.title||'مسار'}</b><div><small style="color:var(--muted)">${pn[d.assignee_id]||'—'} · ${tot} محطة · أُنجز ${done}/${tot}</small></div></div><button class="link" style="color:var(--bad)" onclick="delDispatch('${d.id}')">حذف المسار</button></div><div style="margin-top:8px">${chips}</div></div>`;}).join(''):'<div class="empty">لا مسارات اليوم</div>';
 }
 async function removeDispatchStation(dispId,num){
   const d=(window._dispRows||[]).find(x=>x.id===dispId);if(!d)return;
   const nos=(d.station_nos||[]).filter(n=>String(n)!==String(num));
   const works=Object.assign({},d.works||{});delete works[num];delete works[String(num)];
+  const notices=Object.assign({},d.notices||{});delete notices[num];delete notices[String(num)];
   const done=(d.done_nos||[]).filter(n=>String(n)!==String(num));
   try{
     if(!nos.length){const{error,count}=await sb.from('dispatches').update({deleted_at:new Date().toISOString()},{count:'exact'}).eq('id',dispId);if(error)throw error;if(count===0)throw new Error('لا صلاحية');toast('حُذفت آخر محطة — أُلغي المسار');}
-    else{const{error,count}=await sb.from('dispatches').update({station_nos:nos,works,done_nos:done},{count:'exact'}).eq('id',dispId);if(error)throw error;if(count===0)throw new Error('لا صلاحية');toast('تم حذف المحطة من المسار ✓');}
+    else{let up=await sb.from('dispatches').update({station_nos:nos,works,notices,done_nos:done},{count:'exact'}).eq('id',dispId);if(up.error&&/notices|column/i.test(up.error.message||'')){up=await sb.from('dispatches').update({station_nos:nos,works,done_nos:done},{count:'exact'}).eq('id',dispId);}if(up.error)throw up.error;if(up.count===0)throw new Error('لا صلاحية');toast('تم حذف المحطة من المسار ✓');}
     renderDispatchList();
   }catch(e){toast('تعذّر الحذف: '+(e&&e.message||e));}
 }
 async function saveDispatch(){
   const assignee=document.getElementById('dp_assignee').value;
-  const {nums,works}=_parseStations(document.getElementById('dp_stations').value);
+  const {nums,works,notices}=_parseStations(document.getElementById('dp_stations').value);
   if(!assignee){toast('اختر الفرقة/المسؤول');return;}
   if(!nums.length){toast('أدخل أرقام المحطات');return;}
   const btn=document.getElementById('dpSaveBtn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{const rec={assignee_id:assignee,title:document.getElementById('dp_title').value.trim()||null,station_nos:nums,works,done_nos:[],dispatch_date:document.getElementById('dp_date').value||todayKey(),created_by:ME.id};
-    const{error}=await sb.from('dispatches').insert(rec);if(error)throw error;
+  try{const rec={assignee_id:assignee,title:document.getElementById('dp_title').value.trim()||null,station_nos:nums,works,notices,done_nos:[],dispatch_date:document.getElementById('dp_date').value||todayKey(),created_by:ME.id};
+    let ins=await sb.from('dispatches').insert(rec);
+    if(ins.error&&/notices|column/i.test(ins.error.message||'')){const r2={...rec};delete r2.notices;ins=await sb.from('dispatches').insert(r2);}
+    if(ins.error)throw ins.error;
     toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');document.getElementById('dp_stations').value='';document.getElementById('dp_title').value='';document.getElementById('dp_parsed').textContent='';renderDispatchList();
     try{await sb.from('notifications').insert({employee_id:assignee,title:'🚗 مسار جديد',body:'أُسند لك '+nums.length+' محطة اليوم. افتح «مسار اليوم» لتترتّب الأقرب فالأقرب.',kind:'info'});}catch(_){}
   }catch(e){toast('خطأ: '+(e&&e.message||e)+' — تأكد من تنفيذ كود SQL');}
@@ -945,7 +956,7 @@ async function loadMyRoute(){
   window._myDisp=disp;
   if(!disp.length){st.textContent='';box.innerHTML='<div class="empty">لا يوجد مسار مُسند لك حالياً</div>';return;}
   let pos=null;try{pos=await getPos();}catch(e){st.textContent='⚠ '+e.message+' — رُتّبت بدون موقعك.';}
-  const items=[];disp.forEach(d=>{const wk=d.works||{};(d.station_nos||[]).forEach(num=>{const isdone=(d.done_nos||[]).includes(num);const s=_resolveStation(num);items.push({num,work:wk[num]||'',dispId:d.id,done:isdone,la:s?s.la:null,lo:s?s.lo:null,dist:(s&&pos)?haversine(pos.lat,pos.lng,s.la,s.lo):null});});});
+  const items=[];disp.forEach(d=>{const wk=d.works||{};const nt=d.notices||{};(d.station_nos||[]).forEach(num=>{const isdone=(d.done_nos||[]).includes(num);const s=_resolveStation(num);items.push({num,work:wk[num]||'',notice:nt[num]||'',dispId:d.id,done:isdone,la:s?s.la:null,lo:s?s.lo:null,dist:(s&&pos)?haversine(pos.lat,pos.lng,s.la,s.lo):null});});});
   window._myRouteItems=items;window._myPos=pos;renderMyRoute();
 }
 function renderMyRoute(){
@@ -959,6 +970,7 @@ function renderMyRoute(){
   const row=(x,i,isNext)=>{const found=x.la!=null;return `<div class="card" style="padding:12px;${isNext?'border:2px solid #0f7a52;background:#eefaf3':''}">
     <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
       <div style="min-width:0"><div style="display:flex;align-items:center;gap:8px">${isNext?'<span style="background:#0f7a52;color:#fff;font-size:11px;font-weight:800;padding:2px 8px;border-radius:20px">التالي ➜</span>':`<span style="color:var(--muted);font-weight:800">${i}</span>`}<b style="font-size:18px">محطة ${x.num}</b></div>
+      ${x.notice?`<div style="font-size:12.5px;color:#2a6f97;font-weight:700;margin-top:3px">🔔 إشعار: ${_stEsc(x.notice)}</div>`:''}
       ${x.work?`<div style="font-size:13.5px;color:var(--copper);font-weight:700;margin-top:4px">🔧 ${_stEsc(x.work)}</div>`:''}
       <div style="font-size:12.5px;color:${found?'var(--muted)':'var(--bad)'};margin-top:3px">${found?('على بُعد '+km(x.dist)+' (مباشرة)'):'⚠ لا يوجد موقع لهذا الرقم في الفهرس'}</div></div>
       <div style="display:flex;flex-direction:column;gap:6px;flex:none">${found?`<a href="${_dirUrl(x.la,x.lo)}" target="_blank" rel="noopener" class="btn sm" style="text-decoration:none;background:#2a6f97;white-space:nowrap">🧭 اذهب</a>`:''}<button class="btn sm" style="background:#0f7a52;white-space:nowrap" onclick="markRoute('${x.dispId}','${x.num}',true)">✓ تم</button></div>
