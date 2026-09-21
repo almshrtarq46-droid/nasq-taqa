@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='208';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='209';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -711,7 +711,11 @@ const VAPID_PUBLIC='BF4DLypG7ou1cU_7FZqTa59u7VybWYmZeJuhnvssc6xCsBRFOyo5h56zoz-X
 async function notifyEvent(title,body){try{await sb.rpc('notify_station_upload',{p_title:title,p_body:body});}catch(_){}
   try{await sb.functions.invoke('send-push',{body:{title,body,actor:(ME&&ME.id)||null}});}catch(_){}}
 function urlB64ToUint8(base64){const pad='='.repeat((4-base64.length%4)%4);const b=(base64+pad).replace(/-/g,'+').replace(/_/g,'/');const raw=atob(b);const arr=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);return arr;}
-async function storeSub(sub){try{const j=sub.toJSON();await sb.from('push_subscriptions').upsert({worker_id:ME.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth},{onConflict:'endpoint'});}catch(e){}}
+async function storeSub(sub){try{const j=sub.toJSON();
+  let prev='';try{prev=localStorage.getItem('pushEndpoint')||'';}catch(_){}
+  if(prev&&prev!==j.endpoint){try{await sb.from('push_subscriptions').delete().eq('worker_id',ME.id).eq('endpoint',prev);}catch(_){}}
+  await sb.from('push_subscriptions').upsert({worker_id:ME.id,endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth},{onConflict:'endpoint'});
+  try{localStorage.setItem('pushEndpoint',j.endpoint);}catch(_){}}catch(e){}}
 async function _subscribePush(reg){let sub=await reg.pushManager.getSubscription();
   let keyChanged=false;try{keyChanged=localStorage.getItem('vapidKey')!==VAPID_PUBLIC;}catch(_){}
   if(sub&&keyChanged){try{await sub.unsubscribe();}catch(_){}sub=null;}
