@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='214';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='215';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1853,17 +1853,12 @@ async function printMeasurementSheet(pid){
     ws.getCell('BO4').value=p.code||'';
     ws.getCell('AV5').value=p.notice_no||'';
     ws.getCell('BO5').value=p.wo_number||'';
-    const _grp=[['B','I','Z'],['AE','AL','BB'],['BG','BN','CH']];
-    for(let r=24;r<=39;r++)_grp.forEach(g=>{ws.getCell(g[0]+r).value=null;ws.getCell(g[1]+r).value=null;ws.getCell(g[2]+r).value=null;});
-    const _thin={style:'thin'};
-    const _bord=(r,a,b)=>{for(let c=a;c<=b;c++){ws.getRow(r).getCell(c).border={top:_thin,bottom:_thin,left:_thin,right:_thin};}};
-    const _GC=[[[2,8],[9,25],[26,30]],[[31,37],[38,53],[54,58]]];
-    items.forEach((it,i)=>{let r,g;if(i<16){r=24+i;g=_GC[0];}else if(i<32){r=24+(i-16);g=_GC[1];}else return;
-      ws.getRow(r).getCell(g[0][0]).value=it.code||'';
-      const nc=ws.getRow(r).getCell(g[1][0]);nc.value=it.name||'';nc.alignment=Object.assign({},nc.alignment||{},{wrapText:true,vertical:'middle'});
-      ws.getRow(r).getCell(g[2][0]).value=it.qty;
-      _bord(r,g[0][0],g[0][1]);_bord(r,g[1][0],g[1][1]);_bord(r,g[2][0],g[2][1]);
-      if(String(it.name||'').length>35)ws.getRow(r).height=Math.max(ws.getRow(r).height||17,32);
+    // القالب يبقى كما هو ببنوده المطبوعة؛ نكتب الكمية جنب البند المطابق، والبند الجديد نكتبه في صف فاضي بالعمود الأوسط
+    const MS_QTY={'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'};
+    let midRow=25;
+    items.forEach(it=>{const q=MS_QTY[it.code];
+      if(q){ws.getCell(q).value=it.qty;}
+      else if(midRow<=39){ws.getCell('AE'+midRow).value=it.code||'';ws.getCell('AL'+midRow).value=it.name||'';ws.getCell('BB'+midRow).value=it.qty;midRow++;}
     });
     const out=await wb.xlsx.writeBuffer();
     const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
