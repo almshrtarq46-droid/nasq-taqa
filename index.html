@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='216';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='217';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1873,29 +1873,25 @@ async function photosPDF(pid,phase){
   const lbl=phase==='before'?'قبل':'بعد';
   toast('جارٍ تجهيز صور '+lbl+'…');
   try{
-    const{data,error}=await sb.from('station_photos').select('photo').eq('project_id',pid).eq('phase',phase).order('created_at');
+    const{data,error}=await sb.from('station_photos').select('photo,photo_clean').eq('project_id',pid).eq('phase',phase).order('created_at');
     if(error)throw error;
     const rows=data||[];if(!rows.length){toast('لا توجد صور '+lbl);return;}
     await ensureLib('jspdf');
     const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
     const margin=8,gap=6;const cellW=(pw-margin*2-gap)/2,cellH=ph-margin*2;
     let idx=0;
-    const KEEP=0.82; // نُبقي أعلى 82% ونقصّ شريط التاريخ/الإحداثيات أسفل الصورة (في PDF فقط)
     for(let i=0;i<rows.length;i++){
-      let cropUrl,cw,chh;
-      try{const{data:blob,error:de}=await sb.storage.from('photos').download(rows[i].photo);if(de)throw de;
-        const dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});
-        const im=await new Promise((res,rej)=>{const g=new Image();g.onload=()=>res(g);g.onerror=rej;g.src=dataUrl;});
-        const iw=im.naturalWidth||4,ih=im.naturalHeight||3;
-        cw=iw;chh=Math.max(1,Math.round(ih*KEEP));
-        const cv=document.createElement('canvas');cv.width=cw;cv.height=chh;
-        cv.getContext('2d').drawImage(im,0,0);
-        cropUrl=cv.toDataURL('image/jpeg',0.9);
+      let dataUrl,iw,ih;const path=rows[i].photo_clean||rows[i].photo; // النظيفة إن وُجدت، وإلا الأصلية
+      try{const{data:blob,error:de}=await sb.storage.from('photos').download(path);if(de)throw de;
+        dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});
+        const dim=await new Promise(res=>{const g=new Image();g.onload=()=>res({w:g.naturalWidth||4,h:g.naturalHeight||3});g.onerror=()=>res({w:4,h:3});g.src=dataUrl;});
+        iw=dim.w;ih=dim.h;
       }catch(_){continue;}
       const pos=idx%2;if(pos===0&&idx>0)pdf.addPage();
-      let dw=cellW,dh=dw*chh/cw;if(dh>cellH){dh=cellH;dw=dh*cw/chh;}
+      let dw=cellW,dh=dw*ih/iw;if(dh>cellH){dh=cellH;dw=dh*iw/ih;}
       const cellX=margin+pos*(cellW+gap);const x=cellX+(cellW-dw)/2,y=margin+(cellH-dh)/2;
-      try{pdf.addImage(cropUrl,'JPEG',x,y,dw,dh);idx++;}catch(_){}
+      const fmt=/^data:image\/png/i.test(dataUrl)?'PNG':'JPEG';
+      try{pdf.addImage(dataUrl,fmt,x,y,dw,dh);idx++;}catch(_){}
     }
     if(idx===0){toast('تعذّر تجهيز الصور');return;}
     pdf.save(code+' '+lbl+'.pdf');
@@ -3189,7 +3185,7 @@ async function onFieldPhoto(input,phase){
   const arr=(phase==='before'?beforePhotos:afterPhotos);let done=0;
   for(const f of files){
     lb.className='locbar wait';lb.textContent=`📸 جارٍ ختم الصور تلقائياً… (${done+1}/${files.length})`;
-    try{const raw=await readFileData(f);const d=await new Promise(r=>compress(raw,r));const stamped=await stampImage(d,lines);arr.push({data:stamped,lat:pos.lat,lng:pos.lng});done++;renderThumbs(phase);}catch(e){}
+    try{const raw=await readFileData(f);const d=await new Promise(r=>compress(raw,r));const stamped=await stampImage(d,lines);arr.push({data:stamped,clean:d,lat:pos.lat,lng:pos.lng});done++;renderThumbs(phase);}catch(e){}
   }
   lb.className='locbar ok2';lb.textContent=`✅ أُضيفت ${done} ${done===1?'صورة':'صورة'} ${phase==='before'?'قبل':'بعد'} تلقائياً (الإجمالي ${arr.length}) — مختومة بالموقع`;
 }
@@ -3219,8 +3215,10 @@ async function saveFieldReport(){
       if(ins.error)throw ins.error;pid=ins.data.id;}
     const wd=todayKey();
     const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
-    const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
-    const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
+    const photoRows=await Promise.all(tasks.map(async([phase,ph])=>{const path=await uploadPhoto(ph.data,phase);let cleanPath=null;try{if(ph.clean)cleanPath=await uploadPhoto(ph.clean,phase+'_clean');}catch(_){}return {project_id:pid,worker_id:ME.id,phase,photo:path,photo_clean:cleanPath,lat:ph.lat,lng:ph.lng,work_date:wd};}));
+    let{error:pe}=await sb.from('station_photos').insert(photoRows);
+    if(pe&&/photo_clean|column/i.test(pe.message||'')){const stripped=photoRows.map(r=>{const c={...r};delete c.photo_clean;return c;});({error:pe}=await sb.from('station_photos').insert(stripped));}
+    if(pe)throw pe;
     const note=document.getElementById('f_note').value.trim();
     const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
     let{error:ee}=await sb.from('entries').insert(entryRows);
