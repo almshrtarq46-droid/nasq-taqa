@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='213';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='214';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1871,6 +1871,38 @@ async function printMeasurementSheet(pid){
     toast('تم تجهيز ورقة القياس ✓ — افتحها للطباعة');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
+/* ===== تجميع صور المحطة (قبل/بعد) في PDF — صورتان لكل صفحة، اسم الملف رقم المحطة ===== */
+async function photosPDF(pid,phase){
+  const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
+  const code=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
+  const lbl=phase==='before'?'قبل':'بعد';
+  toast('جارٍ تجهيز صور '+lbl+'…');
+  try{
+    const{data,error}=await sb.from('station_photos').select('photo').eq('project_id',pid).eq('phase',phase).order('created_at');
+    if(error)throw error;
+    const rows=data||[];if(!rows.length){toast('لا توجد صور '+lbl);return;}
+    await ensureLib('jspdf');
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
+    const margin=8,gap=6;const cellW=(pw-margin*2-gap)/2,cellH=ph-margin*2;
+    let idx=0;
+    for(let i=0;i<rows.length;i++){
+      let dataUrl,iw,ih;
+      try{const{data:blob,error:de}=await sb.storage.from('photos').download(rows[i].photo);if(de)throw de;
+        dataUrl=await new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(fr.result);fr.onerror=rej;fr.readAsDataURL(blob);});
+        const dim=await new Promise(res=>{const im=new Image();im.onload=()=>res({w:im.naturalWidth||4,h:im.naturalHeight||3});im.onerror=()=>res({w:4,h:3});im.src=dataUrl;});
+        iw=dim.w;ih=dim.h;
+      }catch(_){continue;}
+      const pos=idx%2;if(pos===0&&idx>0)pdf.addPage();
+      let dw=cellW,dh=dw*ih/iw;if(dh>cellH){dh=cellH;dw=dh*iw/ih;}
+      const cellX=margin+pos*(cellW+gap);const x=cellX+(cellW-dw)/2,y=margin+(cellH-dh)/2;
+      const fmt=/^data:image\/png/i.test(dataUrl)?'PNG':'JPEG';
+      try{pdf.addImage(dataUrl,fmt,x,y,dw,dh);idx++;}catch(_){}
+    }
+    if(idx===0){toast('تعذّر تجهيز الصور');return;}
+    pdf.save(code+' '+lbl+'.pdf');
+    toast('تم تجهيز صور '+lbl+' ✓ ('+idx+' صورة)');
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}
+}
 /* ===== سلة المحذوفات (حذف قابل للاسترجاع) ===== */
 const RELOADERS={employees:()=>loadEmpDir(),employee_dues:()=>loadDues(),expenses:()=>initExpenses(),invoices:()=>_finReloadInv()};
 function toastUndo(msg,cb){let el=document.getElementById('undoToast');
@@ -2423,6 +2455,7 @@ async function _renderStPhotos(pid){
     <div style="background:#fdeae8;border:2px solid #d9534f;border-radius:14px;padding:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#d9534f;flex:none"></span><b style="font-size:15px;color:#b23b34">📸 صور قبل التنفيذ (${before.length})</b></div>
       ${shareAll('before',before.length)}
+      ${before.length?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#12343B" onclick="photosPDF('${pid}','before')">🖨 تجميع صور قبل في PDF (${before.length})</button>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(before,'قبل')}</div>
       ${addBefore}
     </div>
@@ -2430,6 +2463,7 @@ async function _renderStPhotos(pid){
     <div style="background:#e2f1e8;border:2px solid #2f9e6e;border-radius:14px;padding:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#2f9e6e;flex:none"></span><b style="font-size:15px;color:#1c7a52">📸 صور بعد التنفيذ (${after.length})</b></div>
       ${shareAll('after',after.length)}
+      ${after.length?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#12343B" onclick="photosPDF('${pid}','after')">🖨 تجميع صور بعد في PDF (${after.length})</button>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(after,'بعد')}</div>
       ${addAfter}
     </div>`;
