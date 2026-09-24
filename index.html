@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='211';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='212';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1834,7 +1834,6 @@ async function printProductivityReport(period){
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 /* ===== ورقة القياس (Measurement Sheet) — تعبئة القالب المعتمد لكل محطة ===== */
-const MS_LEFTMAP={'401000027':24,'401000013':25,'401000019':26,'603000018':27,'605000006':28,'605000007':29,'605000008':30,'605000011':31,'606000011':32,'606000013':33,'606000014':34,'606000018':35,'606000023':36,'604000002':37,'605000009':38,'606000035':39};
 async function printMeasurementSheet(pid){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   toast('جارٍ تجهيز ورقة القياس…');
@@ -1854,11 +1853,10 @@ async function printMeasurementSheet(pid){
     ws.getCell('BO4').value=p.code||'';
     ws.getCell('AV5').value=p.notice_no||'';
     ws.getCell('BO5').value=p.wo_number||'';
-    let midRow=25;
-    items.forEach(it=>{const r=MS_LEFTMAP[it.code];
-      if(r){ws.getCell('Z'+r).value=it.qty;}
-      else if(midRow<=39){ws.getCell('AE'+midRow).value=it.code||'';ws.getCell('AL'+midRow).value=it.name;ws.getCell('BB'+midRow).value=it.qty;midRow++;}
-    });
+    const _grp=[['B','I','Z'],['AE','AL','BB'],['BG','BN','CH']];
+    for(let r=24;r<=39;r++)_grp.forEach(g=>{ws.getCell(g[0]+r).value=null;ws.getCell(g[1]+r).value=null;ws.getCell(g[2]+r).value=null;});
+    const _slots=[];for(let r=24;r<=39;r++)_slots.push([r,_grp[0]]);for(let r=24;r<=39;r++)_slots.push([r,_grp[1]]);
+    items.forEach((it,i)=>{if(i>=_slots.length)return;const s=_slots[i],r=s[0],g=s[1];ws.getCell(g[0]+r).value=it.code||'';ws.getCell(g[1]+r).value=it.name||'';ws.getCell(g[2]+r).value=it.qty;});
     const out=await wb.xlsx.writeBuffer();
     const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ورقة_قياس_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
