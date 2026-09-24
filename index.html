@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='210';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='211';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1833,59 +1833,36 @@ async function printProductivityReport(period){
     toast('تم تصدير التقرير ✓');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
-/* ===== ورقة القياس (Measurement Sheet) — PDF لكل محطة ===== */
+/* ===== ورقة القياس (Measurement Sheet) — تعبئة القالب المعتمد لكل محطة ===== */
+const MS_LEFTMAP={'401000027':24,'401000013':25,'401000019':26,'603000018':27,'605000006':28,'605000007':29,'605000008':30,'605000011':31,'606000011':32,'606000013':33,'606000014':34,'606000018':35,'606000023':36,'604000002':37,'605000009':38,'606000035':39};
 async function printMeasurementSheet(pid){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   toast('جارٍ تجهيز ورقة القياس…');
   try{
-    await ensureLib('jspdf','html2canvas');
-    const{data,error}=await sb.from('entries').select('item_code,item_name,item_name_full,qty,unit').eq('project_id',pid);
+    await ensureLib('exceljs');
+    const{data,error}=await sb.from('entries').select('item_code,item_name,item_name_full,qty').eq('project_id',pid);
     if(error)throw error;
-    const agg={};(data||[]).forEach(e=>{const code=e.item_code||'';const name=e.item_name_full||e.item_name||'';const k=code+'|'+name+'|'+(e.unit||'');(agg[k]=agg[k]||{code,name,unit:e.unit||'',qty:0}).qty+=Number(e.qty||0);});
+    const agg={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=e.item_name_full||e.item_name||'';const k=code+'|'+name;(agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);});
     const items=Object.values(agg);
-    const today=todayKey();const yr=today.slice(0,4);
-    const stNo=p.code||'';const notif=p.notice_no||'';const order=p.wo_number||'';
-    const bd='1px solid #222';const cell='padding:5px 7px;border:'+bd;
-    const lbl='background:#eef2f5;font-weight:700;white-space:nowrap;'+cell;
-    const rowsHtml=items.map((it,i)=>`<tr><td style="${cell};text-align:center">${i+1}</td><td style="${cell};text-align:center;font-weight:700">${_stEsc(it.code||'—')}</td><td style="${cell};text-align:right">${_stEsc(it.name)}</td><td style="${cell};text-align:center;font-weight:800">${fmt(it.qty)}${it.unit?' '+_stEsc(it.unit):''}</td></tr>`).join('');
-    let extra='';for(let i=items.length;i<12;i++){extra+=`<tr><td style="${cell};text-align:center;color:#bbb">${i+1}</td><td style="${cell}">&nbsp;</td><td style="${cell}">&nbsp;</td><td style="${cell}">&nbsp;</td></tr>`;}
-    const matRows=n=>{let s='';for(let i=1;i<=n;i++)s+=`<tr><td style="${cell};text-align:center;width:30px">${i}</td><td style="${cell}">&nbsp;</td><td style="${cell};width:70px">&nbsp;</td></tr>`;return s;};
-    const html=`<div style="width:1040px;font-family:Cairo,'Segoe UI',Arial,sans-serif;direction:rtl;color:#111;background:#fff;padding:18px;box-sizing:border-box">
-      <div style="display:flex;justify-content:space-between;align-items:center;border:2px solid #111;padding:10px 14px;margin-bottom:8px">
-        <div style="font-weight:800;font-size:15px;line-height:1.5">شركة مكتب الشرق<br><span style="font-size:12px;color:#555">R.C.O.M</span></div>
-        <div style="text-align:center;font-weight:800;font-size:20px">ورقة القياس<br><span style="font-size:13px;letter-spacing:1px">MEASUREMENT SHEET - ${yr}</span></div>
-        <div style="font-weight:700;font-size:12px;text-align:left;line-height:1.6">Consultative: ABALKHAIL<br>Contractor: مكتب الشرق</div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px">
-        <tr><td style="${lbl}">S/S No المحطة</td><td style="${cell};font-weight:800;text-align:center">${_stEsc(stNo||'—')}</td><td style="${lbl}">Date التاريخ</td><td style="${cell};text-align:center">${today}</td><td style="${lbl}">Notification الإشعار</td><td style="${cell};text-align:center;font-weight:700">${_stEsc(notif||'—')}</td><td style="${lbl}">Order No أمر العمل</td><td style="${cell};text-align:center;font-weight:700">${_stEsc(order||'—')}</td></tr>
-        <tr><td style="${lbl}">Area المنطقة</td><td style="${cell};text-align:center">الشمال</td><td style="${lbl}">Fault No</td><td style="${cell}">&nbsp;</td><td style="${lbl}">Fault Type</td><td style="${cell};text-align:center">☐ LV&nbsp;&nbsp;☐ MV</td><td style="${lbl}">Subscription</td><td style="${cell}">&nbsp;</td></tr>
-        <tr><td style="${lbl}">Contractor المقاول</td><td style="${cell};text-align:center">شركة مكتب الشرق</td><td style="${lbl}">Agreement No</td><td style="${cell};text-align:center">4400023650</td><td style="${lbl}">Consultative</td><td style="${cell};text-align:center">ABALKHAIL</td><td style="${lbl}">Agreement No</td><td style="${cell};text-align:center">4400023687</td></tr>
-      </table>
-      <div style="border:${bd};padding:6px 8px;margin-bottom:8px;min-height:50px"><span style="font-weight:700">الشرح : EXPLANATION</span></div>
-      <div style="font-weight:800;font-size:13px;background:#111;color:#fff;padding:6px 10px">قائمة بنود الأعمال — WORK ITEMS</div>
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:10px">
-        <thead><tr><th style="${cell};background:#eef2f5;width:36px">#</th><th style="${cell};background:#eef2f5;width:120px">رقم البند<br>Item No</th><th style="${cell};background:#eef2f5">الوصف — EXPLANATION</th><th style="${cell};background:#eef2f5;width:120px">الكمية<br>Qty</th></tr></thead>
-        <tbody>${rowsHtml}${extra}</tbody>
-      </table>
-      <div style="display:flex;gap:10px;margin-bottom:12px">
-        <div style="flex:1"><div style="font-weight:800;font-size:12.5px;background:#111;color:#fff;padding:5px 9px">قائمة بنود المواد — MATERIAL LIST</div><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>${matRows(5)}</tbody></table></div>
-        <div style="flex:1"><div style="font-weight:800;font-size:12.5px;background:#111;color:#fff;padding:5px 9px">المواد المعادة — Materials Returned</div><table style="width:100%;border-collapse:collapse;font-size:12px"><tbody>${matRows(5)}</tbody></table></div>
-      </div>
-      <table style="width:100%;border-collapse:collapse;font-size:12.5px">
-        <tr><td style="${lbl};text-align:center">المشرف الميداني</td><td style="${lbl};text-align:center">المشرف الاستشاري</td><td style="${lbl};text-align:center">رئيس القسم</td></tr>
-        <tr><td style="${cell};height:24px">الاسم:</td><td style="${cell}">الاسم:</td><td style="${cell}">الاسم:</td></tr>
-        <tr><td style="${cell};height:24px">التوقيع:</td><td style="${cell}">التوقيع:</td><td style="${cell}">التوقيع:</td></tr>
-        <tr><td style="${cell};height:24px">التاريخ:</td><td style="${cell}">التاريخ:</td><td style="${cell}">التاريخ:</td></tr>
-      </table>
-    </div>`;
-    const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:1040px;background:#fff';wrap.innerHTML=html;document.body.appendChild(wrap);
-    const canvas=await html2canvas(wrap,{scale:3,backgroundColor:'#ffffff',imageTimeout:0});document.body.removeChild(wrap);
-    const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210;
-    const img=canvas.toDataURL('image/png');const iw=pw-14,ih=canvas.height*iw/canvas.width;let hl=ih,pos=7;
-    pdf.addImage(img,'PNG',7,pos,iw,ih);hl-=(ph-14);
-    while(hl>0){pos-=(ph-14);pdf.addPage();pdf.addImage(img,'PNG',7,pos,iw,ih);hl-=(ph-14);}
-    pdf.save('ورقة_قياس_'+(stNo||'محطة')+'.pdf');
-    toast('تم تجهيز ورقة القياس ✓');
+    const resp=await fetch('./measurement_template.xlsx?_v='+APP_VER,{cache:'reload'});
+    if(!resp.ok)throw new Error('تعذّر تحميل القالب');
+    const buf=await resp.arrayBuffer();
+    const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);
+    wb.worksheets.slice().forEach(w=>{if(w.name!=='2021'){try{wb.removeWorksheet(w.id);}catch(_){}}});
+    const ws=wb.getWorksheet('2021');if(!ws)throw new Error('صفحة القياس غير موجودة في القالب');
+    ws.getCell('J4').value=todayKey();
+    ws.getCell('BO4').value=p.code||'';
+    ws.getCell('AV5').value=p.notice_no||'';
+    ws.getCell('BO5').value=p.wo_number||'';
+    let midRow=25;
+    items.forEach(it=>{const r=MS_LEFTMAP[it.code];
+      if(r){ws.getCell('Z'+r).value=it.qty;}
+      else if(midRow<=39){ws.getCell('AE'+midRow).value=it.code||'';ws.getCell('AL'+midRow).value=it.name;ws.getCell('BB'+midRow).value=it.qty;midRow++;}
+    });
+    const out=await wb.xlsx.writeBuffer();
+    const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ورقة_قياس_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    toast('تم تجهيز ورقة القياس ✓ — افتحها للطباعة');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 /* ===== سلة المحذوفات (حذف قابل للاسترجاع) ===== */
