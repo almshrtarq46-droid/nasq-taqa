@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='217';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='218';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3128,8 +3128,8 @@ function stampImage(dataUrl,lines){return new Promise(res=>{const img=new Image(
   img.onerror=()=>res(dataUrl);
   img.onload=()=>{try{const max=900;let{width:w,height:h}=img;if(!w||!h){return res(dataUrl);}if(w>max||h>max){const r=Math.min(max/w,max/h);w=Math.round(w*r);h=Math.round(h*r);}
   const c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d');ctx.drawImage(img,0,0,w,h);
-  const fs=Math.max(16,Math.round(w*0.042)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.5),barH=lh*lines.length+pad*1.6;
-  ctx.fillStyle='rgba(0,0,0,0.62)';ctx.fillRect(0,h-barH,w,barH);
+  const fs=Math.max(11,Math.round(w*0.030)),pad=Math.round(fs*0.7),lh=Math.round(fs*1.5),barH=lh*lines.length+pad*1.6;
+  ctx.fillStyle='rgba(0,0,0,0.32)';ctx.fillRect(0,h-barH,w,barH);
   ctx.fillStyle='#fff';ctx.textAlign='right';try{ctx.direction='rtl';}catch(e){}ctx.font=`bold ${fs}px Cairo, Arial, sans-serif`;
   lines.forEach((t,i)=>ctx.fillText(t,w-pad,h-barH+pad+lh*(i+0.78)));
   res(c.toDataURL('image/jpeg',0.6));}catch(e){res(dataUrl);}};img.src=dataUrl;});}
