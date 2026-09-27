@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='238';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='239';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1858,6 +1858,7 @@ function _mirrorConsult(xml,ref,val){
   if(/<f[\s>/]/.test(m[0]))return _setCachedVal(xml,ref,val);
   return _setCellXml(xml,ref,val,false);
 }
+function _msDownload(){const f=window._msFile;if(!f)return;const url=URL.createObjectURL(f.blob);const a=document.createElement('a');a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 /* نسخ خط ومحاذاة خلية مرجعية إلى خلية هدف (مع إبقاء حدودها/تعبئتها) — بإضافة نمط جديد في styles.xml */
 function _likeStyle(sty,xml,target,ref){
   const sOf=r=>{const m=xml.match(new RegExp('<c r="'+r+'"[^>]*?\\ss="(\\d+)"'));return m?+m[1]:null;};
@@ -1957,19 +1958,24 @@ async function _measureSheet(pid,cfg){
       const rlf=zip.file('xl/_rels/workbook.xml.rels');if(rlf){let rl=await rlf.async('string');rl=rl.replace(/<Relationship[^>]*calcChain\.xml[^>]*\/>/,'');zip.file('xl/_rels/workbook.xml.rels',rl);}
     }}catch(_){}
     const out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
-    const url=URL.createObjectURL(out);const a=document.createElement('a');a.href=url;a.download=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
-    // مراجعة المبالغ: الإجمالي المتوقع في الورقة (من جدول أسعار القالب) مقابل إجمالي التطبيق
-    let sum='';const warn=[];
-    if(cfg.prices&&prTbl){try{const pr=prTbl;
-      let tc=0,ts=0;placed.forEach(it=>{const x=pr[it.code];if(!x){warn.push('• البند '+(it.code||'بدون رقم')+' ('+(it.name||'').slice(0,35)+') غير موجود في جدول أسعار الورقة — سعره فيها بيطلع 0');return;}tc+=it.qty*(x.p||0);ts+=it.qty*(x.c||0);});
-      const app=(data||[]).reduce((s,e)=>s+(e.rate!=null?Number(e.qty||0)*Number(e.rate||0):0),0);
-      const f2=n=>(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-      sum='\n\nالإجمالي في الورقة — المقاول: '+f2(tc)+' ر.س | الاستشاري: '+f2(ts)+' ر.س'+(app?'\nإجمالي المحطة في التطبيق: '+f2(app)+' ر.س':'');
-      if(app&&Math.abs(app-tc)>0.01)warn.push('• إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — راجع أسعار البنود');
-    }catch(_){}}
-    if(dropped.length)warn.push('• '+dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
-    if(warn.length)alert('⚠️ '+cfg.title+' — راجع قبل الإرسال:\n\n'+warn.join('\n')+sum);
-    else toast('تم تجهيز '+cfg.title+' ✓'+(sum?' — '+sum.replace(/\n+/g,' ').trim():''));
+    const fname=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';
+    // مراجعة المبالغ: الإجمالي في الورقة (من جدول أسعار القالب) مقابل إجمالي التطبيق
+    const warn=[];let tc=null,ts=null,app=0;
+    const f2=n=>(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(cfg.prices&&prTbl){tc=0;ts=0;placed.forEach(it=>{const x=prTbl[it.code];if(!x){warn.push('البند '+(it.code||'بدون رقم')+' ('+(it.name||'').slice(0,35)+') غير موجود في جدول أسعار الورقة — سعره فيها بيطلع 0');return;}tc+=it.qty*(x.p||0);ts+=it.qty*(x.c||0);});
+      app=(data||[]).reduce((s,e)=>s+(e.rate!=null?Number(e.qty||0)*Number(e.rate||0):0),0);
+      if(app&&Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — راجع أسعار البنود');}
+    if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
+    window._msFile={blob:out,name:fname};
+    if(tc===null&&!warn.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
+    // نافذة ثابتة داخل التطبيق (تبقى ظاهرة بعد إغلاق معاينة الملف) — التنزيل من زرّها
+    const ok=!warn.length;
+    const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
+    openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
+      ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${app?row('إجمالي المحطة في التطبيق',f2(app)+' ر.س','#7a4a12'):''}</table>`:''}
+      <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ متطابقة':'⚠️ راجع قبل الإرسال:<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>')}</div>
+      <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
+      <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
