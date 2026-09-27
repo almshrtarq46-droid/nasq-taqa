@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='241';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='242';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1879,20 +1879,24 @@ function _secIssuesHtml(iss,tbl){const f2=n=>Number(n||0).toLocaleString('en-US'
     else t=`<b>الرقم ${x.code}</b> «${_xmlEsc(x.name.slice(0,50))}»: سعره في التطبيق ${f2(x.rate)} وفي جدول الشركة ${f2(x.secP)}.`;
     const btn=(adm&&x.sug)?`<button class="btn sm" style="margin-top:6px" onclick="_secFix('${x.code}','${x.sug}',${i})">صحّح إلى ${x.sug}</button>`:'';
     return `<div style="padding:9px;border:1px solid #f0d9b5;border-radius:9px;margin:6px 0;background:#fffaf2;font-size:13px;line-height:1.7">${t}${btn}</div>`;}).join('');}
+/* الرقم الصحيح من جدول الشركة بالاسم: تطابق تام، أو تشابه قوي (≥90%) بدون منافس */
+function _secResolve(name,tbl){const nn=_arNorm(name);if(!nn)return null;const ex=Object.keys(tbl).filter(c=>_arNorm(tbl[c].n)===nn);if(ex.length===1)return ex[0];if(ex.length>1)return null;
+  let b=null,bs=0,s2=0;for(const c in tbl){const s=_arSim(name,tbl[c].n);if(s>bs){s2=bs;bs=s;b=c;}else if(s>s2)s2=s;}return(bs>=0.9&&bs-s2>=0.1)?b:null;}
+async function _secApply(oldC,newC,name){const nn=_arNorm(name);
+  let q=sb.from('entries').select('id,item_name,item_name_full');q=oldC?q.eq('item_code',oldC):q.or('item_code.is.null,item_code.eq.');
+  const{data:es,error:e1}=await q;if(e1)throw e1;
+  const ids=(es||[]).filter(e=>_arNorm(e.item_name_full||e.item_name)===nn).map(e=>e.id);
+  for(let k=0;k<ids.length;k+=200){const{error}=await sb.from('entries').update({item_code:newC}).in('id',ids.slice(k,k+200));if(error)throw error;}
+  if(!CATALOG||!CATALOG.length){try{await loadCatalog();}catch(_){}}
+  const cats=(CATALOG||[]).filter(c=>String(c.code||'').trim()===oldC&&(_arNorm(c.name_full||c.name)===nn||_arNorm(c.name)===nn));
+  const dup=(CATALOG||[]).find(c=>String(c.code||'').trim()===newC);let cat=0;
+  if(cats.length&&!dup){for(const c of cats){const{error}=await sb.from('catalog_items').update({code:newC}).eq('id',c.id);if(error)throw error;cat++;}}
+  return{n:ids.length,cat,dup:!!(cats.length&&dup)};}
 let _secLast=[];
 async function _secFix(oldC,newC,i){const x=_secLast[i];if(!x)return;
   if(!confirm('تصحيح رقم البند «'+x.name.slice(0,50)+'»\nمن '+(oldC||'(بدون رقم)')+' إلى '+newC+'\n\nيعدّل البند في الكتالوج + كل الإدخالات المسجّلة به في كل المحطات. متأكد؟'))return;
-  try{const nn=_arNorm(x.name);
-    let q=sb.from('entries').select('id,item_name,item_name_full');q=oldC?q.eq('item_code',oldC):q.or('item_code.is.null,item_code.eq.');
-    const{data:es,error:e1}=await q;if(e1)throw e1;
-    const ids=(es||[]).filter(e=>_arNorm(e.item_name_full||e.item_name)===nn).map(e=>e.id);
-    for(let k=0;k<ids.length;k+=200){const{error}=await sb.from('entries').update({item_code:newC}).in('id',ids.slice(k,k+200));if(error)throw error;}
-    const cats=(CATALOG||[]).filter(c=>String(c.code||'').trim()===oldC&&(_arNorm(c.name_full||c.name)===nn||_arNorm(c.name)===nn));
-    const dup=(CATALOG||[]).find(c=>String(c.code||'').trim()===newC);let catMsg='';
-    if(cats.length&&!dup){for(const c of cats){const{error}=await sb.from('catalog_items').update({code:newC}).eq('id',c.id);if(error)throw error;}catMsg=' + الكتالوج';}
-    else if(cats.length&&dup)catMsg=' — وفي الكتالوج بند ثاني برقم '+newC+'، احذف البند المكرر «'+(cats[0].name||'')+'»';
-    await loadCatalog();closeModal();alert('✓ تم تصحيح '+ids.length+' إدخال'+catMsg+'.\nاطبع الورقة من جديد.');
-  }catch(e){alert('تعذّر التصحيح: '+(e&&e.message||e));}}
+  try{const r=await _secApply(oldC,newC,x.name);await loadCatalog();closeModal();alert('✓ تم تصحيح '+r.n+' إدخال'+(r.cat?' + الكتالوج':'')+(r.dup?' — وفي الكتالوج بند ثاني بنفس الرقم '+newC+'، احذف المكرر':'')+'.');}
+  catch(e){alert('تعذّر التصحيح: '+(e&&e.message||e));}}
 async function openSecAudit(){try{const tbl=await _secLoad();await loadCatalog();
   const list=(CATALOG||[]).map(c=>({code:c.code,name:c.name_full||c.name,rate:c.rate}));
   const iss=_secIssues(list,tbl);_secLast=iss;
@@ -1924,6 +1928,13 @@ async function _measureSheet(pid,cfg){
     if(error)throw error;
     // السعر والمبلغ في جدول entry_finance (مثل بطاقة المحطة)
     data=(data||[]).map(e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{...e,rate:f&&f.rate!=null?Number(f.rate):null,amount:f&&f.amount!=null?Number(f.amount):null};});
+    // تصحيح تلقائي: أي بند رقمه لا يطابق اسمه في جدول الشركة يُكتب في الورقة برقمه الصحيح (بالاسم) مثل باقي البنود
+    const autoFix=[];let tbA=null;try{tbA=await _secLoad();}catch(_){}
+    if(tbA){const seenF={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'';const s=code?tbA[code]:null;
+      if(s&&(!s.n||_arSim(nm,s.n)>=0.6))return;const to=_secResolve(nm,tbA);if(!to||to===code)return;
+      e.item_code=to;const k=code+'>'+to+'|'+_arNorm(nm);if(!seenF[k]){seenF[k]=1;autoFix.push({from:code,to,name:nm});}});}
+    // حفظ التصحيح في التطبيق (الكتالوج + الإدخالات) للمدير — بدون ما يوقف الطباعة لو فشل
+    const fixSaved=[];if(autoFix.length&&PROFILE&&PROFILE.role==='admin'){for(const f of autoFix){try{const r=await _secApply(f.from,f.to,f.name);fixSaved.push(f);}catch(_){}}}
     // التجميع برقم البند (مكان البند في الورقة يتحدد برقمه) — مع كشف أي رقم مسجّل بأكثر من اسم
     const agg={},names={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=(e.item_name_full||e.item_name||'').trim();const k=code||('~'+name);
       (agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);if(code){(names[code]=names[code]||{})[name]=(names[code][name]||0)+Number(e.qty||0);}});
@@ -2013,13 +2024,14 @@ async function _measureSheet(pid,cfg){
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
     window._msFile={blob:out,name:fname};
     let iss=[],tb=null;try{tb=prTbl||await _secLoad();iss=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb);_secLast=iss;}catch(_){}
-    if(tc===null&&!warn.length&&!iss.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
+    if(tc===null&&!warn.length&&!iss.length&&!autoFix.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
     // نافذة ثابتة داخل التطبيق (تبقى ظاهرة بعد إغلاق معاينة الملف) — التنزيل من زرّها
     const ok=!warn.length&&!iss.length;
     const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
     openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
       ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${row('إجمالي المحطة في التطبيق',app===null?'غير متاح':f2(app)+' ر.س',(app!==null&&Math.abs(app-tc)>0.01)?'#c0392b':'#7a4a12')}</table>`:''}
       <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
+      ${autoFix.length?`<div style="padding:9px;border-radius:9px;background:#eef4ff;color:#1f4e8c;font-size:13px;line-height:1.7;margin-bottom:8px"><b>صُحّح رقم البند تلقائياً وانكتب في الورقة برقمه الصحيح:</b><br>${autoFix.map(f=>'• «'+_xmlEsc(f.name.slice(0,45))+'»: '+(f.from||'بدون رقم')+' ← <b>'+f.to+'</b>'+(fixSaved.includes(f)?' (وتصحّح في التطبيق)':'')).join('<br>')}</div>`:''}
       ${iss.length?`<div style="font-weight:800;margin:4px 0">أرقام بنود لا تطابق جدول الشركة:</div>${_secIssuesHtml(iss,tb)}`:''}
       <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
       <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
