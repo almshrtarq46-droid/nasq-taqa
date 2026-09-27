@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='240';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='241';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1919,8 +1919,11 @@ async function _measureSheet(pid,cfg){
   toast('جارٍ تجهيز '+cfg.title+'…');
   try{
     await ensureLib('jszip');
-    const{data,error}=await sb.from('entries').select('*').eq('project_id',pid);
+    let{data,error}=await sb.from('entries').select('*, entry_finance(rate,amount)').eq('project_id',pid);
+    if(error){({data,error}=await sb.from('entries').select('*').eq('project_id',pid));}
     if(error)throw error;
+    // السعر والمبلغ في جدول entry_finance (مثل بطاقة المحطة)
+    data=(data||[]).map(e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{...e,rate:f&&f.rate!=null?Number(f.rate):null,amount:f&&f.amount!=null?Number(f.amount):null};});
     // التجميع برقم البند (مكان البند في الورقة يتحدد برقمه) — مع كشف أي رقم مسجّل بأكثر من اسم
     const agg={},names={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=(e.item_name_full||e.item_name||'').trim();const k=code||('~'+name);
       (agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);if(code){(names[code]=names[code]||{})[name]=(names[code][name]||0)+Number(e.qty||0);}});
@@ -2003,8 +2006,10 @@ async function _measureSheet(pid,cfg){
     const warn=[];let tc=null,ts=null,app=0;
     const f2=n=>(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
     if(cfg.prices&&prTbl){tc=0;ts=0;placed.forEach(it=>{const x=prTbl[it.code];if(!x){warn.push('البند '+(it.code||'بدون رقم')+' ('+(it.name||'').slice(0,35)+') غير موجود في جدول أسعار الورقة — سعره فيها بيطلع 0');return;}tc+=it.qty*(x.p||0);ts+=it.qty*(x.c||0);});
-      app=(data||[]).reduce((s,e)=>s+(e.rate!=null?Number(e.qty||0)*Number(e.rate||0):0),0);
-      if(app&&Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — راجع أسعار البنود');}
+      const fin=(data||[]).filter(e=>e.amount!=null);
+      app=fin.length===(data||[]).length&&fin.length?fin.reduce((s,e)=>s+e.amount,0):null;
+      if(app===null)warn.push('تعذّر قراءة إجمالي المحطة من التطبيق — قارن المبلغ يدوياً قبل الإرسال');
+      else if(Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — الفرق '+f2(app-tc)+' ر.س');}
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
     window._msFile={blob:out,name:fname};
     let iss=[],tb=null;try{tb=prTbl||await _secLoad();iss=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb);_secLast=iss;}catch(_){}
@@ -2013,7 +2018,7 @@ async function _measureSheet(pid,cfg){
     const ok=!warn.length&&!iss.length;
     const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
     openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
-      ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${app?row('إجمالي المحطة في التطبيق',f2(app)+' ر.س','#7a4a12'):''}</table>`:''}
+      ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${row('إجمالي المحطة في التطبيق',app===null?'غير متاح':f2(app)+' ر.س',(app!==null&&Math.abs(app-tc)>0.01)?'#c0392b':'#7a4a12')}</table>`:''}
       <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
       ${iss.length?`<div style="font-weight:800;margin:4px 0">أرقام بنود لا تطابق جدول الشركة:</div>${_secIssuesHtml(iss,tb)}`:''}
       <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
