@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='222';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='223';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1833,39 +1833,44 @@ async function printProductivityReport(period){
     toast('تم تصدير التقرير ✓');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
-/* ===== ورقة القياس / الميجر — تعبئة القالب المعتمد لكل محطة (نسختان) ===== */
+/* ===== ورقة القياس / الميجر — تعبئة القالب المعتمد عبر تعديل XML مباشرة (يحافظ على المعادلات والتنسيق الشرطي والتلوين) ===== */
+function _xmlEsc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function _setCellXml(xml,ref,val,isText){
+  const reSelf=new RegExp('<c r="'+ref+'"([^>]*?)/>');
+  const reFull=new RegExp('<c r="'+ref+'"([^>]*?)>[\\s\\S]*?</c>');
+  const m=xml.match(reSelf)||xml.match(reFull);if(!m)return xml;
+  const attrs=(m[1]||'').replace(/\s+t="[^"]*"/,'');
+  const inner=isText?(' t="inlineStr"><is><t xml:space="preserve">'+_xmlEsc(val)+'</t></is>'):('><v>'+_xmlEsc(val)+'</v>');
+  return xml.replace(m[0],'<c r="'+ref+'"'+attrs+inner+'</c>');
+}
 async function _measureSheet(pid,cfg){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   toast('جارٍ تجهيز '+cfg.title+'…');
   try{
-    await ensureLib('exceljs');
+    await ensureLib('jszip');
     const{data,error}=await sb.from('entries').select('item_code,item_name,item_name_full,qty').eq('project_id',pid);
     if(error)throw error;
     const agg={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=e.item_name_full||e.item_name||'';const k=code+'|'+name;(agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);});
     const items=Object.values(agg);
     const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});
     if(!resp.ok)throw new Error('تعذّر تحميل القالب');
-    const buf=await resp.arrayBuffer();
-    const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);
-    if(cfg.keepOnly)wb.worksheets.slice().forEach(w=>{if(w.name!==cfg.sheet){try{wb.removeWorksheet(w.id);}catch(_){}}});
-    const ws=wb.getWorksheet(cfg.sheet);if(!ws)throw new Error('صفحة القياس غير موجودة في القالب');
-    if(cfg.date)ws.getCell(cfg.date).value=todayKey();
-    if(cfg.ssno)ws.getCell(cfg.ssno).value=p.code||'';
-    if(cfg.notif)ws.getCell(cfg.notif).value=p.notice_no||'';
-    if(cfg.order)ws.getCell(cfg.order).value=p.wo_number||'';
-    // القالب يبقى كما هو ببنوده المطبوعة؛ الكمية جنب البند المطابق، والبند الجديد في صف فاضي
-    const YEL={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFF00'}};
+    const zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    const path=cfg.sheetFile||'xl/worksheets/sheet1.xml';
+    let xml=await zip.file(path).async('string');
+    const S=(ref,val,isText)=>{if(ref!=null&&val!=null&&val!=='')xml=_setCellXml(xml,ref,val,isText);};
+    S(cfg.date,todayKey(),true);
+    S(cfg.ssno,p.code||'',true);
+    S(cfg.notif,p.notice_no||'',true);
+    S(cfg.order,p.wo_number||'',true);
+    // القالب يبقى كما هو؛ الكمية (رقم) جنب البند المطابق فيلوّنها التنسيق الشرطي ويعبّي الاستشاري تلقائياً، والبند الجديد في صف فاضي
     let er=cfg.extra.rows[0];
     items.forEach(it=>{const q=cfg.qty[it.code];
-      if(q){const cell=ws.getCell(q);cell.value=it.qty;if(cfg.highlight)cell.fill=YEL;
-        if(cfg.mirror){const rw=q.replace(/^[A-Za-z]+/,'');if(cfg.highlight)ws.getCell(cfg.mirror+rw).fill=YEL;}
-      }
-      else if(er<=cfg.extra.rows[1]){ws.getCell(cfg.extra.code+er).value=it.code||'';ws.getCell(cfg.extra.name+er).value=it.name||'';const qc=ws.getCell(cfg.extra.qty+er);qc.value=it.qty;if(cfg.highlight)qc.fill=YEL;er++;}
+      if(q){S(q,it.qty,false);}
+      else if(er<=cfg.extra.rows[1]){S(cfg.extra.code+er,it.code||'',true);S(cfg.extra.name+er,it.name||'',true);S(cfg.extra.qty+er,it.qty,false);er++;}
     });
-    if(cfg.printArea){try{ws.pageSetup=Object.assign({},ws.pageSetup||{},{printArea:cfg.printArea,orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:1,horizontalCentered:true,margins:{left:0.2,right:0.2,top:0.2,bottom:0.2,header:0.1,footer:0.1}});}catch(_){}}
-    const out=await wb.xlsx.writeBuffer();
-    const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    zip.file(path,xml);
+    const out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+    const url=URL.createObjectURL(out);const a=document.createElement('a');a.href=url;a.download=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
     toast('تم تجهيز '+cfg.title+' ✓ — افتحها للطباعة');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
@@ -2133,6 +2138,7 @@ function _loadScript(src){return new Promise((res,rej)=>{const el=document.creat
 const _LIBS={
   xlsx:['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX],
   exceljs:['https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js',()=>window.ExcelJS],
+  jszip:['https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js',()=>window.JSZip],
   jspdf:['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf],
   html2canvas:['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',()=>window.html2canvas]
 };
