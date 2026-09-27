@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='224';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='225';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1877,6 +1877,11 @@ async function _measureSheet(pid,cfg){
       else if(er<=cfg.extra.rows[1]){S(cfg.extra.code+er,it.code||'',true);S(cfg.extra.name+er,it.name||'',true);S(cfg.extra.qty+er,it.qty,false);er++;}
     });
     zip.file(path,xml);
+    // إزالة calcChain ومراجعه حتى ما يطلب Excel «استرداد المحتوى» — يعيد بناءه تلقائياً
+    try{if(zip.file('xl/calcChain.xml')){zip.remove('xl/calcChain.xml');
+      const ctf=zip.file('[Content_Types].xml');if(ctf){let ct=await ctf.async('string');ct=ct.replace(/<Override[^>]*calcChain\.xml[^>]*\/>/,'');zip.file('[Content_Types].xml',ct);}
+      const rlf=zip.file('xl/_rels/workbook.xml.rels');if(rlf){let rl=await rlf.async('string');rl=rl.replace(/<Relationship[^>]*calcChain\.xml[^>]*\/>/,'');zip.file('xl/_rels/workbook.xml.rels',rl);}
+    }}catch(_){}
     const out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
     const url=URL.createObjectURL(out);const a=document.createElement('a');a.href=url;a.download=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);
     toast('تم تجهيز '+cfg.title+' ✓ — افتحها للطباعة');
