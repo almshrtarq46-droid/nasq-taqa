@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='219';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='220';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1833,39 +1833,40 @@ async function printProductivityReport(period){
     toast('تم تصدير التقرير ✓');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
-/* ===== ورقة القياس (Measurement Sheet) — تعبئة القالب المعتمد لكل محطة ===== */
-async function printMeasurementSheet(pid){
+/* ===== ورقة القياس / الميجر — تعبئة القالب المعتمد لكل محطة (نسختان) ===== */
+async function _measureSheet(pid,cfg){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
-  toast('جارٍ تجهيز ورقة القياس…');
+  toast('جارٍ تجهيز '+cfg.title+'…');
   try{
     await ensureLib('exceljs');
     const{data,error}=await sb.from('entries').select('item_code,item_name,item_name_full,qty').eq('project_id',pid);
     if(error)throw error;
     const agg={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=e.item_name_full||e.item_name||'';const k=code+'|'+name;(agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);});
     const items=Object.values(agg);
-    const resp=await fetch('./measurement_template.xlsx?_v='+APP_VER,{cache:'reload'});
+    const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});
     if(!resp.ok)throw new Error('تعذّر تحميل القالب');
     const buf=await resp.arrayBuffer();
     const wb=new ExcelJS.Workbook();await wb.xlsx.load(buf);
-    wb.worksheets.slice().forEach(w=>{if(w.name!=='2021'){try{wb.removeWorksheet(w.id);}catch(_){}}});
-    const ws=wb.getWorksheet('2021');if(!ws)throw new Error('صفحة القياس غير موجودة في القالب');
-    ws.getCell('J4').value=todayKey();
-    ws.getCell('BO4').value=p.code||'';
-    ws.getCell('AV5').value=p.notice_no||'';
-    ws.getCell('BO5').value=p.wo_number||'';
-    // القالب يبقى كما هو ببنوده المطبوعة؛ نكتب الكمية جنب البند المطابق، والبند الجديد نكتبه في صف فاضي بالعمود الأوسط
-    const MS_QTY={'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'};
-    let midRow=25;
-    items.forEach(it=>{const q=MS_QTY[it.code];
+    if(cfg.keepOnly)wb.worksheets.slice().forEach(w=>{if(w.name!==cfg.sheet){try{wb.removeWorksheet(w.id);}catch(_){}}});
+    const ws=wb.getWorksheet(cfg.sheet);if(!ws)throw new Error('صفحة القياس غير موجودة في القالب');
+    if(cfg.date)ws.getCell(cfg.date).value=todayKey();
+    if(cfg.ssno)ws.getCell(cfg.ssno).value=p.code||'';
+    if(cfg.notif)ws.getCell(cfg.notif).value=p.notice_no||'';
+    if(cfg.order)ws.getCell(cfg.order).value=p.wo_number||'';
+    // القالب يبقى كما هو ببنوده المطبوعة؛ الكمية جنب البند المطابق، والبند الجديد في صف فاضي
+    let er=cfg.extra.rows[0];
+    items.forEach(it=>{const q=cfg.qty[it.code];
       if(q){ws.getCell(q).value=it.qty;}
-      else if(midRow<=39){ws.getCell('AE'+midRow).value=it.code||'';ws.getCell('AL'+midRow).value=it.name||'';ws.getCell('BB'+midRow).value=it.qty;midRow++;}
+      else if(er<=cfg.extra.rows[1]){ws.getCell(cfg.extra.code+er).value=it.code||'';ws.getCell(cfg.extra.name+er).value=it.name||'';ws.getCell(cfg.extra.qty+er).value=it.qty;er++;}
     });
     const out=await wb.xlsx.writeBuffer();
     const blob=new Blob([out],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='ورقة_قياس_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
-    toast('تم تجهيز ورقة القياس ✓ — افتحها للطباعة');
+    const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=cfg.fname+'_'+(p.code||'محطة')+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+    toast('تم تجهيز '+cfg.title+' ✓ — افتحها للطباعة');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
+function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',sheet:'2021',keepOnly:true,date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
+function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
 /* ===== تجميع صور المحطة (قبل/بعد) في PDF — صورتان لكل صفحة، اسم الملف رقم المحطة ===== */
 async function photosPDF(pid,phase){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
@@ -2422,7 +2423,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${Object.entries(byItem).map(([k,v])=>{const[c,n,u]=k.split('|');return `<tr><td>${c?c+' - ':''}${n}</td><td style="text-align:center">${fmt(v.qty)} ${u}</td>${_adm?`<td style="text-align:center">${fmt(v.rate)}</td><td style="text-align:left">${fmt(v.amount)}</td>`:''}</tr>`;}).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ورقة القياس</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
 async function viewStationPhotos(pid){
