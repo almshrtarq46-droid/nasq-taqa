@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='242';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='243';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2003,7 +2003,7 @@ async function _measureSheet(pid,cfg){
       zip.file(path,xml);
     }
     // إجبار Excel على إعادة حساب كل المعادلات (الأسعار والإجمالي) عند فتح الملف
-    try{const wbf=zip.file('xl/workbook.xml');if(wbf){let wb=await wbf.async('string');
+    if(cfg.forceCalc)try{const wbf=zip.file('xl/workbook.xml');if(wbf){let wb=await wbf.async('string');
       if(/<calcPr[^>]*\/>/.test(wb))wb=wb.replace(/<calcPr([^>]*?)\s*\/>/,(m,a)=>'<calcPr'+a.replace(/\s+fullCalcOnLoad="[^"]*"/,'')+' fullCalcOnLoad="1"/>');
       else wb=wb.replace('</workbook>','<calcPr fullCalcOnLoad="1"/></workbook>');zip.file('xl/workbook.xml',wb);}}catch(_){}
     // إزالة calcChain ومراجعه حتى ما يطلب Excel «استرداد المحتوى» — يعيد بناءه تلقائياً
@@ -2038,7 +2038,7 @@ async function _measureSheet(pid,cfg){
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
-function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
+function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
 const PDC_SERVICES=['401000027','401000013','401000019','603000018','605000006','605000007','605000008','605000011','606000011','606000013','606000014','606000018','606000023','604000002'];
 let _pdcPrices=null;
 async function _pdcLoadPrices(){if(_pdcPrices)return _pdcPrices;const r=await fetch('./pdc_prices.json?_v='+APP_VER,{cache:'reload'});_pdcPrices=await r.json();return _pdcPrices;}
