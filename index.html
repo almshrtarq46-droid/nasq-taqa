@@ -535,7 +535,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='234';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='235';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1880,7 +1880,12 @@ async function _measureSheet(pid,cfg){
     await ensureLib('jszip');
     const{data,error}=await sb.from('entries').select('item_code,item_name,item_name_full,qty').eq('project_id',pid);
     if(error)throw error;
-    const agg={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=e.item_name_full||e.item_name||'';const k=code+'|'+name;(agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);});
+    // التجميع برقم البند (مكان البند في الورقة يتحدد برقمه) — مع كشف أي رقم مسجّل بأكثر من اسم
+    const agg={},names={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim();const name=(e.item_name_full||e.item_name||'').trim();const k=code||('~'+name);
+      (agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);if(code){(names[code]=names[code]||{})[name]=(names[code][name]||0)+Number(e.qty||0);}});
+    const bad=Object.keys(names).filter(c=>Object.keys(names[c]).length>1);
+    if(bad.length){const msg=bad.map(c=>'• البند '+c+' مسجّل بأكثر من اسم:\n'+Object.entries(names[c]).map(([n,q])=>'   - '+n.slice(0,45)+' (الكمية '+q+')').join('\n')).join('\n');
+      if(!confirm('⚠️ تنبيه قبل الطباعة\n\n'+msg+'\n\nيعني فيه إدخال برقم بند غلط، والكميات بتنجمع تحت نفس الرقم في ورقة القياس.\nالأفضل تصحّح الإدخال أولاً.\n\nتبي تكمل الطباعة كذا؟')){toast('تم الإلغاء — صحّح رقم البند أولاً');return;}}
     const items=Object.values(agg);
     const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});
     if(!resp.ok)throw new Error('تعذّر تحميل القالب');
@@ -2329,6 +2334,7 @@ function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'ت�
   ${it?`<button class="btn danger" style="margin-top:9px" onclick="delCatalogItem('${it.id}')">حذف</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function saveCatalogItem(id){const name=document.getElementById('ci_name').value.trim();if(!name){toast('أدخل اسم البند');return;}
+  {const _c=document.getElementById('ci_code').value.trim();const _d=_c&&(CATALOG||[]).find(x=>String(x.code||'').trim()===_c&&x.id!==id);if(_d){toast('رقم البند '+_c+' مستخدم لبند ثاني: '+(_d.name||''));return;}}
   const rec={code:document.getElementById('ci_code').value.trim(),name,name_full:document.getElementById('ci_name_full').value.trim(),unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0,material_id:document.getElementById('ci_material').value||null,material_per_unit:parseFloat(document.getElementById('ci_matper').value)||0};
   const btn=document.getElementById('ciSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   const save=async r=>{if(id){return await sb.from('catalog_items').update(r).eq('id',id);}return await sb.from('catalog_items').insert(r);};
@@ -3285,7 +3291,7 @@ function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   const sv=document.getElementById('f_save');if(sv){sv.disabled=false;sv.textContent='رفع العمل';}
   const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
-  document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
+  document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' · ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(document.getElementById('f_qty').value);
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
   fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
