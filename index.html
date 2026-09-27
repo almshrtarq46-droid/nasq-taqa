@@ -403,6 +403,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div class="hint">القائمة المركزية للبنود (رقم البند، الاسم، الوحدة، السعر). تظهر للموظف في كل محطة بدون الأسعار.</div>
       <button class="btn" style="margin-bottom:10px" onclick="openCatalogItem()">+ إضافة بند</button>
       <input id="catSearch" placeholder="بحث بالاسم أو الرقم…" oninput="renderCatalog()" style="margin-bottom:12px">
+      <button class="btn ghost" style="margin-bottom:10px" onclick="openSecAudit()">🔍 مطابقة البنود مع جدول الشركة</button>
       <div id="catCount" style="font-size:12px;color:var(--muted);margin:0 2px 8px"></div>
       <div id="catList"></div>
     </div>
@@ -535,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='239';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='240';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1858,6 +1859,45 @@ function _mirrorConsult(xml,ref,val){
   if(/<f[\s>/]/.test(m[0]))return _setCachedVal(xml,ref,val);
   return _setCellXml(xml,ref,val,false);
 }
+/* ===== مطابقة البنود مع جدول أسعار الشركة (SEC) — كشف رقم بند لا يطابق اسمه/سعره ===== */
+let _secTbl=null;
+async function _secLoad(){if(_secTbl)return _secTbl;_secTbl=await (await fetch('./pdc_prices.json?_v='+APP_VER,{cache:'reload'})).json();return _secTbl;}
+function _arNorm(s){return String(s||'').replace(/[ً-ْـ]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^؀-ۿA-Za-z0-9]+/g,' ').replace(/\s+/g,' ').trim();}
+function _arSim(a,b){const A=new Set(_arNorm(a).split(' ').filter(Boolean)),B=new Set(_arNorm(b).split(' ').filter(Boolean));if(!A.size||!B.size)return 0;let i=0;A.forEach(w=>{if(B.has(w))i++;});return i/Math.max(A.size,B.size);}
+function _secBest(name,tbl){let best=null,bs=0;for(const c in tbl){const s=_arSim(name,tbl[c].n);if(s>bs){bs=s;best=c;}}return bs>=0.8?best:null;}
+function _secIssues(list,tbl){const out=[],seen={};
+  (list||[]).forEach(it=>{const code=String(it.code||'').trim(),name=it.name||'';const k=code+'|'+_arNorm(name);if(seen[k])return;seen[k]=1;
+    const s=code?tbl[code]:null;
+    if(!s){const b=_secBest(name,tbl);out.push({type:'missing',code,name,rate:it.rate,sug:b});return;}
+    if(s.n&&_arSim(name,s.n)<0.6){const b=_secBest(name,tbl);out.push({type:'name',code,name,rate:it.rate,secName:s.n,secP:s.p,sug:(b&&b!==code)?b:null});return;}
+    if(it.rate!=null&&it.rate!==''&&Math.abs(Number(it.rate)-Number(s.p))>0.001)out.push({type:'price',code,name,rate:it.rate,secP:s.p});});
+  return out;}
+function _secIssuesHtml(iss,tbl){const f2=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});const adm=PROFILE&&PROFILE.role==='admin';
+  return iss.map((x,i)=>{let t='';
+    if(x.type==='name')t=`<b>الرقم ${x.code}</b> مسجّل في التطبيق لبند «${_xmlEsc(x.name.slice(0,60))}»${x.rate!=null?` بسعر ${f2(x.rate)}`:''}.<br>لكن في جدول الشركة الرقم ${x.code} هو «${_xmlEsc(String(x.secName).slice(0,60))}» بسعر ${f2(x.secP)}.`+(x.sug?`<br>✅ الرقم الصحيح لهذا البند: <b>${x.sug}</b> (سعره ${f2(tbl[x.sug].p)})`:'');
+    else if(x.type==='missing')t=`<b>الرقم ${x.code||'(بدون رقم)'}</b> لبند «${_xmlEsc(x.name.slice(0,60))}» غير موجود في جدول الشركة — سعره في الورقة بيطلع 0.`+(x.sug?`<br>✅ الأقرب له: <b>${x.sug}</b> «${_xmlEsc(String(tbl[x.sug].n).slice(0,50))}» (سعره ${f2(tbl[x.sug].p)})`:'');
+    else t=`<b>الرقم ${x.code}</b> «${_xmlEsc(x.name.slice(0,50))}»: سعره في التطبيق ${f2(x.rate)} وفي جدول الشركة ${f2(x.secP)}.`;
+    const btn=(adm&&x.sug)?`<button class="btn sm" style="margin-top:6px" onclick="_secFix('${x.code}','${x.sug}',${i})">صحّح إلى ${x.sug}</button>`:'';
+    return `<div style="padding:9px;border:1px solid #f0d9b5;border-radius:9px;margin:6px 0;background:#fffaf2;font-size:13px;line-height:1.7">${t}${btn}</div>`;}).join('');}
+let _secLast=[];
+async function _secFix(oldC,newC,i){const x=_secLast[i];if(!x)return;
+  if(!confirm('تصحيح رقم البند «'+x.name.slice(0,50)+'»\nمن '+(oldC||'(بدون رقم)')+' إلى '+newC+'\n\nيعدّل البند في الكتالوج + كل الإدخالات المسجّلة به في كل المحطات. متأكد؟'))return;
+  try{const nn=_arNorm(x.name);
+    let q=sb.from('entries').select('id,item_name,item_name_full');q=oldC?q.eq('item_code',oldC):q.or('item_code.is.null,item_code.eq.');
+    const{data:es,error:e1}=await q;if(e1)throw e1;
+    const ids=(es||[]).filter(e=>_arNorm(e.item_name_full||e.item_name)===nn).map(e=>e.id);
+    for(let k=0;k<ids.length;k+=200){const{error}=await sb.from('entries').update({item_code:newC}).in('id',ids.slice(k,k+200));if(error)throw error;}
+    const cats=(CATALOG||[]).filter(c=>String(c.code||'').trim()===oldC&&(_arNorm(c.name_full||c.name)===nn||_arNorm(c.name)===nn));
+    const dup=(CATALOG||[]).find(c=>String(c.code||'').trim()===newC);let catMsg='';
+    if(cats.length&&!dup){for(const c of cats){const{error}=await sb.from('catalog_items').update({code:newC}).eq('id',c.id);if(error)throw error;}catMsg=' + الكتالوج';}
+    else if(cats.length&&dup)catMsg=' — وفي الكتالوج بند ثاني برقم '+newC+'، احذف البند المكرر «'+(cats[0].name||'')+'»';
+    await loadCatalog();closeModal();alert('✓ تم تصحيح '+ids.length+' إدخال'+catMsg+'.\nاطبع الورقة من جديد.');
+  }catch(e){alert('تعذّر التصحيح: '+(e&&e.message||e));}}
+async function openSecAudit(){try{const tbl=await _secLoad();await loadCatalog();
+  const list=(CATALOG||[]).map(c=>({code:c.code,name:c.name_full||c.name,rate:c.rate}));
+  const iss=_secIssues(list,tbl);_secLast=iss;
+  openModal(`<h3 style="margin:0 0 8px">مطابقة الكتالوج مع جدول الشركة</h3><div style="font-size:13px;color:var(--muted);margin-bottom:6px">${CATALOG.length} بند · ${iss.length?iss.length+' ملاحظة':'كل البنود مطابقة ✓'}</div>${_secIssuesHtml(iss,tbl)}<button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}}
 function _msDownload(){const f=window._msFile;if(!f)return;const url=URL.createObjectURL(f.blob);const a=document.createElement('a');a.href=url;a.download=f.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}
 /* نسخ خط ومحاذاة خلية مرجعية إلى خلية هدف (مع إبقاء حدودها/تعبئتها) — بإضافة نمط جديد في styles.xml */
 function _likeStyle(sty,xml,target,ref){
@@ -1967,13 +2007,15 @@ async function _measureSheet(pid,cfg){
       if(app&&Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — راجع أسعار البنود');}
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
     window._msFile={blob:out,name:fname};
-    if(tc===null&&!warn.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
+    let iss=[],tb=null;try{tb=prTbl||await _secLoad();iss=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb);_secLast=iss;}catch(_){}
+    if(tc===null&&!warn.length&&!iss.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
     // نافذة ثابتة داخل التطبيق (تبقى ظاهرة بعد إغلاق معاينة الملف) — التنزيل من زرّها
-    const ok=!warn.length;
+    const ok=!warn.length&&!iss.length;
     const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
     openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
       ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${app?row('إجمالي المحطة في التطبيق',f2(app)+' ر.س','#7a4a12'):''}</table>`:''}
-      <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ متطابقة':'⚠️ راجع قبل الإرسال:<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>')}</div>
+      <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
+      ${iss.length?`<div style="font-weight:800;margin:4px 0">أرقام بنود لا تطابق جدول الشركة:</div>${_secIssuesHtml(iss,tb)}`:''}
       <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
       <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
