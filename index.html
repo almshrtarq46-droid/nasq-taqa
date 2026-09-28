@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='243';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='244';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1928,6 +1928,12 @@ async function _measureSheet(pid,cfg){
     if(error)throw error;
     // السعر والمبلغ في جدول entry_finance (مثل بطاقة المحطة)
     data=(data||[]).map(e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{...e,rate:f&&f.rate!=null?Number(f.rate):null,amount:f&&f.amount!=null?Number(f.amount):null};});
+    // أحدث رقم واسم لكل بند من الكتالوج (لو تعدّل البند بعد رفع المحطة) + مزامنة الإدخالات القديمة
+    try{await loadCatalog();}catch(_){}
+    {const byId={};(CATALOG||[]).forEach(c=>{byId[c.id]=c;});const stale=[];
+      (data||[]).forEach(e=>{const c=e.item_id&&byId[e.item_id];if(!c)return;const code=String(c.code||'').trim(),nf=c.name_full||c.name||'';
+        if(code!==String(e.item_code||'').trim()||nf!==(e.item_name_full||'')||(c.name||'')!==(e.item_name||'')){e.item_code=code;e.item_name=c.name;e.item_name_full=nf;stale.push(e);}});
+      if(stale.length&&PROFILE&&PROFILE.role==='admin'){for(const e of stale){try{await sb.from('entries').update({item_code:e.item_code,item_name:e.item_name,item_name_full:e.item_name_full}).eq('id',e.id);}catch(_){}}}}
     // تصحيح تلقائي: أي بند رقمه لا يطابق اسمه في جدول الشركة يُكتب في الورقة برقمه الصحيح (بالاسم) مثل باقي البنود
     const autoFix=[];let tbA=null;try{tbA=await _secLoad();}catch(_){}
     if(tbA){const seenF={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'';const s=code?tbA[code]:null;
@@ -2446,7 +2452,10 @@ async function saveCatalogItem(id){const name=document.getElementById('ci_name')
   try{let{error}=await save(rec);
     if(error&&/material/i.test(error.message||'')){delete rec.material_id;delete rec.material_per_unit;({error}=await save(rec));toast('حُفظ البند — لتفعيل ربط المخزون نفّذ كود المخزون (SQL)');}
     if(error)throw error;
-    closeModal();toast('تم الحفظ ✓');loadCatalogAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
+    // تحديث كل الإدخالات السابقة لهذا البند بالرقم/الاسم الجديد (أول بأول)
+    let upd='';if(id){const{error:ue,count}=await sb.from('entries').update({item_code:rec.code,item_name:rec.name,item_name_full:rec.name_full||rec.name},{count:'exact'}).eq('item_id',id);
+      upd=ue?' — تنبيه: تعذّر تحديث الإدخالات السابقة ('+ue.message+')':(count?' + تحديث '+count+' إدخال':'');}
+    closeModal();toast('تم الحفظ ✓'+upd);loadCatalogAdmin();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function delCatalogItem(id){const{error}=await sb.from('catalog_items').delete().eq('id',id);if(error){toast('خطأ: '+error.message);return;}closeModal();toast('تم الحذف');loadCatalogAdmin();}
 
 /* ===== المخزون / الجرد ===== */
