@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='246';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='247';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -758,6 +758,7 @@ const DOC_TYPES=[
 async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
 function minutesLate(now){if(!SETTINGS||!SETTINGS.work_start)return 0;const[h,m]=SETTINGS.work_start.split(':').map(Number);const start=new Date(now);start.setHours(h,m,0,0);return Math.max(0,Math.round((now.getTime()-start.getTime())/60000));}
 function lateHours(now){const ml=minutesLate(now);const s=SETTINGS||DEF_SETTINGS;const t2=Number(s.late_t2_min??30),t2h=Number(s.late_t2_hours??3),t1=Number(s.late_t1_min??15),t1h=Number(s.late_t1_hours??1);if(ml>=t2)return t2h;if(ml>=t1)return t1h;return 0;}
+async function _fetchAll(build){const PAGE=1000;let out=[],from=0;for(let i=0;i<50;i++){const{data,error}=await build().range(from,from+PAGE-1);if(error)throw error;const b=data||[];out=out.concat(b);if(b.length<PAGE)break;from+=PAGE;}return out;}
 async function loadProjectsCache(){
   if(PROFILE.role==='admin'){const{data}=await sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false});PROJECTS=data||[];}
   else{const{data:pr}=await sb.from('projects').select('*').order('created_at',{ascending:false});
@@ -1785,8 +1786,7 @@ async function printProductivityReport(period){
   closeModal();toast('جارٍ تجهيز التقرير…');
   try{
     await ensureLib('jspdf','html2canvas');
-    const{data,error}=await sb.from('entries').select('*, entry_finance(amount)').order('work_date',{ascending:false});
-    if(error)throw error;
+    const data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(amount)').order('work_date',{ascending:false}));
     let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0}));
     const today=todayKey();let title,periodLabel;
     const wd=e=>String(e.work_date||'').slice(0,10);
@@ -2603,8 +2603,7 @@ function _stTypeSummary(ids){
 }
 async function loadWorkOrders(){
   const period=document.getElementById('wo_period').value;
-  const{data,error}=await sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false});
-  if(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}
+  let data;try{data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false}));}catch(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}
   let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
   if(period!=='all'){const wdOf=e=>String(e.work_date||'').slice(0,10);
     if(period==='today'){const t=todayKey();rows=rows.filter(e=>wdOf(e)===t);}
