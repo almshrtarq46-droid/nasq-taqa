@@ -467,7 +467,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('beforeInput').click()">📷 إضافة صور قبل (تقدر تختار عدة صور)</button>
         <label>البنود المنجزة</label>
         <input id="f_item_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="loadFieldItems()" style="margin-bottom:6px">
-        <div class="row" style="margin-bottom:6px"><select id="f_item" style="flex:2"></select><input type="number" id="f_qty" inputmode="decimal" placeholder="الكمية"><button class="btn sm" style="flex:none;width:46px" onclick="addFieldItem()">+</button></div>
+        <select id="f_item" style="width:100%;margin-bottom:6px"></select><div class="row" style="margin-bottom:6px"><input type="text" id="f_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية (مثال: 2)" style="flex:1;min-width:0;font-size:18px;text-align:center"><button class="btn sm" style="flex:none;width:110px" onclick="addFieldItem()">+ إضافة</button></div>
         <div id="itemsAdded" style="margin-bottom:14px"></div>
         <label>صور بعد التنفيذ</label>
         <div id="afterThumbs" class="thumbs"></div>
@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='244';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='245';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -574,6 +574,12 @@ const _dp={input:null,view:null,open:false};
 const DP_M=['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const DP_WD=['أحد','إثن','ثلا','أرب','خمي','جمع','سبت'];
 function isoOf(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+/* الأرقام: تحويل كل حقول الأرقام لنص + تحويل الأرقام العربية (٠-٩) والفاصلة العشرية تلقائياً لأرقام إنجليزية */
+function _toEnNum(s){return String(s==null?'':s).replace(/[\u0660-\u0669\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)&15)).replace(/[٫,،]/g,'.').replace(/[^\d.\-]/g,'');}
+function enforceEnNums(root){(root||document).querySelectorAll('input[type=number]').forEach(el=>{if(el.dataset.num)return;el.dataset.num='1';el.type='text';if(!el.getAttribute('inputmode'))el.setAttribute('inputmode','decimal');el.setAttribute('autocomplete','off');});}
+document.addEventListener('input',e=>{const el=e.target;if(el&&el.tagName==='INPUT'&&(el.dataset.num||el.id==='f_qty')){const v=_toEnNum(el.value);if(v!==el.value)el.value=v;}},true);
+(function(){let t=0;const run=()=>{t=0;enforceEnNums(document);};const go=()=>{if(!t)t=requestAnimationFrame(run);};
+  if(document.body){new MutationObserver(go).observe(document.body,{childList:true,subtree:true});run();}else document.addEventListener('DOMContentLoaded',()=>{new MutationObserver(go).observe(document.body,{childList:true,subtree:true});run();});})();
 function enforceEnDates(root){(root||document).querySelectorAll('input[type=date]').forEach(el=>{if(el.dataset.dp)return;el.dataset.dp='1';el.type='text';el.readOnly=true;el.setAttribute('inputmode','none');el.classList.add('dp-input');el.addEventListener('click',ev=>{ev.stopPropagation();openDatePicker(el);});});
   (root||document).querySelectorAll('input[type=time]').forEach(el=>{el.setAttribute('lang','en-GB');el.setAttribute('dir','ltr');});
   (root||document).querySelectorAll('input[type=number]').forEach(el=>{if(el.dataset.num)return;el.dataset.num='1';const ph=el.getAttribute('placeholder');el.type='text';el.setAttribute('inputmode','decimal');el.setAttribute('dir','ltr');el.style.textAlign='right';if(ph)el.setAttribute('placeholder',ph);el.value=toLatinDigits(el.value);});
@@ -3406,7 +3412,7 @@ function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' · ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
-function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(document.getElementById('f_qty').value);
+function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(_toEnNum(document.getElementById('f_qty').value));
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
   fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
 function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
