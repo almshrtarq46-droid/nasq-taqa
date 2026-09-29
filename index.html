@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='248';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='249';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2768,19 +2768,29 @@ async function exportDailyReport(){
   const d=(document.getElementById('dr_date').value||todayKey()).slice(0,10);
   const btn=document.getElementById('drBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   try{await ensureLib('xlsx');
-    const data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit,work_date').eq('work_date',d));
+    const data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)').eq('work_date',d));
     if(!data.length){toast('لا توجد أعمال في '+d);if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
-    // تجميع حسب: أمر العمل + المحطة + رقم البند + الاسم + الوحدة
-    const agg={};data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};
-      const wo=p.wo_number||'',st=p.code||'',code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'',u=e.unit||'';
-      const k=wo+'|'+st+'|'+code+'|'+nm+'|'+u;(agg[k]=agg[k]||{wo,st,code,nm,u,qty:0}).qty+=Number(e.qty||0);});
-    const list=Object.values(agg).sort((a,b)=>String(a.wo).localeCompare(String(b.wo))||String(a.st).localeCompare(String(b.st))||String(a.code).localeCompare(String(b.code)));
-    const aoa=[['تقرير الإنتاجية اليومي — نسق الطاقة'],['التاريخ',d,'','عدد الأسطر',list.length],[],
-      ['م','رقم أمر العمل','رقم المحطة','رقم البند','اسم البند','الكمية','الوحدة']];
-    list.forEach((r,i)=>aoa.push([i+1,r.wo,r.st,r.code,r.nm,r.qty,r.u]));
+    const rd=e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{rate:f&&f.rate!=null?Number(f.rate):0,amount:f&&f.amount!=null?Number(f.amount):null};};
+    // تجميع حسب أمر العمل ← ثم (المحطة+البند+الوحدة+السعر)
+    const woMap={};data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};const fin=rd(e);
+      const wo=p.wo_number||'(بدون أمر عمل)',st=p.code||'',code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'',u=e.unit||'',rate=fin.rate,q=Number(e.qty||0);
+      const amt=fin.amount!=null?fin.amount:q*rate;const g=(woMap[wo]=woMap[wo]||{rows:{},total:0});
+      const k=st+'|'+code+'|'+nm+'|'+u+'|'+rate;(g.rows[k]=g.rows[k]||{st,code,nm,u,rate,qty:0,amount:0});g.rows[k].qty+=q;g.rows[k].amount+=amt;g.total+=amt;});
+    const wos=Object.keys(woMap).sort((a,b)=>String(a).localeCompare(String(b)));
+    const NC=8;const aoa=[['تقرير الإنتاجية اليومي — نسق الطاقة'],['التاريخ',d,'','عدد أوامر العمل',wos.length],[]];
+    const merges=[{s:{r:0,c:0},e:{r:0,c:NC-1}}];let grand=0;
+    wos.forEach(wo=>{const g=woMap[wo];const rows=Object.values(g.rows).sort((a,b)=>String(a.st).localeCompare(String(b.st))||String(a.code).localeCompare(String(b.code)));
+      const stset=[...new Set(rows.map(r=>r.st).filter(Boolean))];
+      merges.push({s:{r:aoa.length,c:0},e:{r:aoa.length,c:NC-1}});
+      aoa.push(['أمر عمل: '+wo+(stset.length?'   —   محطة: '+stset.join('، '):'')]);
+      aoa.push(['م','رقم المحطة','رقم البند','اسم البند','الكمية','الوحدة','سعر الوحدة','الإجمالي']);
+      rows.forEach((r,i)=>aoa.push([i+1,r.st,r.code,r.nm,r.qty,r.u,r.rate,Math.round(r.amount*100)/100]));
+      aoa.push(['','','','','','','إجمالي أمر العمل',Math.round(g.total*100)/100]);
+      aoa.push([]);grand+=g.total;});
+    aoa.push(['','','','','','','الإجمالي العام لليوم',Math.round(grand*100)/100]);
     const ws=XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols']=[{wch:5},{wch:16},{wch:12},{wch:13},{wch:42},{wch:9},{wch:8}];
-    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
+    ws['!cols']=[{wch:5},{wch:12},{wch:13},{wch:42},{wch:9},{wch:8},{wch:11},{wch:13}];
+    ws['!merges']=merges;
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'الإنتاجية');
     XLSX.writeFile(wb,'تقرير_يومي_'+d+'.xlsx');
     closeModal();toast('تم تصدير تقرير '+d+' ✓');
