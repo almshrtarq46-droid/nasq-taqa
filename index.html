@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='256';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='257';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2827,7 +2827,7 @@ function _drWorkbook(secs,title,info){
   ws.mergeCells(r,1,r,7);let ic=ws.getCell(r,1);ic.value=info;ic.font={name:'Arial',size:11,bold:true};ic.fill=FILL_INFO;ic.alignment=CEN;ws.getRow(r).height=20;r++;r++;
   let grand=0;const money='#,##0.00',qf='#,##0.###';
   secs.forEach(g=>{const rows=Object.values(g.rows).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
-    ws.mergeCells(r,1,r,7);const wc=ws.getCell(r,1);wc.value='أمر عمل: '+g.wo+'      محطة: '+g.st+(g.ty?'  ('+g.ty+')':'')+(g.stage?'      — '+g.stage:'');wc.font=F_WO;wc.fill=FILL_WO;wc.alignment=RGT;ws.getRow(r).height=22;r++;
+    ws.mergeCells(r,1,r,7);const wc=ws.getCell(r,1);wc.value='أمر عمل: '+g.wo+'      محطة: '+g.st+(g.ty?'  ('+g.ty+')':'');wc.font=F_WO;wc.fill=FILL_WO;wc.alignment=RGT;ws.getRow(r).height=22;r++;
     set(r,HEADERS,F_HEAD,FILL_H,CEN);ws.getRow(r).height=20;r++;
     rows.forEach((x,i)=>{set(r,[i+1,x.code,x.nm,x.qty,x.u,x.rate,Math.round(x.amount*100)/100],F_CELL,null,null,[null,null,null,qf,null,money,money]);ws.getCell(r,3).alignment=RGT;r++;});
     ws.mergeCells(r,1,r,6);const sa=ws.getCell(r,1);sa.value='إجمالي أمر العمل '+g.wo;sa.font=F_SUB;sa.fill=FILL_SUB;sa.alignment=RGT;sa.border=BOX;
