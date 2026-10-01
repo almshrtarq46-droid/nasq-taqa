@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='254';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='255';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2758,7 +2758,7 @@ function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;cons
 async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
-function openDailyReport(){const t=todayKey();window._drMode='day';
+function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];
   openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل)</h3>
    <div class="seg"><button class="on" id="drTabDay" onclick="drMode('day')">يومي</button><button id="drTabMan" onclick="drMode('manual')">حسب المحطات</button></div>
    <div id="drDay">
@@ -2766,13 +2766,20 @@ function openDailyReport(){const t=todayKey();window._drMode='day';
      <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">يطلع البنود المنجزة في هذا اليوم للمحطات التي لها رقم أمر عمل.</p>
    </div>
    <div id="drMan" style="display:none">
-     <div class="field" style="margin-bottom:6px"><label>أرقام المحطات</label><input id="dr_stations" inputmode="numeric" placeholder="مثال: 2384 36544 54530"></div>
-     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب أرقام المحطات مفصولة بمسافة أو فاصلة. يطلع كامل بنود كل محطة (كل الأيام) مع الإجمالي.</p>
+     <label>أرقام المحطات</label>
+     <div class="row" style="margin-bottom:6px"><input id="dr_st_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();drAddStation();}"><button class="btn sm" style="flex:none;width:96px" onclick="drAddStation()">➕ إضافة</button></div>
+     <div id="dr_st_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
+     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب رقم المحطة واضغط «إضافة». كرّر لكل محطة. يطلع كامل بنود كل محطة (كل الأيام) مع الإجمالي.</p>
    </div>
    <button class="btn" id="drBtn" onclick="exportDailyReport()">⬇️ تصدير اكسل</button>
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function drMode(m){window._drMode=m;document.getElementById('drTabDay').classList.toggle('on',m==='day');document.getElementById('drTabMan').classList.toggle('on',m==='manual');
   document.getElementById('drDay').style.display=m==='day'?'block':'none';document.getElementById('drMan').style.display=m==='manual'?'block':'none';}
+function drAddStation(){const inp=document.getElementById('dr_st_input');const raw=(inp.value||'').replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));const nums=raw.match(/\d+/g)||[];window._drStations=window._drStations||[];let added=0;
+  nums.forEach(n=>{if(!window._drStations.includes(n)){window._drStations.push(n);added++;}});inp.value='';drRenderStations();if(!added&&nums.length)toast('الرقم مضاف مسبقاً');try{inp.focus();}catch(_){}}
+function drDelStation(n){window._drStations=(window._drStations||[]).filter(x=>x!==n);drRenderStations();}
+function drRenderStations(){const box=document.getElementById('dr_st_list');if(!box)return;const list=window._drStations||[];
+  box.innerHTML=list.length?list.map(n=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:14px">${n}<span onclick="drDelStation('${n}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف محطات بعد</span>';}
 async function exportDailyReport(){
   const mode=window._drMode||'day';
   const btn=document.getElementById('drBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
@@ -2780,9 +2787,8 @@ async function exportDailyReport(){
     const rd=e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{rate:f&&f.rate!=null?Number(f.rate):0,amount:f&&f.amount!=null?Number(f.amount):null};};
     let data,title,info,fname,noWo=0,notFound=[];
     if(mode==='manual'){
-      const raw=(document.getElementById('dr_stations').value||'').replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));
-      const codes=[...new Set((raw.match(/\d+/g)||[]))];
-      if(!codes.length){toast('اكتب رقم محطة واحد على الأقل');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
+      const codes=[...new Set(window._drStations||[])];
+      if(!codes.length){toast('أضف رقم محطة واحد على الأقل');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
       const idByCode={};const codeSet=new Set(codes);const pids=[];(PROJECTS||[]).forEach(p=>{const c=String(p.code||'').trim();if(codeSet.has(c)){idByCode[c]=p.id;pids.push(p.id);}});
       notFound=codes.filter(c=>!idByCode[c]);
       if(!pids.length){toast('لم يُعثر على أي محطة بهذه الأرقام');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
