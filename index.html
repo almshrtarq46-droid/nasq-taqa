@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='255';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='256';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2823,7 +2823,7 @@ function _drWorkbook(secs,title,info){
   ws.columns=[{width:5},{width:15},{width:46},{width:10},{width:8},{width:12},{width:14}];
   const HEADERS=['م','رقم البند','اسم البند','الكمية','الوحدة','سعر الوحدة (ر.س)','الإجمالي (ر.س)'];
   let r=1;const set=(row,vals,f,fill,al,fmtCol)=>{vals.forEach((v,i)=>{const c=ws.getCell(row,i+1);if(v!==null&&v!==undefined)c.value=v;if(f)c.font=f;if(fill)c.fill=fill;c.alignment=al||CEN;c.border=BOX;if(fmtCol&&fmtCol[i])c.numFmt=fmtCol[i];});};
-  ws.mergeCells(r,1,r,7);let tc=ws.getCell(r,1);tc.value=title+' — نسق الطاقة';tc.font=F_TITLE;tc.fill=FILL_T;tc.alignment=CEN;ws.getRow(r).height=28;r++;
+  ws.mergeCells(r,1,r,7);let tc=ws.getCell(r,1);tc.value='تقرير نسق الطاقة';tc.font=F_TITLE;tc.fill=FILL_T;tc.alignment=CEN;ws.getRow(r).height=28;r++;
   ws.mergeCells(r,1,r,7);let ic=ws.getCell(r,1);ic.value=info;ic.font={name:'Arial',size:11,bold:true};ic.fill=FILL_INFO;ic.alignment=CEN;ws.getRow(r).height=20;r++;r++;
   let grand=0;const money='#,##0.00',qf='#,##0.###';
   secs.forEach(g=>{const rows=Object.values(g.rows).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
