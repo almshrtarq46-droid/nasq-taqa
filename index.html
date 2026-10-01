@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='253';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='254';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2634,7 +2634,7 @@ async function loadWorkOrders(){
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
   <div class="row" style="margin-bottom:8px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>
-  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (الأوامر الصادرة — اكسل)</button>
+  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
     <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
@@ -2758,50 +2758,78 @@ function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;cons
 async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
-function openDailyReport(){
-  openModal(`<h3 style="margin:0 0 6px">تقرير المقاول — الأوامر الصادرة</h3>
-   <p style="color:var(--muted);font-size:13px;line-height:1.75;margin-bottom:12px">ملف اكسل مرتّب: كل أمر عمل وصل مرحلة «صدور أمر العمل» فأكثر، في قسم مستقل ببنوده وكمياته وأسعاره وإجماليه الكامل، والإجمالي العام في الأسفل. تُستبعد المحطات بدون أمر عمل، وأوامر العمل اللي لسا ما صدرت.</p>
+function openDailyReport(){const t=todayKey();window._drMode='day';
+  openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل)</h3>
+   <div class="seg"><button class="on" id="drTabDay" onclick="drMode('day')">يومي</button><button id="drTabMan" onclick="drMode('manual')">حسب المحطات</button></div>
+   <div id="drDay">
+     <div class="field" style="margin-bottom:6px"><label>التاريخ</label><input type="date" id="dr_date" value="${t}"></div>
+     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">يطلع البنود المنجزة في هذا اليوم للمحطات التي لها رقم أمر عمل.</p>
+   </div>
+   <div id="drMan" style="display:none">
+     <div class="field" style="margin-bottom:6px"><label>أرقام المحطات</label><input id="dr_stations" inputmode="numeric" placeholder="مثال: 2384 36544 54530"></div>
+     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب أرقام المحطات مفصولة بمسافة أو فاصلة. يطلع كامل بنود كل محطة (كل الأيام) مع الإجمالي.</p>
+   </div>
    <button class="btn" id="drBtn" onclick="exportDailyReport()">⬇️ تصدير اكسل</button>
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+function drMode(m){window._drMode=m;document.getElementById('drTabDay').classList.toggle('on',m==='day');document.getElementById('drTabMan').classList.toggle('on',m==='manual');
+  document.getElementById('drDay').style.display=m==='day'?'block':'none';document.getElementById('drMan').style.display=m==='manual'?'block':'none';}
 async function exportDailyReport(){
+  const mode=window._drMode||'day';
   const btn=document.getElementById('drBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   try{await ensureLib('exceljs');
-    const ISSUED_IDX=WO_STAGES.indexOf('صدور أمر العمل');
-    const data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)'));
     const rd=e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{rate:f&&f.rate!=null?Number(f.rate):0,amount:f&&f.amount!=null?Number(f.amount):null};};
-    let noWo=0,notIssued=0;const secMap={};data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};const wo=String(p.wo_number||'').trim();
-      if(!wo){noWo++;return;}const stage=p.wo_stage||'قيد التنفيذ';if(WO_STAGES.indexOf(stage)<ISSUED_IDX){notIssued++;return;}
-      const st=p.code||'',ty=p.station_type||'',fin=rd(e),code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'',u=e.unit||'',rate=fin.rate,q=Number(e.qty||0),amt=fin.amount!=null?fin.amount:q*rate;
-      const sk=wo+'\u0001'+st;const g=(secMap[sk]=secMap[sk]||{wo,st,ty,stage,rows:{},total:0});
+    let data,title,info,fname,noWo=0,notFound=[];
+    if(mode==='manual'){
+      const raw=(document.getElementById('dr_stations').value||'').replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));
+      const codes=[...new Set((raw.match(/\d+/g)||[]))];
+      if(!codes.length){toast('اكتب رقم محطة واحد على الأقل');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
+      const idByCode={};const codeSet=new Set(codes);const pids=[];(PROJECTS||[]).forEach(p=>{const c=String(p.code||'').trim();if(codeSet.has(c)){idByCode[c]=p.id;pids.push(p.id);}});
+      notFound=codes.filter(c=>!idByCode[c]);
+      if(!pids.length){toast('لم يُعثر على أي محطة بهذه الأرقام');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
+      const pidSet=new Set(pids);const all=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)'));
+      data=all.filter(e=>pidSet.has(e.project_id));
+      title='تقرير المقاول — محطات محددة';info='تاريخ التقرير: '+todayKey()+'     |     عدد المحطات المطلوبة: '+codes.length;fname='تقرير_محطات_'+todayKey();
+    }else{
+      const d=(document.getElementById('dr_date').value||todayKey()).slice(0,10);
+      data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)').eq('work_date',d));
+      title='تقرير المقاول اليومي';info='التاريخ: '+d;fname='تقرير_يومي_'+d;
+    }
+    const secMap={};data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};const wo=String(p.wo_number||'').trim();
+      if(mode==='day'&&!wo){noWo++;return;}
+      const st=p.code||'',ty=p.station_type||'',stage=p.wo_stage||'',fin=rd(e),code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'',u=e.unit||'',rate=fin.rate,q=Number(e.qty||0),amt=fin.amount!=null?fin.amount:q*rate;
+      const sk=(wo||'—')+'\u0001'+st;const g=(secMap[sk]=secMap[sk]||{wo:wo||'—',st,ty,stage,rows:{},total:0});
       const k=code+'|'+nm+'|'+u+'|'+rate;(g.rows[k]=g.rows[k]||{code,nm,u,rate,qty:0,amount:0});g.rows[k].qty+=q;g.rows[k].amount+=amt;g.total+=amt;});
     const secs=Object.values(secMap).sort((a,b)=>String(a.wo).localeCompare(String(b.wo))||String(a.st).localeCompare(String(b.st)));
-    if(!secs.length){toast('لا توجد أوامر عمل صادرة');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
-    const F_TITLE={name:'Arial',size:15,bold:true,color:{argb:'FFFFFFFF'}},F_WO={name:'Arial',size:12,bold:true,color:{argb:'FFFFFFFF'}},
-      F_HEAD={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}},F_CELL={name:'Arial',size:11},F_SUB={name:'Arial',size:11,bold:true},F_GRAND={name:'Arial',size:13,bold:true};
-    const FILL_T={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F6B4F'}},FILL_WO={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F6F4A'}},
-      FILL_H={type:'pattern',pattern:'solid',fgColor:{argb:'FF12343B'}},FILL_SUB={type:'pattern',pattern:'solid',fgColor:{argb:'FFDDEBE3'}},FILL_G={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE699'}},FILL_INFO={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}};
-    const CEN={horizontal:'center',vertical:'center'},RGT={horizontal:'right',vertical:'center'},BOX={top:{style:'thin',color:{argb:'FFBFBFBF'}},left:{style:'thin',color:{argb:'FFBFBFBF'}},bottom:{style:'thin',color:{argb:'FFBFBFBF'}},right:{style:'thin',color:{argb:'FFBFBFBF'}}};
-    const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('تقرير المقاول',{views:[{rightToLeft:true,showGridLines:false}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});
-    ws.columns=[{width:5},{width:15},{width:46},{width:10},{width:8},{width:12},{width:14}];
-    const HEADERS=['م','رقم البند','اسم البند','الكمية','الوحدة','سعر الوحدة (ر.س)','الإجمالي (ر.س)'];
-    let r=1;const set=(row,vals,f,fill,al,fmtCol)=>{vals.forEach((v,i)=>{const c=ws.getCell(row,i+1);if(v!==null&&v!==undefined)c.value=v;if(f)c.font=f;if(fill)c.fill=fill;c.alignment=al||CEN;c.border=BOX;if(fmtCol&&fmtCol[i])c.numFmt=fmtCol[i];});};
-    ws.mergeCells(r,1,r,7);let tc=ws.getCell(r,1);tc.value='تقرير المقاول — الأوامر الصادرة — نسق الطاقة';tc.font=F_TITLE;tc.fill=FILL_T;tc.alignment=CEN;ws.getRow(r).height=28;r++;
-    ws.mergeCells(r,1,r,7);let ic=ws.getCell(r,1);ic.value='تاريخ التقرير: '+todayKey()+'     |     عدد المحطات: '+secs.length;ic.font={name:'Arial',size:11,bold:true};ic.fill=FILL_INFO;ic.alignment=CEN;ws.getRow(r).height=20;r++;
-    r++;
-    let grand=0;const money='#,##0.00',qf='#,##0.###';
-    secs.forEach(g=>{const rows=Object.values(g.rows).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
-      ws.mergeCells(r,1,r,7);const wc=ws.getCell(r,1);wc.value='أمر عمل: '+g.wo+'      محطة: '+g.st+(g.ty?'  ('+g.ty+')':'')+'      — '+g.stage;wc.font=F_WO;wc.fill=FILL_WO;wc.alignment=RGT;ws.getRow(r).height=22;r++;
-      set(r,HEADERS,F_HEAD,FILL_H,CEN);ws.getRow(r).height=20;r++;
-      rows.forEach((x,i)=>{set(r,[i+1,x.code,x.nm,x.qty,x.u,x.rate,Math.round(x.amount*100)/100],F_CELL,null,null,[null,null,null,qf,null,money,money]);ws.getCell(r,3).alignment=RGT;r++;});
-      ws.mergeCells(r,1,r,6);const sa=ws.getCell(r,1);sa.value='إجمالي أمر العمل '+g.wo;sa.font=F_SUB;sa.fill=FILL_SUB;sa.alignment=RGT;sa.border=BOX;
-      const sb2=ws.getCell(r,7);sb2.value=Math.round(g.total*100)/100;sb2.font=F_SUB;sb2.fill=FILL_SUB;sb2.alignment=CEN;sb2.border=BOX;sb2.numFmt=money;ws.getRow(r).height=18;r++;
-      grand+=g.total;r++;});
-    ws.mergeCells(r,1,r,6);const ga=ws.getCell(r,1);ga.value='الإجمالي العام (كل الأوامر الصادرة)';ga.font=F_GRAND;ga.fill=FILL_G;ga.alignment=RGT;ga.border=BOX;
-    const gb=ws.getCell(r,7);gb.value=Math.round(grand*100)/100;gb.font=F_GRAND;gb.fill=FILL_G;gb.alignment=CEN;gb.border=BOX;gb.numFmt=money;ws.getRow(r).height=24;
+    if(!secs.length){toast(mode==='manual'?'لا توجد بنود لهذه المحطات':'لا توجد أعمال في هذا اليوم');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
+    const wb=_drWorkbook(secs,title,info+'     |     عدد المحطات: '+secs.length);
     const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='تقرير_المقاول_'+todayKey()+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
-    closeModal();toast('تم التصدير ✓ — '+secs.length+' أمر عمل صادر'+(notIssued?' (استُبعدت أوامر لم تصدر بعد)':''));
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+    closeModal();toast('تم التصدير ✓ — '+secs.length+' محطة'+(notFound.length?' (لم تُوجد: '+notFound.join('، ')+')':'')+(noWo?' (استُبعد '+noWo+' بدون أمر عمل)':''));
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}}
+}
+function _drWorkbook(secs,title,info){
+  const F_TITLE={name:'Arial',size:15,bold:true,color:{argb:'FFFFFFFF'}},F_WO={name:'Arial',size:12,bold:true,color:{argb:'FFFFFFFF'}},
+    F_HEAD={name:'Arial',size:11,bold:true,color:{argb:'FFFFFFFF'}},F_CELL={name:'Arial',size:11},F_SUB={name:'Arial',size:11,bold:true},F_GRAND={name:'Arial',size:13,bold:true};
+  const FILL_T={type:'pattern',pattern:'solid',fgColor:{argb:'FF0F6B4F'}},FILL_WO={type:'pattern',pattern:'solid',fgColor:{argb:'FF1F6F4A'}},
+    FILL_H={type:'pattern',pattern:'solid',fgColor:{argb:'FF12343B'}},FILL_SUB={type:'pattern',pattern:'solid',fgColor:{argb:'FFDDEBE3'}},FILL_G={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFE699'}},FILL_INFO={type:'pattern',pattern:'solid',fgColor:{argb:'FFF2F2F2'}};
+  const CEN={horizontal:'center',vertical:'center'},RGT={horizontal:'right',vertical:'center'},BOX={top:{style:'thin',color:{argb:'FFBFBFBF'}},left:{style:'thin',color:{argb:'FFBFBFBF'}},bottom:{style:'thin',color:{argb:'FFBFBFBF'}},right:{style:'thin',color:{argb:'FFBFBFBF'}}};
+  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('تقرير المقاول',{views:[{rightToLeft:true,showGridLines:false}],pageSetup:{paperSize:9,orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0}});
+  ws.columns=[{width:5},{width:15},{width:46},{width:10},{width:8},{width:12},{width:14}];
+  const HEADERS=['م','رقم البند','اسم البند','الكمية','الوحدة','سعر الوحدة (ر.س)','الإجمالي (ر.س)'];
+  let r=1;const set=(row,vals,f,fill,al,fmtCol)=>{vals.forEach((v,i)=>{const c=ws.getCell(row,i+1);if(v!==null&&v!==undefined)c.value=v;if(f)c.font=f;if(fill)c.fill=fill;c.alignment=al||CEN;c.border=BOX;if(fmtCol&&fmtCol[i])c.numFmt=fmtCol[i];});};
+  ws.mergeCells(r,1,r,7);let tc=ws.getCell(r,1);tc.value=title+' — نسق الطاقة';tc.font=F_TITLE;tc.fill=FILL_T;tc.alignment=CEN;ws.getRow(r).height=28;r++;
+  ws.mergeCells(r,1,r,7);let ic=ws.getCell(r,1);ic.value=info;ic.font={name:'Arial',size:11,bold:true};ic.fill=FILL_INFO;ic.alignment=CEN;ws.getRow(r).height=20;r++;r++;
+  let grand=0;const money='#,##0.00',qf='#,##0.###';
+  secs.forEach(g=>{const rows=Object.values(g.rows).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+    ws.mergeCells(r,1,r,7);const wc=ws.getCell(r,1);wc.value='أمر عمل: '+g.wo+'      محطة: '+g.st+(g.ty?'  ('+g.ty+')':'')+(g.stage?'      — '+g.stage:'');wc.font=F_WO;wc.fill=FILL_WO;wc.alignment=RGT;ws.getRow(r).height=22;r++;
+    set(r,HEADERS,F_HEAD,FILL_H,CEN);ws.getRow(r).height=20;r++;
+    rows.forEach((x,i)=>{set(r,[i+1,x.code,x.nm,x.qty,x.u,x.rate,Math.round(x.amount*100)/100],F_CELL,null,null,[null,null,null,qf,null,money,money]);ws.getCell(r,3).alignment=RGT;r++;});
+    ws.mergeCells(r,1,r,6);const sa=ws.getCell(r,1);sa.value='إجمالي أمر العمل '+g.wo;sa.font=F_SUB;sa.fill=FILL_SUB;sa.alignment=RGT;sa.border=BOX;
+    const s2=ws.getCell(r,7);s2.value=Math.round(g.total*100)/100;s2.font=F_SUB;s2.fill=FILL_SUB;s2.alignment=CEN;s2.border=BOX;s2.numFmt=money;ws.getRow(r).height=18;r++;
+    grand+=g.total;r++;});
+  ws.mergeCells(r,1,r,6);const ga=ws.getCell(r,1);ga.value='الإجمالي العام';ga.font=F_GRAND;ga.fill=FILL_G;ga.alignment=RGT;ga.border=BOX;
+  const gb=ws.getCell(r,7);gb.value=Math.round(grand*100)/100;gb.font=F_GRAND;gb.fill=FILL_G;gb.alignment=CEN;gb.border=BOX;gb.numFmt=money;ws.getRow(r).height=24;
+  return wb;
 }
 async function exportWO(){await ensureLib('xlsx');const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
   const aoa=[['أمر عمل — نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
