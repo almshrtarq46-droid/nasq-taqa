@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='268';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='269';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2764,7 +2764,7 @@ async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
 function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
-  openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل)</h3>
+  openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
    <div class="seg"><button class="on" id="drTabDay" onclick="drMode('day')">يومي</button><button id="drTabMan" onclick="drMode('manual')">حسب المحطات</button></div>
    <div id="drDay">
      <div class="field" style="margin-bottom:6px"><label>التاريخ</label><input type="date" id="dr_date" value="${t}"></div>
@@ -2774,6 +2774,7 @@ function openDailyReport(){const t=todayKey();window._drMode='day';window._drSta
      <label>أرقام المحطات أو أوامر العمل</label>
      <div class="row" style="margin-bottom:6px"><input id="dr_st_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة أو رقم أمر العمل" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();drAddStation();}"><button class="btn sm" style="flex:none;width:96px" onclick="drAddStation()">➕ إضافة</button></div>
      <div id="dr_pick"></div>
+     <button class="link" style="display:block;margin:2px 0 6px;font-size:12px" onclick="drDiag()">🔍 فحص: كم نسخة لهذا الرقم؟</button>
      <div id="dr_st_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
      <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب رقم المحطة أو رقم أمر العمل أو الإشعار واضغط «إضافة». لو رقم المحطة مكرر (ميني بيلر) تختار أمر العمل الموقّع من الاستشاري.</p>
    </div>
@@ -2781,6 +2782,10 @@ function openDailyReport(){const t=todayKey();window._drMode='day';window._drSta
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function drMode(m){window._drMode=m;document.getElementById('drTabDay').classList.toggle('on',m==='day');document.getElementById('drTabMan').classList.toggle('on',m==='manual');
   document.getElementById('drDay').style.display=m==='day'?'block':'none';document.getElementById('drMan').style.display=m==='manual'?'block':'none';}
+function drDiag(){const inp=document.getElementById('dr_st_input');const n=_drNorm(inp.value);if(!n){toast('اكتب رقم أولاً');return;}
+  const ms=(PROJECTS||[]).filter(p=>[_drNorm(p.code),_drNorm(p.wo_number),_drNorm(p.notice_no)].includes(n));
+  const byCode=(PROJECTS||[]).filter(p=>_drNorm(p.code)===n);
+  alert('النسخة V'+APP_VER+'\nالمحطات المحمّلة: '+(PROJECTS||[]).length+'\nتطابق الرقم '+n+': '+ms.length+' (منها برقم المحطة: '+byCode.length+')\n\n'+ms.map(p=>'• محطة '+(p.code||'—')+' | أمر عمل '+(p.wo_number||'—')+' | إشعار '+(p.notice_no||'—')).join('\n'));}
 function _drAddProj(p){window._drStations=window._drStations||[];const wo=String(p.wo_number||'').trim();const key=wo?('wo:'+wo):('pid:'+p.id);if(window._drStations.some(s=>s.key===key))return false;window._drStations.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});return true;}
 function _drNorm(v){return String(v==null?'':v).replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15)).replace(/\s+/g,'').trim();}
 function drAddStation(){const inp=document.getElementById('dr_st_input');const raw=(inp.value||'').replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));const nums=raw.match(/\d+/g)||[];window._drStations=window._drStations||[];
