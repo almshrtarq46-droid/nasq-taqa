@@ -187,6 +187,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .thumbs .th img{width:100%;height:100%;object-fit:cover}
 .thumbs .th button{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.6);color:#fff;border-radius:50%;width:20px;height:20px;font-size:11px;line-height:1;padding:0}
 .station{transition:box-shadow .22s ease,transform .13s ease}
+.station.signed{background:#eaf7ef;border-color:#8fc9a8;box-shadow:0 0 0 1.5px #bfe3cd inset}
+.station.signed>.h:hover{background:#ddf0e4}
 @media(hover:hover){.station:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 18px rgba(11,77,56,.18)}}
 .station>.h{padding:13px 14px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;transition:background .2s ease}
 @media(hover:hover){.station>.h:hover{background:#f6faf8}}
@@ -536,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='270';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='271';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2657,19 +2659,25 @@ function renderWOList(){
   if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد محطات فيها أعمال في هذه الفترة')+'</div>';return;}
   box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
+async function toggleSigned(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const nv=!p.consultant_signed;
+  try{const{error,count}=await sb.from('projects').update({consultant_signed:nv},{count:'exact'}).eq('id',pid);
+    if(error){if(/consultant_signed|column/i.test(error.message||'')){toast('نفّذ كود SQL لإضافة خانة التوقيع أولاً');return;}throw error;}
+    if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
+    p.consultant_signed=nv;renderWOList();toast(nv?'تم تحديدها موقّعة ✅':'أُلغي التوقيع');
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}}
 function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const _adm=PROFILE.role==='admin';
   const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const tot=es.reduce((s,e)=>s+e.amount,0);
   const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
-  const stage=p.wo_stage||'قيد التنفيذ';
-  return `<div class="station" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
-    <div><b>${p.name}</b>${(p.notice_no||p.wo_number)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px">${p.notice_no?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--copper);background:rgba(176,115,58,.10);border:1px solid rgba(176,115,58,.28);border-radius:7px;padding:2px 8px">إشعار: ${p.notice_no}</span>`:''}${p.wo_number?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#2a6f97;background:rgba(42,111,151,.08);border:1px solid rgba(42,111,151,.24);border-radius:7px;padding:2px 8px">📋 أمر عمل: ${p.wo_number}</span>`:''}</div>`:''}<div style="margin-top:6px"><span class="pill pend">${stage}</span></div></div>
+  const stage=p.wo_stage||'قيد التنفيذ';const _canSign=_adm||(PROFILE&&PROFILE.role==='data_entry');const _sg=!!p.consultant_signed;
+  return `<div class="station${_sg?' signed':''}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
+    <div><b>${p.name}</b>${(p.notice_no||p.wo_number)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:5px">${p.notice_no?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--copper);background:rgba(176,115,58,.10);border:1px solid rgba(176,115,58,.28);border-radius:7px;padding:2px 8px">إشعار: ${p.notice_no}</span>`:''}${p.wo_number?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#2a6f97;background:rgba(42,111,151,.08);border:1px solid rgba(42,111,151,.24);border-radius:7px;padding:2px 8px">📋 أمر عمل: ${p.wo_number}</span>`:''}</div>`:''}<div style="margin-top:6px"><span class="pill pend">${stage}</span>${_sg?'<span class="pill" style="margin-right:6px;background:#d6f0e0;color:#1b6b3a;border:1px solid #9ccdb3">✅ موقّع من الاستشاري</span>':''}</div></div>
     <div style="text-align:left">${p.assignment?`<div style="margin-bottom:4px"><small style="color:var(--muted)">${p.assignment}</small></div>`:''}${_adm?`<div class="pill role">${fmt(tot)} ﷼</div>`:''}<div style="margin-top:4px"><small style="color:var(--muted)">${p.station_type?p.station_type+' · ':''}${es.length} بند</small></div><div style="margin-top:2px"><small style="color:var(--muted)">اضغط للتفاصيل</small></div></div></div>
     <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_adm?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_adm?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button>${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
 async function viewStationPhotos(pid){
