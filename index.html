@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='278';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='279';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2772,16 +2772,19 @@ async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
 function _qtyCap(name,unit){
-  const n=String(name||''),u=String(unit||'');
-  const isLen=/متر|م٢|م2|م²|طول|مسافة|مساحة/.test(u)||/بطول|بالمتر|لكل متر/.test(n);
+  const n=String(name||''),u=String(unit||'').toUpperCase().trim();
+  // وحدات المساحة/الحجم/الطول: أرقامها كبيرة طبيعياً — حدود عالية (للطباعة الغلط فقط)
+  if(/M2|M²|م2|م²/.test(u))return 150;   // مساحة
+  if(/M3|M³|م3|م³/.test(u))return 50;    // حجم (حفريات)
+  if(u==='M'||u==='ML'||/متر طول/.test(u))return 3000; // طول
+  // وحدات العدد (EA / عدد / فارغ): حدود منطقية حسب نوع البند
   if(/عمود|أعمدة|اعمدة|حماية/.test(n))return 12;
   if(/مروحة|مراوح|تهوية/.test(n))return 6;
-  if(/إنارة|انارة|إضاءة|اضاءة|كشاف|لمب/.test(n))return 8;
-  if(/قفل|أقفال|اقفال/.test(n))return 8;
-  if(/باب|بوابة|أبواب|ابواب/.test(n))return 6;
+  if(/إنارة|انارة|إضاءة|اضاءة|كشاف|لمب/.test(n))return 10;
+  if(/قفل|أقفال|اقفال/.test(n))return 10;
+  if(/باب|بوابة|أبواب|ابواب/.test(n))return 8;
   if(/غطاء|أغطية|اغطية/.test(n))return 10;
   if(/عداد/.test(n))return 30;
-  if(isLen)return 3000;
   return 40;
 }
 async function auditValues(ev){
