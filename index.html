@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='272';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='273';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2832,8 +2832,9 @@ async function exportDailyReport(){
       data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)').eq('work_date',d));
       title='تقرير المقاول اليومي';info='التاريخ: '+d;fname='تقرير_يومي_'+d;
     }
-    const secMap={};data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};const wo=String(p.wo_number||'').trim();
+    const secMap={};const incPids=new Set();data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id)||{};const wo=String(p.wo_number||'').trim();
       if(mode==='day'&&!wo){noWo++;return;}
+      incPids.add(e.project_id);
       const st=p.code||'',ty=p.station_type||'',stage=p.wo_stage||'',fin=rd(e),code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'',u=e.unit||'',q=Number(e.qty||0);
       let rate=fin.rate;if(!rate){const pr=PRICES[code];if(pr)rate=Number(pr.p)||0;}const amt=(fin.amount!=null&&fin.amount>0)?fin.amount:q*rate;
       const sk=(wo||'—')+'\u0001'+st;const g=(secMap[sk]=secMap[sk]||{wo:wo||'—',st,ty,stage,rows:{},total:0});
@@ -2843,9 +2844,9 @@ async function exportDailyReport(){
     const wb=_drWorkbook(secs,title,info+'     |     عدد أوامر العمل: '+secs.length);
     const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
-    // تحديد المحطات المضافة (وضع المحطات) كموقّعة تلقائياً → تصير خضراء
+    // تحديد المحطات التي ظهرت فعلياً في التقرير كموقّعة تلقائياً → تصير خضراء (يومي أو يدوي)
     let signedN=0;
-    if(mode==='manual'){const pids=[...new Set((window._drStations||[]).map(s=>s.pid))];
+    {const pids=[...incPids].filter(Boolean);
       if(pids.length){try{const{error}=await sb.from('projects').update({consultant_signed:true}).in('id',pids);
         if(!error){pids.forEach(id=>{const p=(PROJECTS||[]).find(x=>x.id===id);if(p){if(!p.consultant_signed)signedN++;p.consultant_signed=true;}});try{renderWOList();}catch(_){}}
       }catch(_){}}}
