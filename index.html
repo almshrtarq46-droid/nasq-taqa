@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='277';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='278';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2791,22 +2791,23 @@ async function auditValues(ev){
     const data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit, entry_finance(rate,amount)'));
     const nameOf=pid=>{const p=(PROJECTS||[]).find(x=>x.id===pid)||{};return p.code||'—';};
     let sumStored=0,sumCmpStored=0,sumCmpCalc=0,noRate=0,nEnt=0;
-    const stDiff={},aggQ={};
+    const stDiff={},aggQ={},raw=[];
     data.forEach(e=>{nEnt++;
       const fin=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;
       const stored=fin&&fin.amount!=null?Number(fin.amount):0;
-      let rate=fin&&fin.rate!=null?Number(fin.rate):0;
+      let rate=fin&&fin.rate!=null?Number(fin.rate):0;const storedRate=fin&&fin.rate!=null?Number(fin.rate):'';
       const code=String(e.item_code||'').trim(),q=Number(e.qty||0),nm=e.item_name_full||e.item_name||'',u=e.unit||'';
       if(!rate){const pr=PRICES[code];if(pr)rate=Number(pr.p)||0;}
       sumStored+=stored;
       if(rate>0){const calc=q*rate;sumCmpStored+=stored;sumCmpCalc+=calc;
         if(Math.abs(stored-calc)>0.5){const d=(stDiff[e.project_id]=stDiff[e.project_id]||{st:nameOf(e.project_id),stored:0,calc:0});d.stored+=stored;d.calc+=calc;}}
       else noRate++;
-      const ak=e.project_id+'|'+code;const a=(aggQ[ak]=aggQ[ak]||{st:nameOf(e.project_id),code,name:nm,unit:u,qty:0});a.qty+=q;});
+      const ak=e.project_id+'|'+code;const a=(aggQ[ak]=aggQ[ak]||{st:nameOf(e.project_id),code,name:nm,unit:u,qty:0});a.qty+=q;
+      raw.push([nameOf(e.project_id),code,nm,q,u,storedRate,stored,rate>0?q*rate:'',String(e.work_date||'').slice(0,10)]);});
     const indep=sumCmpCalc+(sumStored-sumCmpStored),diff=sumStored-indep;
     const mism=Object.values(stDiff).map(x=>({...x,diff:x.stored-x.calc})).filter(x=>Math.abs(x.diff)>0.5).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
     const outl=Object.values(aggQ).map(a=>({...a,cap:_qtyCap(a.name,a.unit)})).filter(a=>a.cap&&a.qty>a.cap).sort((a,b)=>(b.qty/b.cap)-(a.qty/a.cap));
-    window._auditRes={mism,outl,sumStored,indep,diff,noRate,nEnt};
+    window._auditRes={mism,outl,sumStored,indep,diff,noRate,nEnt,raw};
     const good=Math.abs(diff)<1&&!mism.length;
     const cut=s=>s.length>32?s.slice(0,31)+'…':s;
     const mismHtml=mism.length?('<table class="tbl" style="font-size:12px"><thead><tr><th>المحطة</th><th style="text-align:center">المعروض</th><th style="text-align:center">الصحيح</th><th style="text-align:left">الفرق</th></tr></thead><tbody>'+mism.slice(0,15).map(m=>`<tr><td>${m.st}</td><td style="text-align:center">${fmt(m.stored)}</td><td style="text-align:center">${fmt(m.calc)}</td><td style="text-align:left;color:var(--bad);font-weight:700">${fmt(m.diff)}</td></tr>`).join('')+'</tbody></table>'+(mism.length>15?`<small style="color:var(--muted)">+${mism.length-15} محطة أخرى في ملف الإكسل</small>`:'')):'<small style="color:var(--ok)">لا فروقات — كل المبالغ المخزّنة مطابقة للمحسوب ✓</small>';
@@ -2836,6 +2837,7 @@ async function auditExport(){await ensureLib('xlsx');const r=window._auditRes;if
   const a2=[['كميات غير منطقية — للمراجعة اليدوية'],[],['المحطة','رقم البند','البند','الكمية','الوحدة','الحد المنطقي']];
   r.outl.forEach(o=>a2.push([o.st,o.code,o.name,o.qty,o.unit,o.cap]));
   const ws2=XLSX.utils.aoa_to_sheet(a2);ws2['!cols']=[{wch:14},{wch:11},{wch:40},{wch:9},{wch:8},{wch:11}];XLSX.utils.book_append_sheet(wb,ws2,'كميات غير منطقية');
+  if(r.raw&&r.raw.length){const a3=[['المحطة','رقم البند','البند','الكمية','الوحدة','السعر المخزّن','المبلغ المخزّن','المبلغ الصحيح (ك×س)','التاريخ']];r.raw.forEach(x=>a3.push(x));const ws3=XLSX.utils.aoa_to_sheet(a3);ws3['!cols']=[{wch:14},{wch:11},{wch:40},{wch:9},{wch:8},{wch:12},{wch:14},{wch:16},{wch:12}];XLSX.utils.book_append_sheet(wb,ws3,'كل البنود (خام)');}
   XLSX.writeFile(wb,'تدقيق_القيمة_'+todayKey()+'.xlsx');toast('تم تصدير تقرير التدقيق ✓');
 }
 function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
