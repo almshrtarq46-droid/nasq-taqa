@@ -536,7 +536,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='265';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='266';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2763,7 +2763,7 @@ function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;cons
 async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error}=await sb.from('projects').update(rec).eq('id',pid);if(error)throw error;const p=PROJECTS.find(x=>x.id===pid);if(p)Object.assign(p,rec);closeModal();toast('تم تحديث المتابعة ✓');loadWorkOrders();}catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ المتابعة';}}
-function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];
+function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
   openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل)</h3>
    <div class="seg"><button class="on" id="drTabDay" onclick="drMode('day')">يومي</button><button id="drTabMan" onclick="drMode('manual')">حسب المحطات</button></div>
    <div id="drDay">
@@ -2773,20 +2773,29 @@ function openDailyReport(){const t=todayKey();window._drMode='day';window._drSta
    <div id="drMan" style="display:none">
      <label>أرقام المحطات أو أوامر العمل</label>
      <div class="row" style="margin-bottom:6px"><input id="dr_st_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة أو رقم أمر العمل" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();drAddStation();}"><button class="btn sm" style="flex:none;width:96px" onclick="drAddStation()">➕ إضافة</button></div>
+     <div id="dr_pick"></div>
      <div id="dr_st_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
-     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب رقم المحطة أو رقم أمر العمل واضغط «إضافة». رقم المحطة قد يتكرر فيطلع كل أوامره؛ رقم أمر العمل يطلع أمره فقط.</p>
+     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 12px">اكتب رقم المحطة أو رقم أمر العمل أو الإشعار واضغط «إضافة». لو رقم المحطة مكرر (ميني بيلر) تختار أمر العمل الموقّع من الاستشاري.</p>
    </div>
    <button class="btn" id="drBtn" onclick="exportDailyReport()">⬇️ تصدير اكسل</button>
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function drMode(m){window._drMode=m;document.getElementById('drTabDay').classList.toggle('on',m==='day');document.getElementById('drTabMan').classList.toggle('on',m==='manual');
   document.getElementById('drDay').style.display=m==='day'?'block':'none';document.getElementById('drMan').style.display=m==='manual'?'block':'none';}
+function _drAddProj(p){window._drStations=window._drStations||[];const wo=String(p.wo_number||'').trim();const key=wo?('wo:'+wo):('pid:'+p.id);if(window._drStations.some(s=>s.key===key))return false;window._drStations.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});return true;}
 function drAddStation(){const inp=document.getElementById('dr_st_input');const raw=(inp.value||'').replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));const nums=raw.match(/\d+/g)||[];window._drStations=window._drStations||[];
-  const have=new Set(window._drStations.map(s=>s.key));let added=0,nf=[];
-  nums.forEach(n=>{const ms=(PROJECTS||[]).filter(p=>String(p.code||'').trim()===n||String(p.wo_number||'').trim()===n);
-    if(!ms.length){nf.push(n);return;}
-    ms.forEach(p=>{const wo=String(p.wo_number||'').trim();const key=wo?('wo:'+wo):('pid:'+p.id);if(have.has(key))return;have.add(key);
-      window._drStations.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});added++;});});
-  inp.value='';drRenderStations();if(nf.length)toast('غير موجود: '+nf.join('، '));else if(!added&&nums.length)toast('مضاف مسبقاً');try{inp.focus();}catch(_){}}
+  let added=0,nf=[],multi=null;
+  for(const n of nums){const ms=(PROJECTS||[]).filter(p=>[String(p.code||'').trim(),String(p.wo_number||'').trim(),String(p.notice_no||'').trim()].includes(n));
+    if(!ms.length){nf.push(n);continue;}
+    if(ms.length===1){if(_drAddProj(ms[0]))added++;continue;}
+    const woDup=(PROJECTS||[]).filter(p=>String(p.wo_number||'').trim()===n).length>1;
+    const ntDup=(PROJECTS||[]).filter(p=>String(p.notice_no||'').trim()===n).length>1;
+    multi={n,ms,err:woDup?'رقم أمر العمل':(ntDup?'رقم الإشعار':'')};}
+  inp.value='';window._drPick=multi||null;drRenderPick();drRenderStations();
+  if(nf.length)toast('غير موجود: '+nf.join('، '));else if(multi)toast('اختر أمر العمل الموقّع');else if(!added&&nums.length)toast('مضاف مسبقاً');try{inp.focus();}catch(_){}}
+function drPickChoose(pid){const p=(PROJECTS||[]).find(x=>x.id===pid);if(p)_drAddProj(p);window._drPick=null;drRenderPick();drRenderStations();}
+function drRenderPick(){const box=document.getElementById('dr_pick');if(!box)return;const m=window._drPick;if(!m){box.innerHTML='';return;}
+  const errb=m.err?`<div style="background:#fdecea;border:1px solid #f0b4ad;color:#a8443a;border-radius:8px;padding:8px;font-size:12.5px;font-weight:700;margin-bottom:7px">⚠️ تنبيه: ${m.err} «${m.n}» مكرر في أكثر من محطة — هذا غير طبيعي، راجع البيانات.</div>`:'';
+  box.innerHTML=`<div style="background:#fff7e6;border:1px solid #f0cf8f;border-radius:10px;padding:10px;margin:2px 0 8px">${errb}<div style="font-weight:800;color:#8a4b00;font-size:13px;margin-bottom:7px">رقم ${m.n} مكرر (${m.ms.length}) — اختر الموقّع من الاستشاري:</div>${m.ms.map(p=>`<button class="btn sm" style="width:100%;margin-bottom:6px;background:#12343B;text-align:right" onclick="drPickChoose('${p.id}')">أمر عمل: ${p.wo_number||'—'}${p.notice_no?' · إشعار: '+p.notice_no:''}${p.wo_stage?'<br><small style=\'opacity:.85\'>'+p.wo_stage+'</small>':''}</button>`).join('')}<div style="text-align:center"><span onclick="window._drPick=null;drRenderPick();" style="cursor:pointer;color:#c0392b;font-weight:700;font-size:12.5px">إلغاء الاختيار</span></div></div>`;}
 function drDelStation(k){window._drStations=(window._drStations||[]).filter(x=>x.key!==k);drRenderStations();}
 function drRenderStations(){const box=document.getElementById('dr_st_list');if(!box)return;const list=window._drStations||[];
   box.innerHTML=list.length?list.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:13px">${s.label}<span onclick="drDelStation('${s.key}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف شي بعد</span>';}
