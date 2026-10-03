@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='275';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='276';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2639,7 +2639,6 @@ async function loadWorkOrders(){
     <tr><td>صدرت الفاتورة — بانتظار وصوله لنا</td><td style="text-align:left">${fmt(vInv)} ﷼</td></tr>
     <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
     </tbody></table></div>
-  <div class="row" style="margin-bottom:8px"><button class="btn copper sm" style="width:100%" onclick="exportWO()">تصدير أمر عمل</button><button class="btn ghost sm" style="width:100%" onclick="exportMostakhlas()">تصدير مستخلص</button></div>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   ${_de?`<button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
@@ -2890,25 +2889,6 @@ function _drWorkbook(secs,title,info){
   const gb=ws.getCell(r,7);gb.value=Math.round(grand*100)/100;gb.font=F_GRAND;gb.fill=FILL_G;gb.alignment=CEN;gb.border=BOX;gb.numFmt=money;ws.getRow(r).height=24;
   return wb;
 }
-async function exportWO(){await ensureLib('xlsx');const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
-  const aoa=[['أمر عمل — نسق الطاقة'],['تاريخ الإصدار',todayKey(),'','عدد البنود',rows.length],[],['المحطة','رقم المحطة','رقم البند','البند','الكمية','الوحدة','سعر الوحدة','الإجمالي','التاريخ','العامل','إثبات']];
-  let total=0;const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
-  Object.keys(byP).forEach(pid=>{const p=PROJECTS.find(x=>x.id===pid)||{};byP[pid].forEach(e=>{total+=e.amount;aoa.push([p.name||'',p.code||'',(e.item_code||''),(e.item_name_full||e.item_name),Number(e.qty),e.unit,e.rate,e.amount,e.work_date,e.worker_name||'',(e.photo_before&&e.photo_after)?'نعم':'—']);});});
-  aoa.push([],['','','','','','','','الإجمالي',total]);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:20},{wch:10},{wch:10},{wch:34},{wch:8},{wch:7},{wch:10},{wch:12},{wch:12},{wch:14},{wch:8}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:10}}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'أمر العمل');XLSX.writeFile(wb,'أمر_عمل_'+todayKey()+'.xlsx');toast('تم التصدير ✓');}
-
-async function exportMostakhlas(){await ensureLib('xlsx');
-  const rows=window._woRows||[];if(!rows.length){toast('لا توجد أعمال');return;}
-  const byItem={};rows.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit+'|'+e.rate;byItem[k]=byItem[k]||{qty:0};byItem[k].qty+=Number(e.qty);});
-  const aoa=[['مستخلص أعمال منجزة (مسودة)'],['المقاول الرئيسي','مكتب الشرق','مقدّم إلى','الشركة السعودية للكهرباء'],['الفترة حتى',todayKey()],[],['م','رقم البند','بند الأعمال','الوحدة','الكمية المنجزة','سعر الوحدة','القيمة المستحقة']];
-  let total=0,i=1;for(const[k,v]of Object.entries(byItem)){const[c,n,u,r]=k.split('|');const amt=v.qty*Number(r);total+=amt;aoa.push([i++,c,n,u,v.qty,Number(r),amt]);}
-  aoa.push([],['','','','','','الإجمالي قبل الضريبة',total],['','','','','','ضريبة القيمة المضافة 15%',total*0.15],['','','','','','الإجمالي المستحق',total*1.15]);
-  aoa.push([],['ملاحظة: مسودة — تُعدّل لتطابق النموذج المعتمد من شركة الكهرباء عند توفّره.']);
-  const ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=[{wch:5},{wch:10},{wch:34},{wch:9},{wch:14},{wch:12},{wch:15}];ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:6}}];
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'مستخلص');XLSX.writeFile(wb,'مستخلص_'+todayKey()+'.xlsx');toast('تم تصدير المستخلص ✓');
-}
-
 /* admin: edit/delete individual entries in a station */
 async function viewStationDetail(pid){
   const p=PROJECTS.find(x=>x.id===pid)||{};
