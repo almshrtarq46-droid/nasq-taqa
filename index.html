@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='280';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='281';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2654,8 +2654,10 @@ function renderWOList(){
   const term=(document.getElementById('wo_search')?.value||'').trim();
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   const _de=PROFILE&&PROFILE.role==='data_entry';
-  // بدون بحث: المحطات التي رُفع لها شغل فقط (للجميع). مع بحث: أي محطة برقمها (حتى الفاضية) لطباعة تقاريرها
-  let keys=term?(PROJECTS||[]).filter(p=>String(p.code||'').includes(term)).map(p=>p.id):Object.keys(byP);
+  // بدون بحث: المحطات التي رُفع لها شغل فقط، مرتّبة حسب وقت الرفع (الأحدث أولاً). مع بحث: أي محطة برقمها
+  let keys;
+  if(term){keys=(PROJECTS||[]).filter(p=>String(p.code||'').includes(term)).map(p=>p.id);}
+  else{const ids=new Set((PROJECTS||[]).map(p=>p.id));keys=(PROJECTS||[]).filter(p=>byP[p.id]).map(p=>p.id).concat(Object.keys(byP).filter(pid=>!ids.has(pid)));}
   if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد محطات فيها أعمال في هذه الفترة')+'</div>';return;}
   box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
@@ -3057,7 +3059,7 @@ function finTab2(tab,btn){
 }
 async function loadInvoices(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  const inc=(data||[]).filter(x=>!x.deleted_at);const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
+  const inc=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.invoice_date||'').localeCompare(String(a.created_at||a.invoice_date||'')));const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
   let _lset=new Set();try{const{data:_ex}=await sb.from('expenses').select('invoice_id').is('deleted_at',null).not('invoice_id','is',null);(_ex||[]).forEach(r=>r.invoice_id&&_lset.add(r.invoice_id));}catch(_){}
   inc.forEach(i=>{i._exp=_lset.has(i.id);});
   window._INVALL=inc;
@@ -3079,7 +3081,7 @@ function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,1
 function supPeriod(p,btn){window._supPeriod=p;document.querySelectorAll('#supSeg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderSuppliers();}
 async function loadSuppliers(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  window._SUPINV=(data||[]).filter(x=>!x.deleted_at);
+  window._SUPINV=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.invoice_date||'').localeCompare(String(a.created_at||a.invoice_date||'')));
   const _nm=new Set();window._SUPINV.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
   renderSuppliers();
 }
@@ -3193,7 +3195,7 @@ async function initExpenses(){
   document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
   document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data}=await sb.from('expenses').select('*').order('expense_date',{ascending:false});
-  ALL_EXP=(data||[]).filter(x=>!x.deleted_at);
+  ALL_EXP=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.expense_date||'').localeCompare(String(a.created_at||a.expense_date||'')));
   const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
   const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
   document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
