@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='281';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='282';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3064,7 +3064,7 @@ async function loadInvoices(){
   inc.forEach(i=>{i._exp=_lset.has(i.id);});
   window._INVALL=inc;
   const _nm=new Set();inc.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
-  const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>إجمالي المشتريات ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div>`;
+  const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>المشتريات شاملة الضريبة ﷼</span></div><div class="kpi"><b>${fmt(sum-sv)}</b><span>قبل الضريبة — للإقرار الضريبي ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div><div class="hint" style="grid-column:1/-1;margin-top:2px">عند رفع الإقرار في هيئة الزكاة والضريبة: أدخل «المشتريات قبل الضريبة» = <b>${fmt(sum-sv)}</b> ﷼ في خانة قيمة المشتريات، والموقع يحسب الضريبة 15% تلقائياً (≈ ${fmt(sv)} ﷼). لا تُدخل المبلغ الشامل للضريبة.</div>`;
   renderInvList();
 }
 function renderInvList(){
