@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='285';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='286';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2854,7 +2854,9 @@ function _scanList(){const S=window._scan;
   <div class="hint" style="margin-bottom:10px">صوّر الورقة كاملة على سطح داكن وبإضاءة جيدة. التطبيق يقصّها ويعدّل ميلانها ويبيّض الخلفية مثل آلة التصوير.</div>
   <div class="seg" style="margin-bottom:10px">${[['color','ألوان (مثل الواتساب)'],['gray','رمادي'],['bw','أبيض وأسود']].map(([k,l])=>`<button class="${S.mode===k?'on':''}" onclick="scanMode('${k}')">${l}</button>`).join('')}</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${S.pages.length?S.pages.map((pg,i)=>`<div style="position:relative;width:calc(50% - 4px)"><img src="${pg.out}" style="width:100%;border:1px solid #ddd;border-radius:8px;background:#fff;display:block"><div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px">${i+1}</div><button class="link" style="position:absolute;top:3px;left:4px;color:var(--bad);font-weight:800;background:#fff;border-radius:6px;padding:0 7px" onclick="scanDel(${i})">✕</button></div>`).join(''):'<div class="empty" style="width:100%">لا توجد صفحات بعد</div>'}</div>
-  <label class="btn" style="display:block;text-align:center;margin-bottom:8px;position:relative;overflow:hidden;cursor:pointer">📷 ${S.pages.length?'إضافة صفحة أخرى':'تصوير الميجر'}<input type="file" accept="image/*" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+  ${S.pages.length?'<div style="font-size:12.5px;color:var(--muted);margin:0 2px 6px">إضافة صفحة أخرى:</div>':''}
+  <div class="row" style="gap:8px;margin-bottom:8px"><label class="btn" style="flex:1;display:block;text-align:center;position:relative;overflow:hidden;cursor:pointer">📷 تصوير بالكاميرا<input type="file" accept="image/*" capture="environment" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+  <label class="btn ghost" style="flex:1;display:block;text-align:center;position:relative;overflow:hidden;cursor:pointer">🖼 من الاستديو<input type="file" accept="image/*" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
   ${S.pages.length?`<button class="btn" id="scanPdfBtn" style="background:#12343B;margin-bottom:8px" onclick="scanMakePdf()">📄 إنشاء ملف PDF (${S.pages.length} ${S.pages.length===1?'صفحة':'صفحات'})</button>`:''}
   <div id="scanOut"></div>
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
@@ -2866,7 +2868,7 @@ function scanPick(input){const f=input.files&&input.files[0];if(!f)return;toast(
   img.onerror=()=>{URL.revokeObjectURL(url);toast('تعذّر فتح الصورة');};img.src=url;}
 /* اكتشاف حواف الورقة تلقائياً: إزالة النصوص (closing) ← حواف ← خطوط Hough ← أفضل رباعي */
 function _scanDetect(c){const W=c.width,H=c.height,s=Math.min(1,480/Math.max(W,H)),w=Math.max(8,Math.round(W*s)),h=Math.max(8,Math.round(H*s)),N=w*h;
-  const fb=[[W*.04,H*.04],[W*.96,H*.04],[W*.96,H*.96],[W*.04,H*.96]];
+  const fb=[[0,0],[W,0],[W,H],[0,H]];
   try{const t=document.createElement('canvas');t.width=w;t.height=h;const x=t.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data;
   const g=new Float32Array(N);for(let i=0;i<N;i++)g[i]=d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114;
   const R=5,filt=(a,isMax,horiz)=>{const o=new Float32Array(N);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){let m=a[y*w+xx];for(let k=-R;k<=R;k++){let px=horiz?xx+k:xx,py=horiz?y:y+k;if(px<0)px=0;else if(px>=w)px=w-1;if(py<0)py=0;else if(py>=h)py=h-1;const v=a[py*w+px];if(isMax?v>m:v<m)m=v;}o[y*w+xx]=m;}return o;};
@@ -2879,18 +2881,28 @@ function _scanDetect(c){const W=c.width,H=c.height,s=Math.min(1,480/Math.max(W,H
   const acc=new Float32Array(NT*RW);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){if(mag[y*w+xx]<=T)continue;for(let ti=0;ti<NT;ti++)acc[ti*RW+Math.round(xx*cs[ti]+y*sn[ti])+D]++;}
   const lines=[];for(let n=0;n<30;n++){let bi=0,bv=0;for(let i=0;i<acc.length;i++)if(acc[i]>bv){bv=acc[i];bi=i;}if(bv<15)break;const ti=(bi/RW)|0,ri=bi%RW;lines.push({t:ti,r:ri-D,v:bv});
     for(let dt=-6;dt<=6;dt++){let tt=ti+dt,rr=ri;if(tt<0){tt+=NT;rr=2*D-ri;}else if(tt>=NT){tt-=NT;rr=2*D-ri;}for(let dr=-10;dr<=10;dr++){const r2=rr+dr;if(r2>=0&&r2<RW)acc[tt*RW+r2]=0;}}}
-  const Hs=lines.filter(l=>Math.abs(l.t-90)<35).slice(0,8).map(l=>[l.t*Math.PI/180,l.r]).concat([[Math.PI/2,0],[Math.PI/2,h-1]]);
-  const Vs=lines.filter(l=>l.t<35||l.t>145).slice(0,8).map(l=>[l.t*Math.PI/180,l.r]).concat([[0,0],[0,w-1]]);
+  const Hs=lines.filter(l=>Math.abs(l.t-90)<35).slice(0,12).map(l=>[l.t*Math.PI/180,l.r]).concat([[Math.PI/2,0],[Math.PI/2,h-1]]);
+  const Vs=lines.filter(l=>l.t<35||l.t>145).slice(0,12).map(l=>[l.t*Math.PI/180,l.r]).concat([[0,0],[0,w-1]]);
   const inter=(a,b)=>{const c1=Math.cos(a[0]),s1=Math.sin(a[0]),c2=Math.cos(b[0]),s2=Math.sin(b[0]),det=c1*s2-s1*c2;if(Math.abs(det)<1e-6)return null;return[(a[1]*s2-s1*b[1])/det,(c1*b[1]-a[1]*c2)/det];};
-  const sup=(p,q)=>{const L=Math.hypot(q[0]-p[0],q[1]-p[1]),n=Math.max(8,Math.round(L/2));let onB=true;const chk=[[0,2],[1,2],[0,-(w-3)],[1,-(h-3)]];
-      let allL=true,allR=true,allT=true,allB=true,hit=0;for(let k=0;k<n;k++){const f=0.04+0.92*k/(n-1),px=p[0]+(q[0]-p[0])*f,py=p[1]+(q[1]-p[1])*f;if(px>=2)allL=false;if(px<=w-3)allR=false;if(py>=2)allT=false;if(py<=h-3)allB=false;
-        const ix=Math.round(px),iy=Math.round(py);if(ix>=0&&iy>=0&&ix<w&&iy<h&&E2[iy*w+ix])hit++;}
-      if(allL||allR||allT||allB)return 0.55;return hit/n;};
+  /* درجة كل ضلع = نسبة وقوعه على حافة × (الداخل أفتح من الخارج) — حتى لا تُعتبر خطوط الجداول أو البلاط حوافاً */
+  const side=(p,q,cx,cy)=>{const L=Math.hypot(q[0]-p[0],q[1]-p[1])||1,n=Math.max(8,Math.round(L/2));
+      let allL=true,allR=true,allT=true,allB=true;for(let k=0;k<n;k++){const f=0.04+0.92*k/(n-1),px=p[0]+(q[0]-p[0])*f,py=p[1]+(q[1]-p[1])*f;if(px>=2)allL=false;if(px<=w-3)allR=false;if(py>=2)allT=false;if(py<=h-3)allB=false;}
+      if(allL||allR||allT||allB)return 0.45;
+      let nx=-(q[1]-p[1])/L,ny=(q[0]-p[0])/L;const mx=(p[0]+q[0])/2,my=(p[1]+q[1])/2;if(nx*(cx-mx)+ny*(cy-my)<0){nx=-nx;ny=-ny;}
+      let hit=0,iS=0,oS=0,cnt=0,far=0,farN=0;
+      for(let k=0;k<n;k++){const f=0.04+0.92*k/(n-1),px=p[0]+(q[0]-p[0])*f,py=p[1]+(q[1]-p[1])*f,ix=Math.round(px),iy=Math.round(py);
+        if(ix>=0&&iy>=0&&ix<w&&iy<h&&E2[iy*w+ix])hit++;
+        let inV=-1;for(const dd of [6,10]){const ox=Math.round(px-nx*dd),oy=Math.round(py-ny*dd),jx=Math.round(px+nx*dd),jy=Math.round(py+ny*dd);
+          if(ox<0||oy<0||ox>=w||oy>=h||jx<0||jy<0||jx>=w||jy>=h)continue;inV=cl[jy*w+jx];iS+=inV;oS+=cl[oy*w+ox];cnt++;}
+        /* ما وراء الحافة: إذا رجع أبيض مثل الورقة فهو شريط داخلي (عنوان جدول) وليس حافة الورقة */
+        if(inV>=0){const fx=Math.round(px-nx*22),fy=Math.round(py-ny*22);if(fx>=0&&fy>=0&&fx<w&&fy<h){farN++;if(cl[fy*w+fx]>=inV-8)far++;}}}
+      const su=hit/n;if(!cnt)return su*0.5;const con=(iS-oS)/cnt,beyond=farN?far/farN:0;return su*(con<=0?0:Math.min(1,con/15))*(1-beyond);};
   let best=null;for(let i=0;i<Hs.length;i++)for(let j=i+1;j<Hs.length;j++)for(let k=0;k<Vs.length;k++)for(let l=k+1;l<Vs.length;l++){
     const P=[inter(Hs[i],Vs[k]),inter(Hs[i],Vs[l]),inter(Hs[j],Vs[l]),inter(Hs[j],Vs[k])];if(P.some(p=>!p||p[0]<-0.02*w||p[0]>1.02*w||p[1]<-0.02*h||p[1]>1.02*h))continue;
     let ar=0;for(let m=0;m<4;m++){const a=P[m],b=P[(m+1)%4];ar+=a[0]*b[1]-b[0]*a[1];}const af=Math.abs(ar)/2/(w*h);if(af<0.12)continue;
-    const su=(sup(P[0],P[1])+sup(P[1],P[2])+sup(P[2],P[3])+sup(P[3],P[0]))/4,sc=su*su*Math.sqrt(af);if(!best||sc>best.sc)best={sc,P,su};}
-  if(!best||best.su<0.45)return fb;
+    const cx=(P[0][0]+P[1][0]+P[2][0]+P[3][0])/4,cy=(P[0][1]+P[1][1]+P[2][1]+P[3][1])/4;
+    const su=(side(P[0],P[1],cx,cy)+side(P[1],P[2],cx,cy)+side(P[2],P[3],cx,cy)+side(P[3],P[0],cx,cy))/4,sc=su*su*Math.sqrt(af);if(!best||sc>best.sc)best={sc,P,su};}
+  if(!best||best.su<0.3)return fb;
   const k=1/s;return best.P.map(p=>[Math.max(0,Math.min(W,p[0]*k)),Math.max(0,Math.min(H,p[1]*k))]);
   }catch(e){return fb;}}
 function _scanOrder(pts){const cx=pts.reduce((s,p)=>s+p[0],0)/4,cy=pts.reduce((s,p)=>s+p[1],0)/4;
