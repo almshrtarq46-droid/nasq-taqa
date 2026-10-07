@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='282';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='283';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2679,7 +2679,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_adm?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
 async function viewStationPhotos(pid){
@@ -2845,6 +2845,143 @@ async function auditExport(){await ensureLib('xlsx');const r=window._auditRes;if
   if(r.raw&&r.raw.length){const a3=[['المحطة','رقم البند','البند','الكمية','الوحدة','السعر المخزّن','المبلغ المخزّن','المبلغ الصحيح (ك×س)','التاريخ']];r.raw.forEach(x=>a3.push(x));const ws3=XLSX.utils.aoa_to_sheet(a3);ws3['!cols']=[{wch:14},{wch:11},{wch:40},{wch:9},{wch:8},{wch:12},{wch:14},{wch:16},{wch:12}];XLSX.utils.book_append_sheet(wb,ws3,'كل البنود (خام)');}
   XLSX.writeFile(wb,'تدقيق_القيمة_'+todayKey()+'.xlsx');toast('تم تصدير تقرير التدقيق ✓');
 }
+/* ===== SCANNER START — مسح الميجر الموقّع → PDF (مثل آلة التصوير) ===== */
+window._scan={pid:null,pages:[],mode:'color',src:null,pts:null,pdf:null};
+function openScanner(pid){window._scan={pid,pages:[],mode:'color',src:null,pts:null,pdf:null};_scanList();}
+function _scanTitle(){const p=(PROJECTS||[]).find(x=>x.id===window._scan.pid)||{};return 'محطة '+(p.code||'—')+(p.wo_number?' · أمر عمل '+p.wo_number:'');}
+function _scanList(){const S=window._scan;
+  openModal(`<h3 style="margin:0 0 4px">📄 مسح الميجر الموقّع</h3><small style="color:var(--muted);display:block;margin-bottom:10px">${_scanTitle()}</small>
+  <div class="hint" style="margin-bottom:10px">صوّر الورقة كاملة على سطح داكن وبإضاءة جيدة. التطبيق يقصّها ويعدّل ميلانها ويبيّض الخلفية مثل آلة التصوير.</div>
+  <div class="seg" style="margin-bottom:10px">${[['color','ألوان (مثل الواتساب)'],['gray','رمادي'],['bw','أبيض وأسود']].map(([k,l])=>`<button class="${S.mode===k?'on':''}" onclick="scanMode('${k}')">${l}</button>`).join('')}</div>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${S.pages.length?S.pages.map((pg,i)=>`<div style="position:relative;width:calc(50% - 4px)"><img src="${pg.out}" style="width:100%;border:1px solid #ddd;border-radius:8px;background:#fff;display:block"><div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px">${i+1}</div><button class="link" style="position:absolute;top:3px;left:4px;color:var(--bad);font-weight:800;background:#fff;border-radius:6px;padding:0 7px" onclick="scanDel(${i})">✕</button></div>`).join(''):'<div class="empty" style="width:100%">لا توجد صفحات بعد</div>'}</div>
+  <label class="btn" style="display:block;text-align:center;margin-bottom:8px;position:relative;overflow:hidden;cursor:pointer">📷 ${S.pages.length?'إضافة صفحة أخرى':'تصوير الميجر'}<input type="file" accept="image/*" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+  ${S.pages.length?`<button class="btn" id="scanPdfBtn" style="background:#12343B;margin-bottom:8px" onclick="scanMakePdf()">📄 إنشاء ملف PDF (${S.pages.length} ${S.pages.length===1?'صفحة':'صفحات'})</button>`:''}
+  <div id="scanOut"></div>
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+function scanPick(input){const f=input.files&&input.files[0];if(!f)return;toast('جارٍ تجهيز الصورة…');
+  const url=URL.createObjectURL(f),img=new Image();
+  img.onload=()=>{try{input.value='';const M=3400;let w=img.naturalWidth,h=img.naturalHeight;const s=Math.min(1,M/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+      const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);
+      window._scan.src=c;window._scan.pts=_scanDetect(c);_scanCrop();}catch(e){toast('خطأ: '+(e&&e.message||e));}};
+  img.onerror=()=>{URL.revokeObjectURL(url);toast('تعذّر فتح الصورة');};img.src=url;}
+/* اكتشاف حواف الورقة تلقائياً: إزالة النصوص (closing) ← حواف ← خطوط Hough ← أفضل رباعي */
+function _scanDetect(c){const W=c.width,H=c.height,s=Math.min(1,480/Math.max(W,H)),w=Math.max(8,Math.round(W*s)),h=Math.max(8,Math.round(H*s)),N=w*h;
+  const fb=[[W*.04,H*.04],[W*.96,H*.04],[W*.96,H*.96],[W*.04,H*.96]];
+  try{const t=document.createElement('canvas');t.width=w;t.height=h;const x=t.getContext('2d');x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.drawImage(c,0,0,w,h);const d=x.getImageData(0,0,w,h).data;
+  const g=new Float32Array(N);for(let i=0;i<N;i++)g[i]=d[i*4]*0.299+d[i*4+1]*0.587+d[i*4+2]*0.114;
+  const R=5,filt=(a,isMax,horiz)=>{const o=new Float32Array(N);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){let m=a[y*w+xx];for(let k=-R;k<=R;k++){let px=horiz?xx+k:xx,py=horiz?y:y+k;if(px<0)px=0;else if(px>=w)px=w-1;if(py<0)py=0;else if(py>=h)py=h-1;const v=a[py*w+px];if(isMax?v>m:v<m)m=v;}o[y*w+xx]=m;}return o;};
+  let cl=filt(filt(g,1,1),1,0);cl=filt(filt(cl,0,1),0,0);
+  const at=(px,py)=>cl[(py<0?0:py>=h?h-1:py)*w+(px<0?0:px>=w?w-1:px)],mag=new Float32Array(N);
+  for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){const gx=at(xx+1,y-1)+2*at(xx+1,y)+at(xx+1,y+1)-at(xx-1,y-1)-2*at(xx-1,y)-at(xx-1,y+1),gy=at(xx-1,y+1)+2*at(xx,y+1)+at(xx+1,y+1)-at(xx-1,y-1)-2*at(xx,y-1)-at(xx+1,y-1);mag[y*w+xx]=Math.hypot(gx,gy)/4;}
+  const srt=Float32Array.from(mag).sort(),T=Math.max(6,srt[Math.floor(N*0.9)]),T2=T*0.6;
+  const E2=new Uint8Array(N);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){if(mag[y*w+xx]<=T2)continue;for(let dy=-2;dy<=2;dy++){const py=y+dy;if(py<0||py>=h)continue;for(let dx=-2;dx<=2;dx++){const px=xx+dx;if(px>=0&&px<w)E2[py*w+px]=1;}}}
+  const D=Math.ceil(Math.hypot(w,h)),RW=2*D+1,NT=180,cs=new Float32Array(NT),sn=new Float32Array(NT);for(let i=0;i<NT;i++){cs[i]=Math.cos(i*Math.PI/180);sn[i]=Math.sin(i*Math.PI/180);}
+  const acc=new Float32Array(NT*RW);for(let y=0;y<h;y++)for(let xx=0;xx<w;xx++){if(mag[y*w+xx]<=T)continue;for(let ti=0;ti<NT;ti++)acc[ti*RW+Math.round(xx*cs[ti]+y*sn[ti])+D]++;}
+  const lines=[];for(let n=0;n<30;n++){let bi=0,bv=0;for(let i=0;i<acc.length;i++)if(acc[i]>bv){bv=acc[i];bi=i;}if(bv<15)break;const ti=(bi/RW)|0,ri=bi%RW;lines.push({t:ti,r:ri-D,v:bv});
+    for(let dt=-6;dt<=6;dt++){let tt=ti+dt,rr=ri;if(tt<0){tt+=NT;rr=2*D-ri;}else if(tt>=NT){tt-=NT;rr=2*D-ri;}for(let dr=-10;dr<=10;dr++){const r2=rr+dr;if(r2>=0&&r2<RW)acc[tt*RW+r2]=0;}}}
+  const Hs=lines.filter(l=>Math.abs(l.t-90)<35).slice(0,8).map(l=>[l.t*Math.PI/180,l.r]).concat([[Math.PI/2,0],[Math.PI/2,h-1]]);
+  const Vs=lines.filter(l=>l.t<35||l.t>145).slice(0,8).map(l=>[l.t*Math.PI/180,l.r]).concat([[0,0],[0,w-1]]);
+  const inter=(a,b)=>{const c1=Math.cos(a[0]),s1=Math.sin(a[0]),c2=Math.cos(b[0]),s2=Math.sin(b[0]),det=c1*s2-s1*c2;if(Math.abs(det)<1e-6)return null;return[(a[1]*s2-s1*b[1])/det,(c1*b[1]-a[1]*c2)/det];};
+  const sup=(p,q)=>{const L=Math.hypot(q[0]-p[0],q[1]-p[1]),n=Math.max(8,Math.round(L/2));let onB=true;const chk=[[0,2],[1,2],[0,-(w-3)],[1,-(h-3)]];
+      let allL=true,allR=true,allT=true,allB=true,hit=0;for(let k=0;k<n;k++){const f=0.04+0.92*k/(n-1),px=p[0]+(q[0]-p[0])*f,py=p[1]+(q[1]-p[1])*f;if(px>=2)allL=false;if(px<=w-3)allR=false;if(py>=2)allT=false;if(py<=h-3)allB=false;
+        const ix=Math.round(px),iy=Math.round(py);if(ix>=0&&iy>=0&&ix<w&&iy<h&&E2[iy*w+ix])hit++;}
+      if(allL||allR||allT||allB)return 0.55;return hit/n;};
+  let best=null;for(let i=0;i<Hs.length;i++)for(let j=i+1;j<Hs.length;j++)for(let k=0;k<Vs.length;k++)for(let l=k+1;l<Vs.length;l++){
+    const P=[inter(Hs[i],Vs[k]),inter(Hs[i],Vs[l]),inter(Hs[j],Vs[l]),inter(Hs[j],Vs[k])];if(P.some(p=>!p||p[0]<-0.02*w||p[0]>1.02*w||p[1]<-0.02*h||p[1]>1.02*h))continue;
+    let ar=0;for(let m=0;m<4;m++){const a=P[m],b=P[(m+1)%4];ar+=a[0]*b[1]-b[0]*a[1];}const af=Math.abs(ar)/2/(w*h);if(af<0.12)continue;
+    const su=(sup(P[0],P[1])+sup(P[1],P[2])+sup(P[2],P[3])+sup(P[3],P[0]))/4,sc=su*su*Math.sqrt(af);if(!best||sc>best.sc)best={sc,P,su};}
+  if(!best||best.su<0.45)return fb;
+  const k=1/s;return best.P.map(p=>[Math.max(0,Math.min(W,p[0]*k)),Math.max(0,Math.min(H,p[1]*k))]);
+  }catch(e){return fb;}}
+function _scanOrder(pts){const cx=pts.reduce((s,p)=>s+p[0],0)/4,cy=pts.reduce((s,p)=>s+p[1],0)/4;
+  const o=pts.slice().sort((p,q)=>Math.atan2(p[1]-cy,p[0]-cx)-Math.atan2(q[1]-cy,q[0]-cx));
+  let k=0;for(let i=1;i<4;i++)if(o[i][0]+o[i][1]<o[k][0]+o[k][1])k=i;return o.slice(k).concat(o.slice(0,k));}
+/* شاشة تحديد الزوايا */
+function _scanCrop(){const S=window._scan,c=S.src;
+  openModal(`<h3 style="margin:0 0 4px">✂️ حدّد حواف الورقة</h3><small style="color:var(--muted);display:block;margin-bottom:8px">اسحب النقاط الخضراء على زوايا الورقة بالضبط</small>
+  <div id="scanEd" style="position:relative;touch-action:none;user-select:none;-webkit-user-select:none;margin:0 auto"><canvas id="scanCv" style="width:100%;display:block;border-radius:8px"></canvas><canvas id="scanOv" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none"></canvas>${[0,1,2,3].map(i=>`<div class="scanH" data-i="${i}" style="position:absolute;width:36px;height:36px;margin:-18px 0 0 -18px;border-radius:50%;border:3px solid #fff;background:rgba(31,111,74,.85);box-shadow:0 1px 6px rgba(0,0,0,.55);touch-action:none"></div>`).join('')}</div>
+  <div class="row" style="gap:8px;margin-top:10px"><button class="btn ghost sm" style="flex:1" onclick="scanRotate()">↻ تدوير</button><button class="btn ghost sm" style="flex:1" onclick="scanFull()">⛶ كامل الصورة</button></div>
+  <button class="btn" style="margin-top:8px" id="scanOk" onclick="scanConfirm()">✓ تأكيد وإضافة الصفحة</button>
+  <button class="link" style="display:block;margin:10px auto 0" onclick="_scanList()">إلغاء</button>`);
+  const ed=document.getElementById('scanEd'),cv=document.getElementById('scanCv'),ov=document.getElementById('scanOv');
+  const dw=Math.min(1100,c.width),dh=Math.round(c.height*dw/c.width);cv.width=dw;cv.height=dh;cv.getContext('2d').drawImage(c,0,0,dw,dh);ov.width=dw;ov.height=dh;
+  const ar=c.width/c.height,maxH=window.innerHeight*0.56,boxW=ed.parentElement.clientWidth||320;if(boxW/ar>maxH)ed.style.width=Math.round(maxH*ar)+'px';
+  _scanDraw();
+  ed.querySelectorAll('.scanH').forEach(hd=>{hd.addEventListener('pointerdown',ev=>{ev.preventDefault();ev.stopPropagation();const i=+hd.dataset.i;try{hd.setPointerCapture(ev.pointerId);}catch(_){}
+    const mv=e=>{const r=ed.getBoundingClientRect();let px=(e.clientX-r.left)/r.width,py=(e.clientY-r.top)/r.height;px=Math.max(0,Math.min(1,px));py=Math.max(0,Math.min(1,py));S.pts[i]=[px*c.width,py*c.height];_scanDraw();};
+    const up=()=>{hd.removeEventListener('pointermove',mv);hd.removeEventListener('pointerup',up);hd.removeEventListener('pointercancel',up);};
+    hd.addEventListener('pointermove',mv);hd.addEventListener('pointerup',up);hd.addEventListener('pointercancel',up);});});}
+function _scanDraw(){const S=window._scan,c=S.src,ed=document.getElementById('scanEd'),ov=document.getElementById('scanOv');if(!ed||!ov||!c)return;
+  ed.querySelectorAll('.scanH').forEach(hd=>{const p=S.pts[+hd.dataset.i];hd.style.left=(p[0]/c.width*100)+'%';hd.style.top=(p[1]/c.height*100)+'%';});
+  const x=ov.getContext('2d'),k=ov.width/c.width,P=_scanOrder(S.pts);x.clearRect(0,0,ov.width,ov.height);
+  x.fillStyle='rgba(0,0,0,.38)';x.beginPath();x.rect(0,0,ov.width,ov.height);P.forEach((p,i)=>i?x.lineTo(p[0]*k,p[1]*k):x.moveTo(p[0]*k,p[1]*k));x.closePath();x.fill('evenodd');
+  x.beginPath();P.forEach((p,i)=>i?x.lineTo(p[0]*k,p[1]*k):x.moveTo(p[0]*k,p[1]*k));x.closePath();x.lineWidth=Math.max(2,ov.width/260);x.strokeStyle='#2ecc71';x.stroke();}
+function scanRotate(){const S=window._scan,c=S.src,r=document.createElement('canvas');r.width=c.height;r.height=c.width;const x=r.getContext('2d');x.translate(r.width,0);x.rotate(Math.PI/2);x.drawImage(c,0,0);S.src=r;S.pts=_scanDetect(r);_scanCrop();}
+function scanFull(){const S=window._scan,c=S.src;S.pts=[[0,0],[c.width,0],[c.width,c.height],[0,c.height]];_scanDraw();}
+async function scanConfirm(){const S=window._scan,b=document.getElementById('scanOk');if(b){b.disabled=true;b.innerHTML='<span class="spin"></span> جارٍ المعالجة…';}
+  await new Promise(r=>setTimeout(r,40));
+  try{const warped=_scanWarp(S.src,S.pts),out=_scanFilter(warped,S.mode);S.pages.push({warped,out});S.src=null;S.pdf=null;_scanList();}
+  catch(e){toast('خطأ: '+(e&&e.message||e));if(b){b.disabled=false;b.textContent='✓ تأكيد وإضافة الصفحة';}}}
+/* تصحيح المنظور (Homography) */
+function _homog(P,Q){const A=[],B=[];for(let i=0;i<4;i++){const[x,y]=P[i],[u,v]=Q[i];A.push([x,y,1,0,0,0,-u*x,-u*y]);B.push(u);A.push([0,0,0,x,y,1,-v*x,-v*y]);B.push(v);}
+  for(let i=0;i<8;i++){let m=i;for(let r=i+1;r<8;r++)if(Math.abs(A[r][i])>Math.abs(A[m][i]))m=r;[A[i],A[m]]=[A[m],A[i]];[B[i],B[m]]=[B[m],B[i]];const p=A[i][i]||1e-12;
+    for(let r=0;r<8;r++){if(r===i)continue;const f=A[r][i]/p;if(!f)continue;for(let c=i;c<8;c++)A[r][c]-=f*A[i][c];B[r]-=f*B[i];}}
+  return B.map((b,i)=>b/(A[i][i]||1e-12));}
+function _scanWarp(src,pts){const[tl,tr,br,bl]=_scanOrder(pts),dd=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
+  let w=Math.max(dd(tl,tr),dd(bl,br)),h=Math.max(dd(tl,bl),dd(tr,br));const s=Math.min(1,3000/Math.max(w,h));w=Math.max(10,Math.round(w*s));h=Math.max(10,Math.round(h*s));
+  const[a,b,c,d,e,f,g,hh]=_homog([[0,0],[w,0],[w,h],[0,h]],[tl,tr,br,bl]);
+  const SW=src.width,SH=src.height,S=src.getContext('2d').getImageData(0,0,SW,SH).data;
+  const o=document.createElement('canvas');o.width=w;o.height=h;const ox=o.getContext('2d'),od=ox.createImageData(w,h),D=od.data;
+  for(let y=0;y<h;y++){const yy=y+0.5;for(let x=0;x<w;x++){const xx=x+0.5,den=g*xx+hh*yy+1,sx=(a*xx+b*yy+c)/den-0.5,sy=(d*xx+e*yy+f)/den-0.5,oi=(y*w+x)*4;
+      let x0=Math.floor(sx),y0=Math.floor(sy);const fx=sx-x0,fy=sy-y0;
+      if(x0<0||y0<0||x0>=SW-1||y0>=SH-1){D[oi]=D[oi+1]=D[oi+2]=255;D[oi+3]=255;continue;}
+      const i00=(y0*SW+x0)*4,i10=i00+4,i01=i00+SW*4,i11=i01+4;
+      D[oi]=(S[i00]*(1-fx)+S[i10]*fx)*(1-fy)+(S[i01]*(1-fx)+S[i11]*fx)*fy;
+      D[oi+1]=(S[i00+1]*(1-fx)+S[i10+1]*fx)*(1-fy)+(S[i01+1]*(1-fx)+S[i11+1]*fx)*fy;
+      D[oi+2]=(S[i00+2]*(1-fx)+S[i10+2]*fx)*(1-fy)+(S[i01+2]*(1-fx)+S[i11+2]*fx)*fy;D[oi+3]=255;}}
+  ox.putImageData(od,0,0);return o;}
+/* فلتر "آلة التصوير" مثل الواتساب: تبييض الخلفية لكل قناة لون (يزيل الظلال واصفرار الإضاءة) + تباين + حدّة */
+function _scanFilter(cv,mode){const w=cv.width,h=cv.height,N=w*h,src=cv.getContext('2d').getImageData(0,0,w,h).data;
+  const B=Math.max(8,Math.round(Math.max(w,h)/60)),gw=Math.ceil(w/B),gh=Math.ceil(h/B),GN=gw*gh,bgs=[];
+  for(let ch=0;ch<3;ch++){let G=new Float32Array(GN);
+    for(let by=0;by<gh;by++)for(let bx=0;bx<gw;bx++){let m=0;const y1=Math.min(h,(by+1)*B),x1=Math.min(w,(bx+1)*B);for(let y=by*B;y<y1;y++){let j=(y*w+bx*B)*4+ch;for(let x=bx*B;x<x1;x++,j+=4){const v=src[j];if(v>m)m=v;}}G[by*gw+bx]=m;}
+    const srt=Array.from(G).sort((p,q)=>p-q),paper=Math.max(60,srt[Math.floor(srt.length*0.9)]||255);
+    const pass=isMax=>{const R2=new Float32Array(GN);for(let y=0;y<gh;y++)for(let x=0;x<gw;x++){let acc=0,n=0;for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const yy=y+dy,xx=x+dx;if(yy<0||xx<0||yy>=gh||xx>=gw)continue;const v=G[yy*gw+xx];if(isMax){if(v>acc)acc=v;}else{acc+=v;n++;}}R2[y*gw+x]=isMax?acc:acc/n;}G=R2;};
+    pass(true);pass(false);pass(false);for(let i=0;i<GN;i++)if(G[i]<paper*0.5)G[i]=paper*0.5;bgs.push(G);}
+  const nrm=new Float32Array(N*3);
+  for(let y=0;y<h;y++){let gy=(y+0.5)/B-0.5;if(gy<0)gy=0;if(gy>gh-1)gy=gh-1;const y0=Math.floor(gy),y1=Math.min(gh-1,y0+1),fy=gy-y0;
+    for(let x=0;x<w;x++){let gx=(x+0.5)/B-0.5;if(gx<0)gx=0;if(gx>gw-1)gx=gw-1;const x0=Math.floor(gx),x1=Math.min(gw-1,x0+1),fx=gx-x0,i=y*w+x,j=i*4;
+      for(let ch=0;ch<3;ch++){const G=bgs[ch],bg=(G[y0*gw+x0]*(1-fx)+G[y0*gw+x1]*fx)*(1-fy)+(G[y1*gw+x0]*(1-fx)+G[y1*gw+x1]*fx)*fy||1;nrm[i*3+ch]=src[j+ch]/bg;}}}
+  const cl=v=>v<0?0:v>1?1:v,out=document.createElement('canvas');out.width=w;out.height=h;const ctx=out.getContext('2d'),od=ctx.createImageData(w,h),O=od.data;
+  const tone=new Float32Array(N*3);
+  for(let i=0;i<N;i++){const r=nrm[i*3],g=nrm[i*3+1],b=nrm[i*3+2],L=r*0.299+g*0.587+b*0.114;
+    if(mode==='color'){tone[i*3]=Math.pow(cl((r-0.22)/(0.90-0.22)),1.35);tone[i*3+1]=Math.pow(cl((g-0.22)/(0.90-0.22)),1.35);tone[i*3+2]=Math.pow(cl((b-0.22)/(0.90-0.22)),1.35);}
+    else{const v=mode==='bw'?cl((L-0.62)/(0.80-0.62)):Math.pow(cl((L-0.28)/(0.88-0.28)),1.5);tone[i*3]=tone[i*3+1]=tone[i*3+2]=v;}}
+  const amt=mode==='bw'?0:0.7;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=y*w+x,j=i*4;for(let ch=0;ch<3;ch++){let v=tone[i*3+ch];
+      if(amt&&x>0&&y>0&&x<w-1&&y<h-1){const bl=(tone[(i-w-1)*3+ch]+tone[(i-w)*3+ch]+tone[(i-w+1)*3+ch]+tone[(i-1)*3+ch]+v+tone[(i+1)*3+ch]+tone[(i+w-1)*3+ch]+tone[(i+w)*3+ch]+tone[(i+w+1)*3+ch])/9;v=v+amt*(v-bl);}
+      O[j+ch]=255*cl(v);}O[j+3]=255;}
+  ctx.putImageData(od,0,0);return out.toDataURL('image/jpeg',0.92);}
+async function scanMode(k){const S=window._scan;if(S.mode===k)return;S.mode=k;S.pdf=null;
+  if(S.pages.length){toast('جارٍ تطبيق الفلتر…');await new Promise(r=>setTimeout(r,40));S.pages.forEach(pg=>{pg.out=_scanFilter(pg.warped,k);});}_scanList();}
+function scanDel(i){const S=window._scan;S.pages.splice(i,1);S.pdf=null;_scanList();}
+async function scanMakePdf(){const S=window._scan,btn=document.getElementById('scanPdfBtn');if(!S.pages.length)return;if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;let pdf=null;
+    for(const pg of S.pages){const land=pg.warped.width>pg.warped.height,pw=land?297:210,ph=land?210:297;
+      if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
+      const m=4,ar=pg.warped.width/pg.warped.height;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
+      pdf.addImage(pg.out,'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih);}
+    const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};const name='ميجر_موقع_'+(p.code||'محطة')+(p.wo_number?'_'+p.wo_number:'')+'_'+todayKey()+'.pdf';
+    S.pdf={blob:pdf.output('blob'),name};
+    const box=document.getElementById('scanOut');if(box)box.innerHTML=`<div class="card" style="box-shadow:none;background:#eaf7ef;margin:6px 0 8px"><b style="color:#1b6b3a">✓ ملف PDF جاهز</b><div style="font-size:12px;color:var(--muted);margin-top:4px;direction:ltr;text-align:right">${name} · ${(S.pdf.blob.size/1048576).toFixed(2)} MB</div></div>
+      <div class="row" style="gap:8px"><button class="btn" style="flex:1" onclick="scanShare()">📤 مشاركة / حفظ</button><button class="btn ghost" style="flex:1" onclick="scanDownload()">⬇️ تنزيل</button></div>`;
+    if(btn){btn.disabled=false;btn.textContent='📄 إعادة إنشاء PDF';}
+  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='📄 إنشاء ملف PDF';}}}
+function scanShare(){const S=window._scan;if(!S.pdf)return;const file=new File([S.pdf.blob],S.pdf.name,{type:'application/pdf'});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:S.pdf.name}).catch(e=>{if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة — استخدم زر التنزيل');});}else scanDownload();}
+function scanDownload(){const S=window._scan;if(!S.pdf)return;const u=URL.createObjectURL(S.pdf.blob),a=document.createElement('a');a.href=u;a.download=S.pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000);toast('تم تنزيل الملف ✓');}
+/* ===== SCANNER END ===== */
+
 function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
   openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
    <div class="seg"><button class="on" id="drTabDay" onclick="drMode('day')">يومي</button><button id="drTabMan" onclick="drMode('manual')">حسب المحطات</button></div>
