@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='286';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='287';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2641,6 +2641,7 @@ async function loadWorkOrders(){
     </tbody></table></div>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a4a12" onclick="auditValues(event)">🔎 تدقيق القيمة الإجمالية</button>
+  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   ${_de?`<button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
@@ -2993,6 +2994,78 @@ function scanShare(){const S=window._scan;if(!S.pdf)return;const file=new File([
   if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:S.pdf.name}).catch(e=>{if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة — استخدم زر التنزيل');});}else scanDownload();}
 function scanDownload(){const S=window._scan;if(!S.pdf)return;const u=URL.createObjectURL(S.pdf.blob),a=document.createElement('a');a.href=u;a.download=S.pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000);toast('تم تنزيل الملف ✓');}
 /* ===== SCANNER END ===== */
+
+/* ===== WORKSLOG START — سجل الأعمال: كل المحطات المرفوعة (ملخص + تفصيلي) بتصميم نحيف ===== */
+function openWorksLog(){window._wlMode='all';
+  openModal(`<h3 style="margin:0 0 10px">📑 سجل الأعمال (اكسل) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
+   <div class="seg" style="margin-bottom:10px"><button class="on" id="wlTabAll" onclick="wlMode('all')">كل المحطات</button><button id="wlTabMon" onclick="wlMode('month')">شهري</button><button id="wlTabDay" onclick="wlMode('day')">يومي</button></div>
+   <div id="wlPick"></div>
+   <div class="hint" style="margin:4px 0 12px">يطلع ملف فيه ورقتين: <b>ملخص المحطات</b> (كل محطة: رقمها والإشعار وأمر العمل وقيمتها) و<b>تفصيلي</b> (بنود كل محطة وكمياتها وقيمتها). المجموع أسفل كل ورقة، والمحطات الموقّعة من الاستشاري تظهر «تم التوقيع» باللون الأخضر.</div>
+   <button class="btn" id="wlBtn" onclick="exportWorksLog()">⬇️ تصدير اكسل</button>
+   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  wlMode('all');}
+function wlMode(m){window._wlMode=m;['all','month','day'].forEach(k=>{const b=document.getElementById('wlTab'+(k==='all'?'All':k==='month'?'Mon':'Day'));if(b)b.classList.toggle('on',k===m);});
+  const box=document.getElementById('wlPick');if(!box)return;
+  if(m==='month')box.innerHTML=`<div class="field"><label>الشهر</label><input type="month" id="wl_month" value="${monthKey()}"></div>`;
+  else if(m==='day')box.innerHTML=`<div class="field"><label>التاريخ</label><input type="date" id="wl_date" value="${todayKey()}"></div>`;
+  else box.innerHTML='';}
+async function exportWorksLog(){
+  const mode=window._wlMode||'all',btn=document.getElementById('wlBtn');if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{await ensureLib('exceljs');let PRICES={};try{PRICES=await _secLoad();}catch(_){}
+    let data=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,item_name,item_name_full,qty,unit,work_date, entry_finance(rate,amount)'));
+    let label='كل الفترات',fsuf='الكل';
+    if(mode==='month'){const mk=(document.getElementById('wl_month').value||monthKey()).slice(0,7);data=data.filter(e=>String(e.work_date||'').slice(0,7)===mk);label='شهر '+mk;fsuf=mk;}
+    else if(mode==='day'){const dk=(document.getElementById('wl_date').value||todayKey()).slice(0,10);data=data.filter(e=>String(e.work_date||'').slice(0,10)===dk);label='يوم '+dk;fsuf=dk;}
+    if(!data.length){toast('لا توجد أعمال في هذه الفترة');if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}return;}
+    const rd=e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{rate:f&&f.rate!=null?Number(f.rate):0,amount:f&&f.amount!=null?Number(f.amount):null};};
+    const st={};
+    data.forEach(e=>{const p=(PROJECTS||[]).find(x=>x.id===e.project_id);if(!p)return;const code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||code,u=e.unit||'',q=Number(e.qty||0),fin=rd(e);
+      let rate=fin.rate;if(!rate){const pr=PRICES[code];if(pr)rate=Number(pr.p)||0;}const amt=(fin.amount!=null&&fin.amount>0)?fin.amount:q*rate;
+      const s=(st[p.id]=st[p.id]||{p,items:{},total:0,date:''});s.total+=amt;if((e.work_date||'')>s.date)s.date=String(e.work_date||'').slice(0,10);
+      const k=code+'|'+nm+'|'+u;const it=(s.items[k]=s.items[k]||{code,name:nm,unit:u,qty:0,rate,amount:0});it.qty+=q;it.amount+=amt;if(rate)it.rate=rate;});
+    const stations=Object.values(st).sort((a,b)=>String(b.p.created_at||'').localeCompare(String(a.p.created_at||''))||String(a.p.code||'').localeCompare(String(b.p.code||'')));
+    const gt=stations.reduce((s,x)=>s+x.total,0);
+    // ألوان ناعمة
+    const GREEN='FF1B6B3A',GREENBG='FFE7F4EC',HEADBG='FFEDF2EE',STHEAD='FFF4F7F5',LINE='FFCBD5CF',MUT='FF5A6B63';
+    const thin={style:'thin',color:{argb:LINE}},bord={top:thin,bottom:thin,left:thin,right:thin};
+    const AR='Arial';const wb=new ExcelJS.Workbook();
+    // ============ ورقة 1: ملخص المحطات ============
+    const ws=wb.addWorksheet('ملخص المحطات',{views:[{rightToLeft:true,showGridLines:false,state:'frozen',ySplit:2}]});
+    ws.columns=[{width:5},{width:19},{width:14},{width:15},{width:11},{width:8},{width:13},{width:13}];
+    const H=['م','رقم المحطة','رقم الإشعار','رقم أمر العمل','نوع المحطة','عدد البنود','القيمة (﷼)','التوقيع'];
+    const t1=ws.addRow(['سجل الأعمال — نسق الطاقة · '+label+' · عدد المحطات: '+stations.length]);ws.mergeCells(1,1,1,H.length);
+    t1.font={name:AR,size:12,bold:true};t1.height=20;t1.getCell(1).alignment={horizontal:'right',vertical:'middle'};
+    const hr=ws.addRow(H);hr.height=22;hr.eachCell(c=>{c.font={name:AR,size:9,bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:HEADBG}};c.border=bord;c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+    stations.forEach((s,idx)=>{const p=s.p,sg=!!p.consultant_signed,nItems=Object.keys(s.items).length;
+      const r=ws.addRow([idx+1,p.code||'',p.notice_no||'',p.wo_number||'',p.station_type||'',nItems,Number(s.total.toFixed(2)),sg?'تم التوقيع':'']);r.height=15;
+      r.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:9};c.alignment={horizontal:i===2?'right':'center',vertical:'middle'};
+        if(i===7){c.numFmt='#,##0.00';c.font={name:AR,size:9,bold:true};}
+        if(i===8&&sg){c.font={name:AR,size:9,bold:true,color:{argb:GREEN}};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:GREENBG}};}});});
+    const g1=ws.addRow(['الإجمالي','','','','','',Number(gt.toFixed(2)),'']);ws.mergeCells(g1.number,1,g1.number,6);
+    g1.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:10,bold:true};c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===7)c.numFmt='#,##0.00';});
+    // ============ ورقة 2: تفصيلي ============
+    const d=wb.addWorksheet('تفصيلي',{views:[{rightToLeft:true,showGridLines:false}]});
+    d.columns=[{width:44},{width:9},{width:11},{width:13}];
+    const t2=d.addRow(['تقرير الأعمال المفصّل — '+label]);d.mergeCells(1,1,1,4);t2.font={name:AR,size:12,bold:true};t2.getCell(1).alignment={horizontal:'right',vertical:'middle'};t2.height=20;
+    stations.forEach((s,idx)=>{const p=s.p,sg=!!p.consultant_signed;d.addRow([]);
+      const meta=(idx+1)+' — محطة: '+(p.code||'—')+(p.notice_no?'    إشعار: '+p.notice_no:'')+(p.wo_number?'    أمر عمل: '+p.wo_number:'');
+      const h=d.addRow([meta,'','',sg?'تم التوقيع':'']);d.mergeCells(h.number,1,h.number,3);h.height=19;
+      const hc=h.getCell(1);hc.font={name:AR,size:10,bold:true};hc.alignment={horizontal:'right',vertical:'middle'};hc.fill={type:'pattern',pattern:'solid',fgColor:{argb:STHEAD}};hc.border=bord;
+      const sc=h.getCell(4);sc.border=bord;sc.alignment={horizontal:'center',vertical:'middle'};if(sg){sc.font={name:AR,size:9,bold:true,color:{argb:GREEN}};sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:GREENBG}};}else{sc.fill={type:'pattern',pattern:'solid',fgColor:{argb:STHEAD}};}
+      const hh=d.addRow(['البند','الكمية','سعر الوحدة','الإجمالي']);hh.height=16;hh.eachCell(c=>{c.font={name:AR,size:9,bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:HEADBG}};c.border=bord;c.alignment={horizontal:'center',vertical:'middle'};});
+      Object.values(s.items).sort((a,b)=>String(a.code).localeCompare(String(b.code))).forEach(it=>{
+        const r=d.addRow([it.name+(it.unit?' ('+it.unit+')':''),Number(it.qty.toFixed(2)),it.rate||'',Number(it.amount.toFixed(2))]);r.height=15;
+        r.eachCell((c,i)=>{c.border=bord;c.font={name:AR,size:9};c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===3||i===4)c.numFmt='#,##0.00';});});
+      const ts=d.addRow(['مجموع المحطة','','',Number(s.total.toFixed(2))]);d.mergeCells(ts.number,1,ts.number,3);
+      ts.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:9,bold:true,color:{argb:MUT}};c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===4){c.numFmt='#,##0.00';c.font={name:AR,size:9,bold:true};}});});
+    d.addRow([]);const g2=d.addRow(['الإجمالي العام','','',Number(gt.toFixed(2))]);d.mergeCells(g2.number,1,g2.number,3);g2.height=20;
+    g2.eachCell({includeEmpty:true},(c,i)=>{c.font={name:AR,size:12,bold:true};c.border=bord;c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===4)c.numFmt='#,##0.00';});
+    const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='سجل_الأعمال_'+fsuf+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+    closeModal();toast('تم التصدير ✓ — '+stations.length+' محطة');
+  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}}
+}
+/* ===== WORKSLOG END ===== */
 
 function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
   openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
