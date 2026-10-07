@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='283';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='284';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2971,7 +2971,7 @@ async function scanMakePdf(){const S=window._scan,btn=document.getElementById('s
       if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
       const m=4,ar=pg.warped.width/pg.warped.height;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
       pdf.addImage(pg.out,'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih);}
-    const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};const name='ميجر_موقع_'+(p.code||'محطة')+(p.wo_number?'_'+p.wo_number:'')+'_'+todayKey()+'.pdf';
+    const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};const name='ورقة قياس '+String(p.code||'محطة').trim()+'.pdf';
     S.pdf={blob:pdf.output('blob'),name};
     const box=document.getElementById('scanOut');if(box)box.innerHTML=`<div class="card" style="box-shadow:none;background:#eaf7ef;margin:6px 0 8px"><b style="color:#1b6b3a">✓ ملف PDF جاهز</b><div style="font-size:12px;color:var(--muted);margin-top:4px;direction:ltr;text-align:right">${name} · ${(S.pdf.blob.size/1048576).toFixed(2)} MB</div></div>
       <div class="row" style="gap:8px"><button class="btn" style="flex:1" onclick="scanShare()">📤 مشاركة / حفظ</button><button class="btn ghost" style="flex:1" onclick="scanDownload()">⬇️ تنزيل</button></div>`;
