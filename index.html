@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='291';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='292';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2687,6 +2687,41 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
+/* عارض الصور بملء الشاشة مع تكبير بإصبعين/نقرتين وتحريك */
+function openLightbox(url){
+  let lb=document.getElementById('lightbox');
+  if(!lb){lb=document.createElement('div');lb.id='lightbox';
+    lb.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.93);display:none;touch-action:none;overflow:hidden;user-select:none';
+    lb.innerHTML='<img id="lbImg" alt="" style="position:absolute;top:50%;left:50%;max-width:100%;max-height:100%;will-change:transform;-webkit-user-drag:none;pointer-events:none">'
+      +'<button id="lbClose" style="position:absolute;top:14px;left:14px;z-index:2;background:rgba(255,255,255,.92);border:none;border-radius:50%;width:44px;height:44px;font-size:21px;font-weight:800;cursor:pointer">✕</button>'
+      +'<div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;color:#fff;font-size:12.5px;opacity:.75;pointer-events:none">قرّب بإصبعين أو انقر نقرتين للتكبير</div>';
+    document.body.appendChild(lb);
+    const img=lb.querySelector('#lbImg');const pts=new Map();
+    let scale=1,tx=0,ty=0,startPan=null,pinch=null,lastTap=0;
+    const apply=()=>{img.style.transform='translate(-50%,-50%) translate('+tx+'px,'+ty+'px) scale('+scale+')';};
+    const reset=()=>{scale=1;tx=0;ty=0;apply();};lb._reset=reset;
+    const dist=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
+    const hide=()=>{lb.style.display='none';};
+    lb.querySelector('#lbClose').onclick=hide;
+    lb.addEventListener('pointerdown',e=>{
+      if(e.target.id==='lbClose')return;
+      pts.set(e.pointerId,e);
+      if(pts.size===2){const a=[...pts.values()];pinch={d:dist(a[0],a[1]),s:scale};startPan=null;}
+      else if(pts.size===1){
+        const now=Date.now();
+        if(now-lastTap<300){scale=scale>1.05?1:2.6;if(scale===1){tx=0;ty=0;}apply();lastTap=0;return;}
+        lastTap=now;startPan={x:e.clientX-tx,y:e.clientY-ty};}
+    });
+    lb.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,e);const a=[...pts.values()];
+      if(a.length>=2&&pinch){scale=Math.min(6,Math.max(1,pinch.s*dist(a[0],a[1])/pinch.d));apply();}
+      else if(a.length===1&&scale>1&&startPan){tx=e.clientX-startPan.x;ty=e.clientY-startPan.y;apply();}
+    });
+    const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;
+      if(pts.size===0){if(scale<=1.02){scale=1;tx=0;ty=0;apply();}startPan=null;}};
+    lb.addEventListener('pointerup',up);lb.addEventListener('pointercancel',up);
+  }
+  const img=lb.querySelector('#lbImg');img.src=url;lb._reset();lb.style.display='block';
+}
 async function viewStationPhotos(pid){
   window._phPid=pid;
   openModal('<h3 style="margin-bottom:12px">صور المحطة</h3><div id="phwrap" style="color:var(--muted)">جارٍ التحميل…</div><input type="file" id="phAddInput" accept="image/*" multiple style="display:none"><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
@@ -2704,7 +2739,7 @@ async function _renderStPhotos(pid){
   window._phData={before:before.map(x=>x.photo),after:after.map(x=>x.photo),meas:meas.map(x=>x.photo),stName};
   const map={};
   if(paths.length){try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}}
-  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px"><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small style="color:var(--muted)">لا صور</small>';
+  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><div style="position:relative" onclick="openLightbox('${u}')"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px;cursor:zoom-in;display:block"><span style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:7px;font-size:13px;padding:1px 7px">🔍</span></div><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small style="color:var(--muted)">لا صور</small>';
   const shareAll=(phase,n)=>n?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhotos('${phase}')">📲 مشاركة كل صور ${phase==='before'?'قبل':'بعد'} (${n}) دفعة واحدة</button>`:'';
   const addBefore=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','before')">➕ إضافة صور قبل</button>`:'';
   const addAfter=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','after')">➕ إضافة صور بعد</button>`:'';
