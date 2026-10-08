@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='292';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='293';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2691,35 +2691,35 @@ function canEditPhotos(){return !!PROFILE;}
 function openLightbox(url){
   let lb=document.getElementById('lightbox');
   if(!lb){lb=document.createElement('div');lb.id='lightbox';
-    lb.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.93);display:none;touch-action:none;overflow:hidden;user-select:none';
-    lb.innerHTML='<img id="lbImg" alt="" style="position:absolute;top:50%;left:50%;max-width:100%;max-height:100%;will-change:transform;-webkit-user-drag:none;pointer-events:none">'
-      +'<button id="lbClose" style="position:absolute;top:14px;left:14px;z-index:2;background:rgba(255,255,255,.92);border:none;border-radius:50%;width:44px;height:44px;font-size:21px;font-weight:800;cursor:pointer">✕</button>'
-      +'<div style="position:absolute;bottom:16px;left:0;right:0;text-align:center;color:#fff;font-size:12.5px;opacity:.75;pointer-events:none">قرّب بإصبعين أو انقر نقرتين للتكبير</div>';
+    lb.style.cssText='position:fixed;inset:0;z-index:999;background:rgba(8,10,9,.96);display:none;touch-action:none;overflow:hidden;user-select:none;-webkit-user-select:none';
+    lb.innerHTML='<img id="lbImg" alt="" draggable="false" style="position:absolute;top:50%;left:50%;max-width:100%;max-height:100%;transform:translate(-50%,-50%);transform-origin:center center;will-change:transform;backface-visibility:hidden;-webkit-backface-visibility:hidden;-webkit-user-drag:none;pointer-events:none;image-rendering:auto">'
+      +'<button id="lbClose" aria-label="إغلاق" style="position:absolute;top:16px;left:16px;z-index:2;width:42px;height:42px;border:none;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>'
+      +'<div id="lbHint" style="position:absolute;bottom:22px;left:0;right:0;text-align:center;color:#fff;font-size:12.5px;font-weight:600;opacity:.72;pointer-events:none;transition:opacity .45s;text-shadow:0 1px 3px rgba(0,0,0,.5)">قرّب بإصبعين · أو انقر نقرتين للتكبير</div>';
     document.body.appendChild(lb);
-    const img=lb.querySelector('#lbImg');const pts=new Map();
-    let scale=1,tx=0,ty=0,startPan=null,pinch=null,lastTap=0;
-    const apply=()=>{img.style.transform='translate(-50%,-50%) translate('+tx+'px,'+ty+'px) scale('+scale+')';};
-    const reset=()=>{scale=1;tx=0;ty=0;apply();};lb._reset=reset;
+    const img=lb.querySelector('#lbImg'),hint=lb.querySelector('#lbHint'),pts=new Map();
+    let scale=1,tx=0,ty=0,startPan=null,pinch=null,lastTap=0,raf=0;
+    const clamp=()=>{const vw=lb.clientWidth,vh=lb.clientHeight,iw=img.clientWidth*scale,ih=img.clientHeight*scale,mx=Math.max(0,(iw-vw)/2),my=Math.max(0,(ih-vh)/2);tx=tx<-mx?-mx:tx>mx?mx:tx;ty=ty<-my?-my:ty>my?my:ty;};
+    const draw=()=>{raf=0;clamp();img.style.transform='translate(-50%,-50%) translate3d('+tx.toFixed(2)+'px,'+ty.toFixed(2)+'px,0) scale('+scale.toFixed(4)+')';};
+    const render=()=>{if(!raf)raf=requestAnimationFrame(draw);};
+    const hideHint=()=>{if(hint&&hint.style.opacity!=='0')hint.style.opacity='0';};
+    const reset=()=>{if(raf){cancelAnimationFrame(raf);raf=0;}scale=1;tx=0;ty=0;img.style.transform='translate(-50%,-50%)';};lb._reset=reset;
     const dist=(a,b)=>Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-    const hide=()=>{lb.style.display='none';};
-    lb.querySelector('#lbClose').onclick=hide;
-    lb.addEventListener('pointerdown',e=>{
-      if(e.target.id==='lbClose')return;
-      pts.set(e.pointerId,e);
-      if(pts.size===2){const a=[...pts.values()];pinch={d:dist(a[0],a[1]),s:scale};startPan=null;}
-      else if(pts.size===1){
-        const now=Date.now();
-        if(now-lastTap<300){scale=scale>1.05?1:2.6;if(scale===1){tx=0;ty=0;}apply();lastTap=0;return;}
+    lb.querySelector('#lbClose').onclick=()=>{lb.style.display='none';};
+    lb.addEventListener('pointerdown',e=>{if(e.target.closest('#lbClose'))return;pts.set(e.pointerId,e);
+      if(pts.size===2){const a=[...pts.values()];pinch={d:dist(a[0],a[1])||1,s:scale};startPan=null;hideHint();}
+      else if(pts.size===1){const now=Date.now();
+        if(now-lastTap<300){scale=scale>1.05?1:2.8;if(scale===1){tx=0;ty=0;}hideHint();render();lastTap=0;return;}
         lastTap=now;startPan={x:e.clientX-tx,y:e.clientY-ty};}
     });
     lb.addEventListener('pointermove',e=>{if(!pts.has(e.pointerId))return;pts.set(e.pointerId,e);const a=[...pts.values()];
-      if(a.length>=2&&pinch){scale=Math.min(6,Math.max(1,pinch.s*dist(a[0],a[1])/pinch.d));apply();}
-      else if(a.length===1&&scale>1&&startPan){tx=e.clientX-startPan.x;ty=e.clientY-startPan.y;apply();}
+      if(a.length>=2&&pinch){scale=Math.min(6,Math.max(1,pinch.s*dist(a[0],a[1])/pinch.d));hideHint();render();}
+      else if(a.length===1&&scale>1&&startPan){tx=e.clientX-startPan.x;ty=e.clientY-startPan.y;render();}
     });
     const up=e=>{pts.delete(e.pointerId);if(pts.size<2)pinch=null;
-      if(pts.size===0){if(scale<=1.02){scale=1;tx=0;ty=0;apply();}startPan=null;}};
+      if(pts.size===0){if(scale<=1.02){scale=1;tx=0;ty=0;render();}startPan=null;}};
     lb.addEventListener('pointerup',up);lb.addEventListener('pointercancel',up);
   }
+  const hint=lb.querySelector('#lbHint');if(hint)hint.style.opacity='.72';
   const img=lb.querySelector('#lbImg');img.src=url;lb._reset();lb.style.display='block';
 }
 async function viewStationPhotos(pid){
@@ -2739,7 +2739,7 @@ async function _renderStPhotos(pid){
   window._phData={before:before.map(x=>x.photo),after:after.map(x=>x.photo),meas:meas.map(x=>x.photo),stName};
   const map={};
   if(paths.length){try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}}
-  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><div style="position:relative" onclick="openLightbox('${u}')"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px;cursor:zoom-in;display:block"><span style="position:absolute;bottom:6px;left:6px;background:rgba(0,0,0,.55);color:#fff;border-radius:7px;font-size:13px;padding:1px 7px">🔍</span></div><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small style="color:var(--muted)">لا صور</small>';
+  const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><div style="position:relative;border-radius:10px;overflow:hidden" onclick="openLightbox('${u}')"><img src="${u}" loading="lazy" style="width:100%;border-radius:10px;cursor:zoom-in;display:block"><span style="position:absolute;bottom:7px;left:7px;width:29px;height:29px;border-radius:50%;background:rgba(18,28,22,.46);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px);display:flex;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(0,0,0,.32)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="20" y1="20" x2="16.5" y2="16.5"/></svg></span></div><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small style="color:var(--muted)">لا صور</small>';
   const shareAll=(phase,n)=>n?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhotos('${phase}')">📲 مشاركة كل صور ${phase==='before'?'قبل':'بعد'} (${n}) دفعة واحدة</button>`:'';
   const addBefore=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','before')">➕ إضافة صور قبل</button>`:'';
   const addAfter=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','after')">➕ إضافة صور بعد</button>`:'';
