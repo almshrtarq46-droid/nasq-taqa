@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='289';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='290';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2113,7 +2113,7 @@ async function _pdcPdf(pid){
 async function photosPDF(pid,phase){
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   const code=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
-  const lbl=phase==='before'?'قبل':'بعد';
+  const lbl=phase==='before'?'قبل':phase==='meas'?'الميجر':'بعد';
   toast('جارٍ تجهيز صور '+lbl+'…');
   try{
     const{data,error}=await sb.from('station_photos').select('photo').eq('project_id',pid).eq('phase',phase).order('created_at');
@@ -2680,7 +2680,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_adm?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="attachMeasurement('${pid}')">📎 إرفاق ميجر جاهز</button>${p.measurement_pdf?`<button class="link" style="color:#12343B;font-weight:800" onclick="viewInvPhoto('${p.measurement_pdf}','الميجر الموقّع — ${(p.code||'')}')">👁 عرض الميجر المحفوظ</button>`:''}${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="attachMeasurement('${pid}')">📎 إرفاق ميجر جاهز</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
 async function viewStationPhotos(pid){
@@ -2693,11 +2693,11 @@ async function _renderStPhotos(pid){
   const{data}=await sb.from('station_photos').select('*').eq('project_id',pid).order('created_at');
   const rows=data||[];
   const ed=canEditPhotos();
-  const before=rows.filter(x=>x.phase==='before'),after=rows.filter(x=>x.phase==='after');
+  const before=rows.filter(x=>x.phase==='before'),after=rows.filter(x=>x.phase==='after'),meas=rows.filter(x=>x.phase==='meas');
   const paths=rows.map(x=>x.photo);
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   const stName=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
-  window._phData={before:before.map(x=>x.photo),after:after.map(x=>x.photo),stName};
+  window._phData={before:before.map(x=>x.photo),after:after.map(x=>x.photo),meas:meas.map(x=>x.photo),stName};
   const map={};
   if(paths.length){try{const{data:signed}=await sb.storage.from('photos').createSignedUrls(paths,3600);(signed||[]).forEach(s=>{if(s&&!s.error)map[s.path]=s.signedUrl;});}catch(e){}}
   const cell=(arr,lbl)=>arr.map((x,i)=>{const u=map[x.photo];if(!u)return'';const nm=(stName+'_'+lbl+'_'+(i+1)+'.jpg').replace(/'/g,'');return `<div style="width:48%"><img src="${u}" loading="lazy" style="width:100%;border-radius:8px"><div style="display:flex;gap:4px;margin-top:3px"><button class="btn ghost sm" style="flex:1;font-size:11px;padding:5px 2px" onclick="dlStPhoto('${x.photo}','${nm}')">⬇</button><button class="btn sm" style="flex:1;font-size:11px;padding:5px 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhoto('${x.photo}','${nm}')">📲</button>${ed?`<button class="btn danger sm" style="flex:none;width:34px;font-size:11px;padding:5px 2px" onclick="delStPhoto('${x.id}','${x.photo}')">🗑</button>`:''}</div></div>`;}).join('')||'<small style="color:var(--muted)">لا صور</small>';
@@ -2719,12 +2719,19 @@ async function _renderStPhotos(pid){
       ${after.length?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#12343B" onclick="photosPDF('${pid}','after')">🖨 تجميع صور بعد في PDF (${after.length})</button>`:''}
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(after,'بعد')}</div>
       ${addAfter}
+    </div>
+    <div style="height:2px;background:var(--line);border-radius:2px;margin:16px 0"></div>
+    <div style="background:#e7f4ec;border:2px solid #1f6f4a;border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#1f6f4a;flex:none"></span><b style="font-size:15px;color:#1b6b3a">📄 الميجر الموقّع (${meas.length})</b></div>
+      ${meas.length?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#12343B" onclick="photosPDF('${pid}','meas')">🖨 تجميع الميجر في PDF (${meas.length})</button>`:''}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(meas,'ميجر')}</div>
+      ${ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','meas')">➕ إضافة صورة ميجر</button>`:''}
     </div>`;
 }
 async function waStPhotos(phase){
   const d=window._phData;if(!d)return;const arr=d[phase]||[];if(!arr.length){toast('لا صور');return;}
   toast('جارٍ تجهيز '+arr.length+' صورة…');
-  const files=[];const lbl=phase==='before'?'قبل':'بعد';
+  const files=[];const lbl=phase==='before'?'قبل':phase==='meas'?'الميجر':'بعد';
   for(let i=0;i<arr.length;i++){try{const{data,error}=await sb.storage.from('photos').download(arr[i]);if(error)throw error;files.push(new File([data],(d.stName+'_'+lbl+'_'+(i+1)+'.jpg'),{type:data.type||'image/jpeg'}));}catch(_){}}
   if(!files.length){toast('تعذّر تجهيز الصور');return;}
   if(navigator.canShare&&navigator.canShare({files})){try{await navigator.share({files,title:'صور '+lbl+' — نسق الطاقة'});}catch(e){if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة: '+(e.message||''));}}
@@ -2992,33 +2999,27 @@ async function scanMakePdf(){const S=window._scan,btn=document.getElementById('s
     if(btn){btn.disabled=false;btn.textContent='📄 إعادة إنشاء PDF';}
     _scanSaveToApp();
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='📄 إنشاء ملف PDF';}}}
-async function _scanSaveToApp(){const S=window._scan;if(!S||!S.pdf||!S.pid)return;
+async function _scanSaveToApp(){const S=window._scan;if(!S||!S.pages||!S.pages.length||!S.pid)return;
   const set=h=>{const e=document.getElementById('scanSaveStatus');if(e)e.innerHTML=h;};
   set('<span style="color:var(--copper)">⏳ جارٍ حفظ الميجر الموقّع في التطبيق…</span>');
-  try{const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};
-    const fname='measurement_'+String(p.code||'st').replace(/[^0-9A-Za-z_-]/g,'')+'_'+Date.now()+'.pdf';
-    const file=new File([S.pdf.blob],fname,{type:'application/pdf'});
-    const path=await uploadFileDoc(file,'meas');
-    const{error,count}=await sb.from('projects').update({measurement_pdf:path,consultant_signed:true},{count:'exact'}).eq('id',S.pid);
-    if(error){if(/measurement_pdf|column/i.test(error.message||'')){set('<span style="color:var(--bad)">⚠️ لازم تشغّل كود SQL لإضافة خانة حفظ الميجر أولاً (أرسلته لك). الملف جاهز للمشاركة/التنزيل.</span>');return;}throw error;}
-    if(count===0){set('<span style="color:var(--bad)">⚠️ تحتاج صلاحية التعديل (نفّذ كود SQL). الملف جاهز للمشاركة/التنزيل.</span>');return;}
-    const pp=(PROJECTS||[]).find(x=>x.id===S.pid);if(pp){pp.measurement_pdf=path;pp.consultant_signed=true;}
-    try{renderWOList();}catch(_){}
-    set('<span style="color:#1b6b3a;font-weight:800">✓ حُفظ الميجر الموقّع في المحطة — تقدر تفتحه من بطاقة المحطة</span>');
+  try{let n=0;
+    for(let i=0;i<S.pages.length;i++){const pg=S.pages[i];if(pg._saved)continue;
+      const path=await uploadPhoto(pg.out,'meas');
+      const{error}=await sb.from('station_photos').insert({project_id:S.pid,worker_id:ME.id,phase:'meas',photo:path,work_date:todayKey()});if(error)throw error;pg._saved=true;n++;}
+    try{await sb.from('projects').update({consultant_signed:true}).eq('id',S.pid);const pp=(PROJECTS||[]).find(x=>x.id===S.pid);if(pp)pp.consultant_signed=true;renderWOList();}catch(_){}
+    set('<span style="color:#1b6b3a;font-weight:800">✓ انحفظ الميجر الموقّع في المحطة — تلقاه في «📷 الصور»</span>');
   }catch(e){set('<span style="color:var(--bad)">تعذّر الحفظ التلقائي: '+((e&&e.message)||e)+' — الملف جاهز للمشاركة/التنزيل يدوياً</span>');}}
 function scanShare(){const S=window._scan;if(!S.pdf)return;const file=new File([S.pdf.blob],S.pdf.name,{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:S.pdf.name}).catch(e=>{if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة — استخدم زر التنزيل');});}else scanDownload();}
 function scanDownload(){const S=window._scan;if(!S.pdf)return;const u=URL.createObjectURL(S.pdf.blob),a=document.createElement('a');a.href=u;a.download=S.pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000);toast('تم تنزيل الملف ✓');}
 /* إرفاق ميجر سبق تصويره (ملف PDF أو صورة جاهزة من الجوال) وحفظه في المحطة */
-function attachMeasurement(pid){const inp=document.createElement('input');inp.type='file';inp.accept='application/pdf,image/*';inp.style.display='none';
-  inp.onchange=async()=>{const f=inp.files&&inp.files[0];try{inp.remove();}catch(_){}if(!f)return;
+function attachMeasurement(pid){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.style.display='none';
+  inp.onchange=async()=>{const files=[...(inp.files||[])];try{inp.remove();}catch(_){}if(!files.length)return;
     toast('⏳ جارٍ حفظ الميجر في المحطة…');
-    try{const path=await uploadFileDoc(f,'meas');
-      const{error,count}=await sb.from('projects').update({measurement_pdf:path,consultant_signed:true},{count:'exact'}).eq('id',pid);
-      if(error){toast(/measurement_pdf|column/i.test(error.message||'')?'لازم تشغّل كود SQL لإضافة الخانة أولاً':('خطأ: '+error.message));return;}
-      if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
-      const p=(PROJECTS||[]).find(x=>x.id===pid);if(p){p.measurement_pdf=path;p.consultant_signed=true;}
-      try{renderWOList();}catch(_){}toast('✓ حُفظ الميجر الموقّع في المحطة');
+    try{for(const f of files){const dataUrl=await readFileData(f);const path=await uploadPhoto(dataUrl,'meas');
+        const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'meas',photo:path,work_date:todayKey()});if(error)throw error;}
+      try{await sb.from('projects').update({consultant_signed:true}).eq('id',pid);const p=(PROJECTS||[]).find(x=>x.id===pid);if(p)p.consultant_signed=true;renderWOList();}catch(_){}
+      toast('✓ انحفظ الميجر في المحطة — تلقاه في «📷 الصور»');
     }catch(e){toast('تعذّر الحفظ: '+((e&&e.message)||e));}};
   document.body.appendChild(inp);inp.click();}
 /* ===== SCANNER END ===== */
