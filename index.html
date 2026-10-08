@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='287';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='288';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2680,7 +2680,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_adm?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
     ${_adm?`<tr><td style="font-weight:800">إجمالي المحطة</td><td></td><td></td><td style="text-align:left;font-weight:800;color:var(--copper)">${fmt(tot)}</td></tr>`:''}</tbody></table>
     ${_adm?`<div style="display:flex;gap:16px;font-size:12.5px;margin:8px 2px"><span style="color:var(--muted)">نصيبنا 75%: <b style="color:var(--green)">${fmt(tot*0.75)}</b></span><span style="color:var(--muted)">المقاول 25%: <b>${fmt(tot*0.25)}</b></span></div>`:''}
-    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button>${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
+    <div class="row" style="margin-top:6px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ الأعمال</button><button class="link" style="color:#12343B;font-weight:800" onclick="printMeasurementSheet('${pid}')">🖨 ميجر</button><button class="link" style="color:#7a4a12;font-weight:800" onclick="printMeasurementSheetPDC('${pid}')">🖨 ميجر pdc</button><button class="link" style="color:#1f6f4a;font-weight:800" onclick="openScanner('${pid}')">📄 مسح الميجر الموقّع</button>${p.measurement_pdf?`<button class="link" style="color:#12343B;font-weight:800" onclick="viewInvPhoto('${p.measurement_pdf}','الميجر الموقّع — ${(p.code||'')}')">📎 عرض الميجر المحفوظ</button>`:''}${_canSign?`<button class="link" style="color:#1b6b3a;font-weight:800" onclick="toggleSigned('${pid}',event)">${_sg?'✅ موقّع (إلغاء)':'☐ تحديد موقّع'}</button>`:''}${_adm?`<button class="link" onclick="openWoTrack('${pid}')">📋 المتابعة</button>`:''}<button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ المحطة</button>${_adm?`<button class="link" style="color:var(--bad)" onclick="confirmDelStation('${pid}')">🗑 حذف نهائي</button>`:''}</div></div></div>`;
 }
 function canEditPhotos(){return !!PROFILE;}
 async function viewStationPhotos(pid){
@@ -2987,9 +2987,25 @@ async function scanMakePdf(){const S=window._scan,btn=document.getElementById('s
     const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};const name='ورقة قياس (تم التوقيع) '+String(p.code||'محطة').trim()+'.pdf';
     S.pdf={blob:pdf.output('blob'),name};
     const box=document.getElementById('scanOut');if(box)box.innerHTML=`<div class="card" style="box-shadow:none;background:#eaf7ef;margin:6px 0 8px"><b style="color:#1b6b3a">✓ ملف PDF جاهز</b><div style="font-size:12px;color:var(--muted);margin-top:4px;direction:ltr;text-align:right">${name} · ${(S.pdf.blob.size/1048576).toFixed(2)} MB</div></div>
-      <div class="row" style="gap:8px"><button class="btn" style="flex:1" onclick="scanShare()">📤 مشاركة / حفظ</button><button class="btn ghost" style="flex:1" onclick="scanDownload()">⬇️ تنزيل</button></div>`;
+      <div class="row" style="gap:8px"><button class="btn" style="flex:1" onclick="scanShare()">📤 مشاركة / حفظ</button><button class="btn ghost" style="flex:1" onclick="scanDownload()">⬇️ تنزيل</button></div>
+      <div id="scanSaveStatus" style="font-size:12.5px;margin-top:9px;text-align:center"></div>`;
     if(btn){btn.disabled=false;btn.textContent='📄 إعادة إنشاء PDF';}
+    _scanSaveToApp();
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='📄 إنشاء ملف PDF';}}}
+async function _scanSaveToApp(){const S=window._scan;if(!S||!S.pdf||!S.pid)return;
+  const set=h=>{const e=document.getElementById('scanSaveStatus');if(e)e.innerHTML=h;};
+  set('<span style="color:var(--copper)">⏳ جارٍ حفظ الميجر الموقّع في التطبيق…</span>');
+  try{const p=(PROJECTS||[]).find(x=>x.id===S.pid)||{};
+    const fname='measurement_'+String(p.code||'st').replace(/[^0-9A-Za-z_-]/g,'')+'_'+Date.now()+'.pdf';
+    const file=new File([S.pdf.blob],fname,{type:'application/pdf'});
+    const path=await uploadFileDoc(file,'meas');
+    const{error,count}=await sb.from('projects').update({measurement_pdf:path,consultant_signed:true},{count:'exact'}).eq('id',S.pid);
+    if(error){if(/measurement_pdf|column/i.test(error.message||'')){set('<span style="color:var(--bad)">⚠️ لازم تشغّل كود SQL لإضافة خانة حفظ الميجر أولاً (أرسلته لك). الملف جاهز للمشاركة/التنزيل.</span>');return;}throw error;}
+    if(count===0){set('<span style="color:var(--bad)">⚠️ تحتاج صلاحية التعديل (نفّذ كود SQL). الملف جاهز للمشاركة/التنزيل.</span>');return;}
+    const pp=(PROJECTS||[]).find(x=>x.id===S.pid);if(pp){pp.measurement_pdf=path;pp.consultant_signed=true;}
+    try{renderWOList();}catch(_){}
+    set('<span style="color:#1b6b3a;font-weight:800">✓ حُفظ الميجر الموقّع في المحطة — تقدر تفتحه من بطاقة المحطة</span>');
+  }catch(e){set('<span style="color:var(--bad)">تعذّر الحفظ التلقائي: '+((e&&e.message)||e)+' — الملف جاهز للمشاركة/التنزيل يدوياً</span>');}}
 function scanShare(){const S=window._scan;if(!S.pdf)return;const file=new File([S.pdf.blob],S.pdf.name,{type:'application/pdf'});
   if(navigator.canShare&&navigator.canShare({files:[file]})){navigator.share({files:[file],title:S.pdf.name}).catch(e=>{if(e&&e.name!=='AbortError')toast('تعذّرت المشاركة — استخدم زر التنزيل');});}else scanDownload();}
 function scanDownload(){const S=window._scan;if(!S.pdf)return;const u=URL.createObjectURL(S.pdf.blob),a=document.createElement('a');a.href=u;a.download=S.pdf.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),8000);toast('تم تنزيل الملف ✓');}
