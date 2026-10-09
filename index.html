@@ -253,8 +253,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-workorders">
       <h2 class="section-title">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر لك أنت فقط.</div>
-      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div></div>
-      <input id="wo_search" placeholder="بحث برقم المحطة…" inputmode="numeric" oninput="renderWOList()" style="margin-bottom:12px">
+      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">المحطات الموقّعة</option></select></div></div>
+      <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div>
       <div id="woList"></div>
     </div>
@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='294';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='295';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2635,7 +2635,8 @@ async function loadWorkOrders(){
   const prodRows=Object.entries(prod).sort((a,b)=>b[1].items-a[1].items);
   const _plabel={all:'الكل',today:'اليوم','7':'آخر 7 أيام','30':'آخر 30 يوم'}[period]||'الكل';
   const typeCard=_stTypeSummary(listIds);
-  document.getElementById('woSummary').innerHTML=_adm?typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
+  const signedN=(PROJECTS||[]).filter(p=>p.consultant_signed).length;
+  document.getElementById('woSummary').innerHTML=_adm?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi" style="background:#eaf7ef"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
     <table class="tbl"><tbody>
     <tr><td>نصيبنا بانتظار النزول للمقاول</td><td style="text-align:left">${fmt(vPending)} ﷼</td></tr>
@@ -2656,14 +2657,15 @@ async function loadWorkOrders(){
 }
 function renderWOList(){
   const rows=window._woRows||[];const box=document.getElementById('woList');if(!box)return;
-  const term=(document.getElementById('wo_search')?.value||'').trim();
+  const term=(document.getElementById('wo_search')?.value||'').trim().replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));
+  const filt=(document.getElementById('wo_filter')?.value)||'all';
   const byP={};rows.forEach(e=>{(byP[e.project_id]=byP[e.project_id]||[]).push(e);});
   const _de=PROFILE&&PROFILE.role==='data_entry';
-  // بدون بحث: المحطات التي رُفع لها شغل فقط، مرتّبة حسب وقت الرفع (الأحدث أولاً). مع بحث: أي محطة برقمها
-  let keys;
-  if(term){keys=(PROJECTS||[]).filter(p=>String(p.code||'').includes(term)).map(p=>p.id);}
-  else{const ids=new Set((PROJECTS||[]).map(p=>p.id));keys=(PROJECTS||[]).filter(p=>byP[p.id]).map(p=>p.id).concat(Object.keys(byP).filter(pid=>!ids.has(pid)));}
-  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد محطات فيها أعمال في هذه الفترة')+'</div>';return;}
+  // الفلترة + البحث (بالمحطة أو الإشعار أو أمر العمل). الترتيب حسب وقت الرفع (الأحدث أولاً)
+  const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:true;
+  const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
+  let keys=(PROJECTS||[]).filter(p=>matchF(p)&&matchT(p)).map(p=>p.id);
+  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='signed'?'لا توجد محطات موقّعة':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':'لا توجد محطات')+'</div>';return;}
   box.innerHTML=keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
 async function toggleSigned(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const nv=!p.consultant_signed;
