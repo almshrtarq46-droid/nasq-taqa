@@ -538,7 +538,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='293';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='294';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2904,6 +2904,7 @@ function _scanList(){const S=window._scan;
   ${S.pages.length?'<div style="font-size:12.5px;color:var(--muted);margin:0 2px 6px">إضافة صفحة أخرى:</div>':''}
   <div class="row" style="gap:8px;margin-bottom:8px"><label class="btn" style="flex:1;display:block;text-align:center;position:relative;overflow:hidden;cursor:pointer">📷 تصوير بالكاميرا<input type="file" accept="image/*" capture="environment" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
   <label class="btn ghost" style="flex:1;display:block;text-align:center;position:relative;overflow:hidden;cursor:pointer">🖼 من الاستديو<input type="file" accept="image/*" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label></div>
+  <button class="btn" style="width:100%;margin-bottom:8px;background:#7a4a12" onclick="openScanCam()">🔦 كاميرا مع فلاش (إضاءة)</button>
   ${S.pages.length?`<button class="btn" id="scanPdfBtn" style="background:#12343B;margin-bottom:8px" onclick="scanMakePdf()">📄 إنشاء ملف PDF (${S.pages.length} ${S.pages.length===1?'صفحة':'صفحات'})</button>`:''}
   <div id="scanOut"></div>
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
@@ -2913,6 +2914,44 @@ function scanPick(input){const f=input.files&&input.files[0];if(!f)return;toast(
       const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);
       window._scan.src=c;window._scan.pts=_scanDetect(c);_scanCrop();}catch(e){toast('خطأ: '+(e&&e.message||e));}};
   img.onerror=()=>{URL.revokeObjectURL(url);toast('تعذّر فتح الصورة');};img.src=url;}
+/* كاميرا داخل التطبيق مع فلاش (torch) — مدعوم على أندرويد؛ iOS لا يدعم الفلاش عبر المتصفح */
+var _camStream=null,_camTrack=null,_camTorch=false;
+async function openScanCam(){
+  let ov=document.getElementById('scanCam');
+  if(!ov){ov=document.createElement('div');ov.id='scanCam';ov.style.cssText='position:fixed;inset:0;z-index:1000;background:#000;display:none;overflow:hidden';
+    ov.innerHTML='<video id="scVid" playsinline autoplay muted style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000"></video>'
+      +'<div id="scCamMsg" style="position:absolute;top:16px;left:12px;right:60px;text-align:center;color:#fff;font-size:12.5px;font-weight:600;opacity:.9;text-shadow:0 1px 3px rgba(0,0,0,.6);pointer-events:none"></div>'
+      +'<button id="scCamClose" aria-label="إغلاق" style="position:absolute;top:14px;right:14px;z-index:2;width:42px;height:42px;border:none;border-radius:50%;background:rgba(255,255,255,.16);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button>'
+      +'<div style="position:absolute;bottom:0;left:0;right:0;padding:20px 26px 34px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(transparent,rgba(0,0,0,.6))">'
+      +'<button id="scFlash" style="visibility:hidden;width:56px;height:56px;border:none;border-radius:50%;background:rgba(255,255,255,.18);color:#fff;font-size:25px;cursor:pointer">🔦</button>'
+      +'<button id="scShot" aria-label="تصوير" style="width:76px;height:76px;border:5px solid rgba(255,255,255,.9);border-radius:50%;background:#fff;cursor:pointer;box-shadow:0 2px 16px rgba(0,0,0,.45)"></button>'
+      +'<div style="width:56px"></div></div>';
+    document.body.appendChild(ov);
+    ov.querySelector('#scCamClose').onclick=closeScanCam;
+    ov.querySelector('#scShot').onclick=scanShot;
+    ov.querySelector('#scFlash').onclick=toggleTorch;
+  }
+  ov.style.display='block';const msg=ov.querySelector('#scCamMsg'),fb=ov.querySelector('#scFlash');fb.style.visibility='hidden';msg.textContent='جارٍ فتح الكاميرا…';
+  try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('الكاميرا غير متاحة في المتصفح');
+    _camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:3840},height:{ideal:2160}},audio:false});
+    const v=ov.querySelector('#scVid');v.srcObject=_camStream;try{await v.play();}catch(_){}
+    _camTrack=_camStream.getVideoTracks()[0];_camTorch=false;
+    let torchOk=false;try{const caps=_camTrack.getCapabilities?_camTrack.getCapabilities():{};torchOk=!!caps.torch;}catch(_){}
+    if(torchOk){fb.style.visibility='visible';fb.style.background='rgba(255,255,255,.18)';msg.textContent='صوّب على الورقة ثم اضغط زر التصوير · 🔦 للفلاش';}
+    else msg.textContent='الفلاش غير مدعوم في المتصفح على هذا الجهاز — للإضاءة استخدم «تصوير بالكاميرا» وفعّل فلاش كاميرا جوالك';
+  }catch(e){msg.textContent='تعذّر فتح الكاميرا: '+((e&&e.message)||e);setTimeout(closeScanCam,2600);}
+}
+async function toggleTorch(){if(!_camTrack)return;_camTorch=!_camTorch;
+  try{await _camTrack.applyConstraints({advanced:[{torch:_camTorch}]});const fb=document.getElementById('scFlash');if(fb)fb.style.background=_camTorch?'rgba(255,205,60,.92)':'rgba(255,255,255,.18)';}
+  catch(e){_camTorch=false;toast('تعذّر تشغيل الفلاش على هذا الجهاز');}}
+function closeScanCam(){const ov=document.getElementById('scanCam');if(ov)ov.style.display='none';
+  try{if(_camTrack&&_camTorch)_camTrack.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});}catch(_){}
+  try{if(_camStream)_camStream.getTracks().forEach(t=>t.stop());}catch(_){}_camStream=null;_camTrack=null;_camTorch=false;}
+function scanShot(){const ov=document.getElementById('scanCam'),v=ov&&ov.querySelector('#scVid');if(!v||!v.videoWidth){toast('الكاميرا لم تجهز بعد');return;}
+  try{const M=3400;const w=v.videoWidth,h=v.videoHeight,s=Math.min(1,M/Math.max(w,h)),cw=Math.round(w*s),ch=Math.round(h*s);
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(v,0,0,cw,ch);
+    closeScanCam();window._scan.src=c;window._scan.pts=_scanDetect(c);_scanCrop();}
+  catch(e){toast('تعذّر التقاط الصورة: '+((e&&e.message)||e));}}
 /* اكتشاف حواف الورقة تلقائياً: إزالة النصوص (closing) ← حواف ← خطوط Hough ← أفضل رباعي */
 function _scanDetect(c){const W=c.width,H=c.height,s=Math.min(1,480/Math.max(W,H)),w=Math.max(8,Math.round(W*s)),h=Math.max(8,Math.round(H*s)),N=w*h;
   const fb=[[0,0],[W,0],[W,H],[0,H]];
