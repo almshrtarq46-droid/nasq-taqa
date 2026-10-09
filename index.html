@@ -340,7 +340,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 
     <div class="view" id="v-expenses">
       <h2 class="section-title">المصروفات</h2>
-      <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" style="flex:1" onclick="openExpense()">+ إضافة مصروف</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('expenses','المصروفات',e=>(e.category||'')+' — '+fmt(e.amount)+' ﷼')">🗑 المحذوفات</button></div>
+      <button class="btn" style="width:100%;padding:15px;font-size:16px;margin-bottom:9px;background:var(--green)" onclick="openQuickExpense()">⚡ مصروف سريع — صوّر الفاتورة</button>
+      <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn ghost" style="flex:1" onclick="openExpense()">+ إضافة يدوي</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('expenses','المصروفات',e=>(e.category||'')+' — '+fmt(e.amount)+' ﷼')">🗑 المحذوفات</button></div>
       <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
       <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير لأي فترة</label>
         <div class="row" style="margin-top:6px"><div class="field" style="margin:0"><label>من</label><input type="date" id="ex_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="ex_to"></div></div>
@@ -545,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='309';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='310';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3669,6 +3670,39 @@ async function saveExpense(id){const amount=parseFloat(document.getElementById('
     closeModal();toast('تم الحفظ ✓');initExpenses();
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function deleteExpense(id){closeModal();await softDelete('expenses',id);}
+
+/* ===== QUICK EXPENSE — مصروف سريع: صوّر الفاتورة، الـ OCR يعبّي، والحفظ بضغطة ===== */
+let qePhoto=null;
+function openQuickExpense(){qePhoto=null;
+  openModal(`<h3 style="margin:0 0 4px">⚡ مصروف سريع <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
+   <div class="hint" style="margin:0 0 12px">صوّر الفاتورة ويتعبّى المبلغ والمورّد والتاريخ تلقائياً — راجع المبلغ واحفظ بضغطة.</div>
+   <div class="photobox" id="pb_qe" style="aspect-ratio:auto;height:155px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>اضغط للتصوير<input type="file" accept="image/*" capture="environment" onchange="qePick(this)"></div>
+   <div style="text-align:center;margin:8px 0 6px"><label class="link" style="cursor:pointer;position:relative;overflow:hidden;display:inline-block">🖼 أو اختر من الاستديو<input type="file" accept="image/*" onchange="qePick(this)" style="position:absolute;inset:0;opacity:0"></label></div>
+   <div id="qe_ocr" style="font-size:12.5px;margin-bottom:10px;min-height:16px"></div>
+   <div class="row"><div class="field"><label>المبلغ (﷼)</label><input id="qe_amount" type="number" inputmode="decimal" placeholder="0.00"></div><div class="field"><label>التاريخ</label><input type="date" id="qe_date" value="${todayKey()}"></div></div>
+   <div class="field"><label>التصنيف</label><select id="qe_category">${EXP_CATS.map(c=>`<option ${c==='مشتريات'?'selected':''}>${c}</option>`).join('')}</select></div>
+   <div class="field"><label>البيان / المورّد</label><input id="qe_desc" placeholder="مثال: حديد — مؤسسة النور"></div>
+   <button class="btn" id="qeSave" style="padding:14px;font-size:16px" onclick="saveQuickExpense()">حفظ المصروف</button>
+   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+function qePick(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{qePhoto=d;const b=document.getElementById('pb_qe');if(b){b.querySelectorAll('img').forEach(x=>x.remove());const img=document.createElement('img');img.src=d;b.appendChild(img);}qeRead(d,'image/jpeg');});rd.readAsDataURL(f);}
+async function qeRead(b64,media){const el=document.getElementById('qe_ocr');if(el)el.innerHTML='<span style="color:var(--copper)">🔍 يقرأ الفاتورة…</span>';
+  try{const data64=String(b64).indexOf(',')>=0?String(b64).split(',')[1]:b64;
+    const{data,error}=await sb.functions.invoke('read-invoice',{body:{data:data64,media_type:media}});
+    if(error)throw error;const fnd=data&&data.fields;if(!fnd)throw new Error('no fields');
+    const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&String(v).trim()!=='')e.value=v;};
+    set('qe_amount',fnd.amount);set('qe_date',fnd.date);
+    const party=(fnd.party||'').trim(),num=(fnd.number||'').trim();
+    if(party||num){const e=document.getElementById('qe_desc');if(e&&!e.value)e.value=party+(num?' — فاتورة '+num:'');}
+    if(el)el.innerHTML='<span style="color:var(--green);font-weight:700">✓ تمت القراءة — راجع المبلغ قبل الحفظ.</span>';
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--muted)">تعذّرت القراءة التلقائية — اكتب المبلغ يدوياً والصورة محفوظة.</span>';}}
+async function saveQuickExpense(){const amount=parseFloat(document.getElementById('qe_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
+  const btn=document.getElementById('qeSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const rec={expense_date:document.getElementById('qe_date').value||todayKey(),category:document.getElementById('qe_category').value||'مشتريات',amount,description:document.getElementById('qe_desc').value.trim()};
+    if(qePhoto)rec.photo=await uploadPhoto(qePhoto,'exp');
+    rec.created_by=ME.id;const{error}=await sb.from('expenses').insert(rec);if(error)throw error;
+    closeModal();toast('تم حفظ المصروف ✓');initExpenses();
+  }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent='حفظ المصروف';}}
+/* ===== QUICK EXPENSE END ===== */
 
 /* ===== فاتورة ضريبية (ZATCA — المرحلة الأولى) ===== */
 let taxLines=[];
