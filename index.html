@@ -546,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='311';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='312';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2660,7 +2660,7 @@ async function loadWorkOrders(){
     </tbody></table></div>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a4a12" onclick="auditValues(event)">🔎 تدقيق القيمة الإجمالية</button>
-  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>
+  ${srHidden()?'':`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>`}
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   ${_de?`<button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
@@ -2697,61 +2697,83 @@ async function toggleSigned(pid,ev){if(ev){ev.stopPropagation();}closeModal();co
     if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
     p.consultant_signed=nv;renderWOList();toast(nv?'تم تحديدها موقّعة ✅':'أُلغي التوقيع');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}}
-/* ===== SIGN RECONCILE — مطابقة التواقيع لمرة واحدة: فقط الأرقام المُدخلة تبقى «تم التوقيع» ===== */
-function _digits(s){return String(s||'').replace(/[٠-٩]/g,d=>'٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[۰-۹]/g,d=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(d));}
+/* ===== SIGN RECONCILE — مطابقة التواقيع لمرة واحدة: فقط المحطات المُضافة تبقى «تم التوقيع» ===== */
+function srHidden(){try{return localStorage.getItem('nasq_sr_done')==='1';}catch(_){return false;}}
 function openSignReconcile(){
   if(!PROFILE||PROFILE.role!=='admin'){toast('هذه الأداة للمدير فقط');return;}
+  window._srSel=[];window._srPick=null;
   openModal(`<h3 style="margin:0 0 4px">🔖 مطابقة التواقيع <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
-   <div class="hint" style="margin:0 0 10px">الصق أرقام المحطات <b>الموقّعة فعلاً</b> (افصل بمسافة أو فاصلة أو سطر). سيتم تحديد هذه فقط «تم التوقيع»، وإلغاء توقيع أي محطة نشطة مؤشّرة بالغلط. المحطات المؤرشفة (المنتهية) لا تتأثر.</div>
-   <textarea id="sr_in" style="width:100%;min-height:120px;border:1px solid var(--line);border-radius:12px;padding:10px;font-size:15px;direction:ltr;text-align:right" placeholder="مثال:
-01850
-01234, 05678
-09999"></textarea>
-   <button class="btn" style="margin-top:10px" onclick="srAnalyze()">تحليل</button>
-   <div id="sr_out" style="margin-top:12px"></div>
-   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
-function _srCompute(){
-  const raw=_digits(document.getElementById('sr_in').value||'');
-  const nums=[...new Set((raw.match(/\d+/g)||[]).map(x=>x.replace(/^0+(?=\d)/,'')))];// بدون أصفار بادئة للمقارنة
-  const norm=c=>_digits(c).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-  const want=new Set(nums);
+   <div class="hint" style="margin:0 0 10px">أضف أرقام المحطات <b>الموقّعة فعلاً</b> واحدة واحدة (رقم المحطة أو أمر العمل أو الإشعار) ثم «تطبيق». النتيجة: هذه فقط تبقى «تم التوقيع»، وأي محطة نشطة مؤشّرة بالغلط يُلغى توقيعها. المؤرشفة (المنتهية) لا تتأثر.</div>
+   <label>رقم المحطة أو أمر العمل أو الإشعار</label>
+   <div class="row" style="margin-bottom:6px"><input id="sr_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة أو أمر العمل أو الإشعار" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();srAdd();}"><button class="btn sm" style="flex:none;width:96px" onclick="srAdd()">➕ إضافة</button></div>
+   <button class="link" style="display:block;margin:2px 0 6px;font-size:12px" onclick="srDiag()">🔍 فحص: كم نسخة لهذا الرقم؟</button>
+   <div id="sr_pick"></div>
+   <div id="sr_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
+   <div id="sr_out" style="margin:6px 0"></div>
+   <button class="btn" id="srApplyBtn" style="background:var(--green)" onclick="srApply()">تطبيق المطابقة</button>
+   <button class="link" style="display:block;margin:12px auto 2px;color:var(--bad);font-weight:700" onclick="srConfirmRemove()">🗑 انتهيت — احذف هذه الأداة نهائياً</button>
+   <button class="link" style="display:block;margin:8px auto 0" onclick="closeModal()">إغلاق</button>`);
+  srRenderList();srRenderSummary();}
+function srDiag(){const inp=document.getElementById('sr_input');const n=_drNorm(inp.value);if(!n){toast('اكتب رقم أولاً');return;}
+  const ms=(PROJECTS||[]).filter(p=>[_drNorm(p.code),_drNorm(p.wo_number),_drNorm(p.notice_no)].includes(n));
+  alert('النسخة V'+APP_VER+'\nتطابق الرقم '+n+': '+ms.length+'\n\n'+ms.map(p=>'• محطة '+(p.code||'—')+' | أمر عمل '+(p.wo_number||'—')+' | إشعار '+(p.notice_no||'—')+' | '+(p.consultant_signed?'موقّعة':'غير موقّعة')+(_isArchived(p)?' | مؤرشفة':'')).join('\n'));}
+function _srAddProj(p){window._srSel=window._srSel||[];const wo=String(p.wo_number||'').trim();const key='pid:'+p.id;if(window._srSel.some(s=>s.key===key))return false;window._srSel.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});return true;}
+function srAdd(){const inp=document.getElementById('sr_input');const raw=_drNorm(inp.value);const nums=(raw.match(/\d+/g)||[]);window._srSel=window._srSel||[];
+  let added=0,nf=[],arch=[],multi=null;
+  for(const n of nums){const all=(PROJECTS||[]).filter(p=>[_drNorm(p.code),_drNorm(p.wo_number),_drNorm(p.notice_no)].includes(n));
+    const act=all.filter(p=>!_isArchived(p));
+    if(!all.length){nf.push(n);continue;}
+    if(!act.length){arch.push(n);continue;}
+    if(act.length===1){if(_srAddProj(act[0]))added++;continue;}
+    multi={n,ms:act};}
+  inp.value='';window._srPick=multi||null;srRenderPick();srRenderList();srRenderSummary();
+  if(nf.length)toast('غير موجود: '+nf.join('، '));else if(arch.length)toast('مؤرشفة (منتهية) — لا تحتاج مطابقة: '+arch.join('، '));else if(multi)toast('رقم مكرر — اختر المحطة');else if(!added&&nums.length)toast('مضافة مسبقاً');try{inp.focus();}catch(_){}}
+function srPickChoose(pid){const p=(PROJECTS||[]).find(x=>x.id===pid);if(p)_srAddProj(p);window._srPick=null;srRenderPick();srRenderList();srRenderSummary();}
+function srRenderPick(){const box=document.getElementById('sr_pick');if(!box)return;const m=window._srPick;if(!m){box.innerHTML='';return;}
+  box.innerHTML=`<div style="background:#fff7e6;border:1px solid #f0cf8f;border-radius:10px;padding:10px;margin:2px 0 8px"><div style="font-weight:800;color:#8a4b00;font-size:13px;margin-bottom:7px">رقم ${m.n} مكرر (${m.ms.length}) — اختر المحطة الموقّعة:</div>${m.ms.map(p=>`<button class="btn sm" style="width:100%;margin-bottom:6px;background:#12343B;text-align:right" onclick="srPickChoose('${p.id}')">محطة: ${p.code||'—'} · أمر عمل: ${p.wo_number||'—'}${p.notice_no?' · إشعار: '+p.notice_no:''}</button>`).join('')}<div style="text-align:center"><span onclick="window._srPick=null;srRenderPick();" style="cursor:pointer;color:#c0392b;font-weight:700;font-size:12.5px">إلغاء الاختيار</span></div></div>`;}
+function srDel(k){window._srSel=(window._srSel||[]).filter(x=>x.key!==k);srRenderList();srRenderSummary();}
+function srRenderList(){const box=document.getElementById('sr_list');if(!box)return;const list=window._srSel||[];
+  box.innerHTML=list.length?list.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:13px">${s.label}<span onclick="srDel('${s.key}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف محطة بعد</span>';}
+function _srCompute(){const want=new Set((window._srSel||[]).map(s=>s.pid));
   const active=(PROJECTS||[]).filter(p=>!_isArchived(p));
-  const matchWant=p=>want.has(norm(p.code));
-  const toSign=active.filter(p=>!p.consultant_signed&&matchWant(p));
-  const wrong=active.filter(p=>p.consultant_signed&&!matchWant(p));
-  const have=new Set(active.map(p=>norm(p.code)).filter(Boolean));
-  const notFound=nums.filter(n=>!have.has(n));
-  const alreadyN=active.filter(p=>p.consultant_signed&&matchWant(p)).length;
-  return{nums,toSign,wrong,notFound,alreadyN};}
-function srAnalyze(){
-  const r=_srCompute();const out=document.getElementById('sr_out');if(!out)return;
-  if(!r.nums.length){out.innerHTML='<div style="color:var(--bad);font-size:13px">لم تُدخل أي أرقام.</div>';return;}
+  const toSign=active.filter(p=>want.has(p.id)&&!p.consultant_signed);
+  const wrong=active.filter(p=>!want.has(p.id)&&p.consultant_signed);
+  const alreadyN=active.filter(p=>want.has(p.id)&&p.consultant_signed).length;
+  return{want,toSign,wrong,alreadyN};}
+function srRenderSummary(){const out=document.getElementById('sr_out');if(!out)return;const r=_srCompute();const n=(window._srSel||[]).length;
+  if(!n){out.innerHTML='';return;}
   const codes=arr=>arr.map(p=>p.code||'—').join('، ')||'—';
-  out.innerHTML=`<div class="card" style="box-shadow:none;background:#f6f8f7">
-    <table class="tbl"><tbody>
-      <tr><td>أرقام أدخلتها</td><td style="text-align:left;font-weight:700">${r.nums.length}</td></tr>
+  out.innerHTML=`<div class="card" style="box-shadow:none;background:#f6f8f7;margin:0"><table class="tbl"><tbody>
+      <tr><td>محطات أضفتها</td><td style="text-align:left;font-weight:700">${n}</td></tr>
       <tr><td>موقّعة مسبقاً وصحيحة</td><td style="text-align:left;font-weight:700;color:var(--green)">${r.alreadyN}</td></tr>
       <tr><td>ستُحدَّد «تم التوقيع» الآن</td><td style="text-align:left;font-weight:700;color:var(--green)">${r.toSign.length}</td></tr>
       <tr><td>مؤشّرة بالغلط (سيُلغى توقيعها)</td><td style="text-align:left;font-weight:800;color:var(--bad)">${r.wrong.length}</td></tr>
-      <tr><td>أرقام غير موجودة بالتطبيق</td><td style="text-align:left;font-weight:700;color:var(--copper)">${r.notFound.length}</td></tr>
-    </tbody></table>
-    ${r.wrong.length?`<div style="margin-top:10px;font-size:12.5px"><b style="color:var(--bad)">محطات موقّعة بالغلط (ليست في قائمتك):</b><br>${codes(r.wrong)}</div>`:''}
-    ${r.notFound.length?`<div style="margin-top:10px;font-size:12.5px"><b style="color:var(--copper)">أرقام ما لها محطة في التطبيق:</b><br>${r.notFound.join('، ')}</div>`:''}
-   </div>
-   ${(r.toSign.length||r.wrong.length)?`<button class="btn" style="margin-top:10px;background:var(--green)" onclick="srApply()">تطبيق — ${r.toSign.length} توقيع · إلغاء ${r.wrong.length}</button>`:'<div style="margin-top:10px;color:var(--green);font-size:13px;font-weight:700">كل شيء مطابق بالفعل ✓ لا تغيير.</div>'}`;}
+    </tbody></table>${r.wrong.length?'<div style="margin-top:9px;font-size:12.5px"><b style="color:var(--bad)">محطات موقّعة بالغلط (ليست في قائمتك):</b><br>'+codes(r.wrong)+'</div>':''}</div>`;}
 async function srApply(){
   const r=_srCompute();const signIds=r.toSign.map(p=>p.id),unIds=r.wrong.map(p=>p.id);
-  if(!signIds.length&&!unIds.length){toast('لا تغيير');return;}
-  const btns=document.querySelectorAll('#sr_out .btn');btns.forEach(b=>{b.disabled=true;b.innerHTML='<span class="spin"></span>';});
+  if(!(window._srSel||[]).length){toast('أضف محطة واحدة على الأقل');return;}
+  if(!signIds.length&&!unIds.length){closeModal();toast('كل شيء مطابق — لا تغيير ✓');return;}
+  const ask=`<h3 style="margin-bottom:8px">تأكيد المطابقة</h3><p style="font-size:14px;line-height:1.8;margin-bottom:12px">سيتم تحديد <b style="color:var(--green)">${signIds.length}</b> محطة «تم التوقيع»، وإلغاء توقيع <b style="color:var(--bad)">${unIds.length}</b> محطة مؤشّرة بالغلط.${unIds.length?'<br><br><b style="color:var(--bad)">سيُلغى توقيع:</b> '+r.wrong.map(p=>p.code||'—').join('، '):''}</p>
+    <button class="btn" style="background:var(--green)" onclick="srDoApply()">نعم، طبّق</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="openSignReconcileResume()">تراجع</button>`;
+  openModal(ask);}
+function openSignReconcileResume(){const keep=window._srSel;openSignReconcile();window._srSel=keep||[];srRenderList();srRenderSummary();}
+async function srDoApply(){
+  const r=_srCompute();const signIds=r.toSign.map(p=>p.id),unIds=r.wrong.map(p=>p.id);
   try{let msg='';
     if(signIds.length){const{error,count}=await sb.from('projects').update({consultant_signed:true},{count:'exact'}).in('id',signIds);
-      if(error)throw error;if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');btns.forEach(b=>{b.disabled=false;});srAnalyze();return;}
+      if(error)throw error;if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
       signIds.forEach(id=>{const p=(PROJECTS||[]).find(x=>x.id===id);if(p)p.consultant_signed=true;});msg+=count+' موقّعة ';}
     if(unIds.length){const{error:e2,count:c2}=await sb.from('projects').update({consultant_signed:false},{count:'exact'}).in('id',unIds);
-      if(e2)throw e2;if(c2===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');btns.forEach(b=>{b.disabled=false;});srAnalyze();return;}
+      if(e2)throw e2;if(c2===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
       unIds.forEach(id=>{const p=(PROJECTS||[]).find(x=>x.id===id);if(p)p.consultant_signed=false;});msg+='· أُلغي '+c2;}
     closeModal();toast('تمت المطابقة ✓ '+msg);loadWorkOrders();
-  }catch(e){toast('خطأ: '+(e&&e.message||e));btns.forEach(b=>{b.disabled=false;});srAnalyze();}}
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}}
+function srConfirmRemove(){
+  openModal(`<h3 style="margin-bottom:8px;color:var(--bad)">حذف أداة المطابقة</h3><p style="font-size:14px;line-height:1.8;margin-bottom:12px">سيُخفى زر «مطابقة التواقيع» نهائياً من جهازك هذا. استخدمها لمرة واحدة فقط — بعدها التوقيع يصير تلقائياً عند تصوير الميجر. متأكد؟</p>
+    <button class="btn danger" onclick="srRemove()">نعم، احذفها نهائياً</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">تراجع</button>`);}
+function srRemove(){try{localStorage.setItem('nasq_sr_done','1');}catch(_){}closeModal();toast('أُزيلت أداة المطابقة ✓');try{loadWorkOrders();}catch(_){}}
 /* ===== SIGN RECONCILE END ===== */
 function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const _adm=PROFILE.role==='admin';
