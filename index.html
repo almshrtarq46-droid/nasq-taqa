@@ -546,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='312';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='313';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2704,6 +2704,7 @@ function openSignReconcile(){
   window._srSel=[];window._srPick=null;
   openModal(`<h3 style="margin:0 0 4px">🔖 مطابقة التواقيع <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
    <div class="hint" style="margin:0 0 10px">أضف أرقام المحطات <b>الموقّعة فعلاً</b> واحدة واحدة (رقم المحطة أو أمر العمل أو الإشعار) ثم «تطبيق». النتيجة: هذه فقط تبقى «تم التوقيع»، وأي محطة نشطة مؤشّرة بالغلط يُلغى توقيعها. المؤرشفة (المنتهية) لا تتأثر.</div>
+   <button class="btn" style="background:var(--bad);margin-bottom:12px" onclick="srClearAll()">🧹 تصفير كل التواقيع الآن (ابدأ من الصفر)</button>
    <label>رقم المحطة أو أمر العمل أو الإشعار</label>
    <div class="row" style="margin-bottom:6px"><input id="sr_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة أو أمر العمل أو الإشعار" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();srAdd();}"><button class="btn sm" style="flex:none;width:96px" onclick="srAdd()">➕ إضافة</button></div>
    <button class="link" style="display:block;margin:2px 0 6px;font-size:12px" onclick="srDiag()">🔍 فحص: كم نسخة لهذا الرقم؟</button>
@@ -2714,6 +2715,19 @@ function openSignReconcile(){
    <button class="link" style="display:block;margin:12px auto 2px;color:var(--bad);font-weight:700" onclick="srConfirmRemove()">🗑 انتهيت — احذف هذه الأداة نهائياً</button>
    <button class="link" style="display:block;margin:8px auto 0" onclick="closeModal()">إغلاق</button>`);
   srRenderList();srRenderSummary();}
+function srClearAll(){const signed=(PROJECTS||[]).filter(p=>p.consultant_signed);
+  if(!signed.length){toast('لا توجد محطات موقّعة أصلاً');return;}
+  openModal(`<h3 style="margin-bottom:8px;color:var(--bad)">تصفير كل التواقيع</h3>
+   <p style="font-size:14px;line-height:1.8;margin-bottom:12px">سيُمسح «تم التوقيع» من <b>${signed.length}</b> محطة — <b>المحطات نفسها تبقى كما هي</b> ولا يُحذف شيء آخر. بعدها تضيف الموقّعة يدوياً محطة محطة. متأكد؟</p>
+   <button class="btn danger" onclick="srDoClearAll()">نعم، امسح كل التواقيع</button>
+   <button class="link" style="display:block;margin:12px auto 0" onclick="openSignReconcile()">تراجع</button>`);}
+async function srDoClearAll(){const ids=(PROJECTS||[]).filter(p=>p.consultant_signed).map(p=>p.id);
+  if(!ids.length){toast('لا تغيير');return;}
+  try{const{error,count}=await sb.from('projects').update({consultant_signed:false},{count:'exact'}).eq('consultant_signed',true);
+    if(error)throw error;if(count===0){toast('تحتاج صلاحية التعديل (نفّذ كود SQL)');return;}
+    (PROJECTS||[]).forEach(p=>{if(p.consultant_signed)p.consultant_signed=false;});
+    closeModal();toast('تم تصفير '+count+' توقيع ✓ — أضفها الآن يدوياً');loadWorkOrders();
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}}
 function srDiag(){const inp=document.getElementById('sr_input');const n=_drNorm(inp.value);if(!n){toast('اكتب رقم أولاً');return;}
   const ms=(PROJECTS||[]).filter(p=>[_drNorm(p.code),_drNorm(p.wo_number),_drNorm(p.notice_no)].includes(n));
   alert('النسخة V'+APP_VER+'\nتطابق الرقم '+n+': '+ms.length+'\n\n'+ms.map(p=>'• محطة '+(p.code||'—')+' | أمر عمل '+(p.wo_number||'—')+' | إشعار '+(p.notice_no||'—')+' | '+(p.consultant_signed?'موقّعة':'غير موقّعة')+(_isArchived(p)?' | مؤرشفة':'')).join('\n'));}
