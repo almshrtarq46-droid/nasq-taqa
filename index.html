@@ -546,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='320';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='321';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3583,9 +3583,13 @@ function finTab2(tab,btn){
   }
   body.innerHTML=`<div class="hint">سجّل فواتير المشتريات الواردة من الموردين — لخصم ضريبة المدخلات في الإقرار الضريبي. أرفق صورة الفاتورة.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn" style="flex:1" onclick="openInvoice()">+ إضافة فاتورة واردة</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('invoices','الفواتير',i=>(i.party||'مورّد')+' — '+fmt(i.amount)+' ﷼')">🗑 المحذوفات</button></div>
+    <label style="font-size:12px;color:var(--muted);display:block;margin:0 2px 6px">الربع الضريبي</label>
+    <div class="seg" id="invQSeg" style="margin-bottom:10px"><button data-q="all" onclick="invSetQ('all',this)">الكل</button><button data-q="q3" onclick="invSetQ('q3',this)">ربع ٣ (يونيو–سبتمبر)</button><button data-q="q4" onclick="invSetQ('q4',this)">ربع ٤ (أكتوبر–ديسمبر)</button><button data-q="custom" onclick="invSetQ('custom',this)">مخصص</button></div>
+    <div id="invCustomRange" style="display:none;margin-bottom:10px"><div class="row" style="gap:8px"><div class="field" style="margin:0"><label>من</label><input type="date" id="inv_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="inv_to"></div></div><button class="btn sm" style="margin-top:8px" onclick="invCustomApply()">تطبيق الفترة</button></div>
     <div class="grid2" id="finKpis" style="margin-bottom:13px"></div>
     <input id="inv_search" placeholder="ابحث باسم المورّد أو رقم الفاتورة…" oninput="renderInvList()" style="margin-bottom:12px">
     <div id="invList"></div>`;
+  enforceEnDates(body);window._invRange=undefined;window._invQKey=undefined;
   loadInvoices();
 }
 async function loadInvoices(){
@@ -3595,11 +3599,31 @@ async function loadInvoices(){
   inc.forEach(i=>{i._exp=_lset.has(i.id);});
   window._INVALL=inc;
   const _nm=new Set();inc.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
-  const k=document.getElementById('finKpis');if(k)k.innerHTML=`<div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>المشتريات شاملة الضريبة ﷼</span></div><div class="kpi"><b>${fmt(sum-sv)}</b><span>قبل الضريبة — للإقرار الضريبي ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div><div class="hint" style="grid-column:1/-1;margin-top:2px">عند رفع الإقرار في هيئة الزكاة والضريبة: أدخل «المشتريات قبل الضريبة» = <b>${fmt(sum-sv)}</b> ﷼ في خانة قيمة المشتريات، والموقع يحسب الضريبة 15% تلقائياً (≈ ${fmt(sv)} ﷼). لا تُدخل المبلغ الشامل للضريبة.</div>`;
-  renderInvList();
+  if(!window._invQKey){invSetQ(_defaultQ());}else{renderInvKpis();renderInvList();}
 }
+function _defaultQ(){const m=new Date().getMonth()+1;return m>=10?'q4':m>=6?'q3':'all';}
+function _qRange(key){const Y=new Date().getFullYear();
+  if(key==='q3')return{from:Y+'-06-01',to:Y+'-09-30'};
+  if(key==='q4')return{from:Y+'-10-01',to:Y+'-12-31'};
+  if(key==='custom'){const f=document.getElementById('inv_from'),t=document.getElementById('inv_to');return{from:(f&&f.value)||'',to:(t&&t.value)||''};}
+  return{from:'',to:''};}
+function _qLabel(key){const Y=new Date().getFullYear();
+  if(key==='q3')return'الربع الثالث · ١ يونيو – ٣٠ سبتمبر '+Y;
+  if(key==='q4')return'الربع الرابع · ١ أكتوبر – ٣١ ديسمبر '+Y;
+  if(key==='custom'){const r=window._invRange||{};return (r.from||r.to)?('من '+(r.from||'البداية')+' إلى '+(r.to||'النهاية')):'فترة مخصصة';}
+  return'كل الفترات';}
+function invSetQ(key,btn){window._invQKey=key;window._invRange=_qRange(key);window._invQLabel=_qLabel(key);
+  const seg=document.getElementById('invQSeg');if(seg)seg.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.dataset.q===key));
+  const cr=document.getElementById('invCustomRange');if(cr)cr.style.display=(key==='custom')?'block':'none';
+  renderInvKpis();renderInvList();}
+function invCustomApply(){window._invRange=_qRange('custom');window._invQLabel=_qLabel('custom');renderInvKpis();renderInvList();}
+function _invInRange(i){const d=String(i.invoice_date||'').slice(0,10);const r=window._invRange||{from:'',to:''};if(r.from&&d<r.from)return false;if(r.to&&d>r.to)return false;return true;}
+function _invFiltered(){return (window._INVALL||[]).filter(_invInRange);}
+function renderInvKpis(){const inc=_invFiltered();const sum=inc.reduce((s,i)=>s+Number(i.amount||0),0),sv=inc.reduce((s,i)=>s+Number(i.vat||0),0);
+  const k=document.getElementById('finKpis');if(!k)return;
+  k.innerHTML=`<div class="kpi" style="grid-column:1/-1;background:#eef4f1"><b style="color:#0f6b4f">${window._invQLabel||''}</b><span>الفترة المختارة</span></div><div class="kpi"><b>${inc.length}</b><span>عدد الفواتير</span></div><div class="kpi"><b>${fmt(sum)}</b><span>المشتريات شاملة الضريبة ﷼</span></div><div class="kpi"><b>${fmt(sum-sv)}</b><span>قبل الضريبة — للإقرار الضريبي ﷼</span></div><div class="kpi"><b>${fmt(sv)}</b><span>ضريبة المدخلات (قابلة للخصم) ﷼</span></div><div class="hint" style="grid-column:1/-1;margin-top:2px">إقرار هذا الربع (${window._invQLabel||''}): أدخل «المشتريات قبل الضريبة» = <b>${fmt(sum-sv)}</b> ﷼ في خانة قيمة المشتريات، والموقع يحسب 15% تلقائياً (≈ ${fmt(sv)} ﷼). لا تُدخل المبلغ الشامل للضريبة.</div>`;}
 function renderInvList(){
-  const inc=window._INVALL||[];const box=document.getElementById('invList');if(!box)return;
+  const inc=_invFiltered();const box=document.getElementById('invList');if(!box)return;
   const term=(document.getElementById('inv_search')?.value||'').trim().toLowerCase();
   const list=term?inc.filter(i=>String(i.party||'').toLowerCase().includes(term)||String(i.number||'').toLowerCase().includes(term)):inc;
   box.innerHTML=list.length?list.map(i=>`<div class="item"><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
