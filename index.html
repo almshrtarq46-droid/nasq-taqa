@@ -546,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='315';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='316';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3030,13 +3030,13 @@ async function auditExport(){await ensureLib('xlsx');const r=window._auditRes;if
   XLSX.writeFile(wb,'تدقيق_القيمة_'+todayKey()+'.xlsx');toast('تم تصدير تقرير التدقيق ✓');
 }
 /* ===== SCANNER START — مسح الميجر الموقّع → PDF (مثل آلة التصوير) ===== */
-window._scan={pid:null,pages:[],mode:'color',src:null,pts:null,pdf:null};
-function openScanner(pid){window._scan={pid,pages:[],mode:'color',src:null,pts:null,pdf:null};_scanList();}
+window._scan={pid:null,pages:[],mode:'orig',src:null,pts:null,pdf:null};
+function openScanner(pid){window._scan={pid,pages:[],mode:'orig',src:null,pts:null,pdf:null};_scanList();}
 function _scanTitle(){const p=(PROJECTS||[]).find(x=>x.id===window._scan.pid)||{};return 'محطة '+(p.code||'—')+(p.wo_number?' · أمر عمل '+p.wo_number:'');}
 function _scanList(){const S=window._scan;
   openModal(`<h3 style="margin:0 0 4px">📄 مسح الميجر الموقّع</h3><small style="color:var(--muted);display:block;margin-bottom:10px">${_scanTitle()}</small>
-  <div class="hint" style="margin-bottom:10px">صوّر الورقة كاملة على سطح داكن وبإضاءة جيدة. التطبيق يقصّها ويعدّل ميلانها ويبيّض الخلفية مثل آلة التصوير.</div>
-  <div class="seg" style="margin-bottom:10px">${[['color','ألوان (مثل الواتساب)'],['gray','رمادي'],['bw','أبيض وأسود']].map(([k,l])=>`<button class="${S.mode===k?'on':''}" onclick="scanMode('${k}')">${l}</button>`).join('')}</div>
+  <div class="hint" style="margin-bottom:10px">للأفضل جودة استخدم <b>«📷 تصوير بالكاميرا»</b> (تطلع بدقة الجوال كاملة). الوضع الافتراضي <b>«أصلية»</b> يحفظ وضوح الكاميرا بدون معالجة؛ الأوضاع الأخرى تبيّض الخلفية مثل آلة التصوير لكنها قد تقلّل حدّة الخط الدقيق. التطبيق يقصّ الورقة ويعدّل ميلانها في كل الأوضاع.</div>
+  <div class="seg" style="margin-bottom:10px">${[['orig','أصلية (مثل الكاميرا)'],['color','تبييض (مثل الواتساب)'],['gray','رمادي'],['bw','أبيض وأسود']].map(([k,l])=>`<button class="${S.mode===k?'on':''}" onclick="scanMode('${k}')">${l}</button>`).join('')}</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px">${S.pages.length?S.pages.map((pg,i)=>`<div style="position:relative;width:calc(50% - 4px)"><img src="${pg.out}" style="width:100%;border:1px solid #ddd;border-radius:8px;background:#fff;display:block"><div style="position:absolute;top:4px;right:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;border-radius:6px;padding:1px 7px">${i+1}</div><button class="link" style="position:absolute;top:3px;left:4px;color:var(--bad);font-weight:800;background:#fff;border-radius:6px;padding:0 7px" onclick="scanDel(${i})">✕</button></div>`).join(''):'<div class="empty" style="width:100%">لا توجد صفحات بعد</div>'}</div>
   ${S.pages.length?'<div style="font-size:12.5px;color:var(--muted);margin:0 2px 6px">إضافة صفحة أخرى:</div>':''}
   <div class="row" style="gap:8px;margin-bottom:8px"><label class="btn" style="flex:1;display:block;text-align:center;position:relative;overflow:hidden;cursor:pointer">📷 تصوير بالكاميرا<input type="file" accept="image/*" capture="environment" onchange="scanPick(this)" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
@@ -3047,7 +3047,7 @@ function _scanList(){const S=window._scan;
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function scanPick(input){const f=input.files&&input.files[0];if(!f)return;toast('جارٍ تجهيز الصورة…');
   const url=URL.createObjectURL(f),img=new Image();
-  img.onload=()=>{try{input.value='';const M=3400;let w=img.naturalWidth,h=img.naturalHeight;const s=Math.min(1,M/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
+  img.onload=()=>{try{input.value='';const M=4200;let w=img.naturalWidth,h=img.naturalHeight;const s=Math.min(1,M/Math.max(w,h));w=Math.round(w*s);h=Math.round(h*s);
       const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);URL.revokeObjectURL(url);
       window._scan.src=c;window._scan.pts=_scanDetect(c);_scanCrop();}catch(e){toast('خطأ: '+(e&&e.message||e));}};
   img.onerror=()=>{URL.revokeObjectURL(url);toast('تعذّر فتح الصورة');};img.src=url;}
@@ -3085,7 +3085,7 @@ function closeScanCam(){const ov=document.getElementById('scanCam');if(ov)ov.sty
   try{if(_camTrack&&_camTorch)_camTrack.applyConstraints({advanced:[{torch:false}]}).catch(()=>{});}catch(_){}
   try{if(_camStream)_camStream.getTracks().forEach(t=>t.stop());}catch(_){}_camStream=null;_camTrack=null;_camTorch=false;}
 function scanShot(){const ov=document.getElementById('scanCam'),v=ov&&ov.querySelector('#scVid');if(!v||!v.videoWidth){toast('الكاميرا لم تجهز بعد');return;}
-  try{const M=3400;const w=v.videoWidth,h=v.videoHeight,s=Math.min(1,M/Math.max(w,h)),cw=Math.round(w*s),ch=Math.round(h*s);
+  try{const M=4200;const w=v.videoWidth,h=v.videoHeight,s=Math.min(1,M/Math.max(w,h)),cw=Math.round(w*s),ch=Math.round(h*s);
     const c=document.createElement('canvas');c.width=cw;c.height=ch;const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(v,0,0,cw,ch);
     closeScanCam();window._scan.src=c;window._scan.pts=_scanDetect(c);_scanCrop();}
   catch(e){toast('تعذّر التقاط الصورة: '+((e&&e.message)||e));}}
@@ -3163,7 +3163,7 @@ function _homog(P,Q){const A=[],B=[];for(let i=0;i<4;i++){const[x,y]=P[i],[u,v]=
     for(let r=0;r<8;r++){if(r===i)continue;const f=A[r][i]/p;if(!f)continue;for(let c=i;c<8;c++)A[r][c]-=f*A[i][c];B[r]-=f*B[i];}}
   return B.map((b,i)=>b/(A[i][i]||1e-12));}
 function _scanWarp(src,pts){const[tl,tr,br,bl]=_scanOrder(pts),dd=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1]);
-  let w=Math.max(dd(tl,tr),dd(bl,br)),h=Math.max(dd(tl,bl),dd(tr,br));const s=Math.min(1,3000/Math.max(w,h));w=Math.max(10,Math.round(w*s));h=Math.max(10,Math.round(h*s));
+  let w=Math.max(dd(tl,tr),dd(bl,br)),h=Math.max(dd(tl,bl),dd(tr,br));const s=Math.min(1,3800/Math.max(w,h));w=Math.max(10,Math.round(w*s));h=Math.max(10,Math.round(h*s));
   const[a,b,c,d,e,f,g,hh]=_homog([[0,0],[w,0],[w,h],[0,h]],[tl,tr,br,bl]);
   const SW=src.width,SH=src.height,S=src.getContext('2d').getImageData(0,0,SW,SH).data;
   const o=document.createElement('canvas');o.width=w;o.height=h;const ox=o.getContext('2d'),od=ox.createImageData(w,h),D=od.data;
@@ -3176,7 +3176,8 @@ function _scanWarp(src,pts){const[tl,tr,br,bl]=_scanOrder(pts),dd=(a,b)=>Math.hy
       D[oi+2]=(S[i00+2]*(1-fx)+S[i10+2]*fx)*(1-fy)+(S[i01+2]*(1-fx)+S[i11+2]*fx)*fy;D[oi+3]=255;}}
   ox.putImageData(od,0,0);return o;}
 /* فلتر "آلة التصوير" مثل الواتساب: تبييض الخلفية لكل قناة لون (يزيل الظلال واصفرار الإضاءة) + تباين + حدّة */
-function _scanFilter(cv,mode){const w=cv.width,h=cv.height,N=w*h,src=cv.getContext('2d').getImageData(0,0,w,h).data;
+function _scanFilter(cv,mode){if(mode==='orig')return cv.toDataURL('image/jpeg',0.95);
+  const w=cv.width,h=cv.height,N=w*h,src=cv.getContext('2d').getImageData(0,0,w,h).data;
   const B=Math.max(8,Math.round(Math.max(w,h)/60)),gw=Math.ceil(w/B),gh=Math.ceil(h/B),GN=gw*gh,bgs=[];
   for(let ch=0;ch<3;ch++){let G=new Float32Array(GN);
     for(let by=0;by<gh;by++)for(let bx=0;bx<gw;bx++){let m=0;const y1=Math.min(h,(by+1)*B),x1=Math.min(w,(bx+1)*B);for(let y=by*B;y<y1;y++){let j=(y*w+bx*B)*4+ch;for(let x=bx*B;x<x1;x++,j+=4){const v=src[j];if(v>m)m=v;}}G[by*gw+bx]=m;}
