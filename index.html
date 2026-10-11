@@ -546,7 +546,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='313';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='314';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2662,6 +2662,7 @@ async function loadWorkOrders(){
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a4a12" onclick="auditValues(event)">🔎 تدقيق القيمة الإجمالية</button>
   ${srHidden()?'':`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>`}
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
+  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   ${_de?`<button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
@@ -3309,6 +3310,68 @@ async function exportWorksLog(){
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}}
 }
 /* ===== WORKSLOG END ===== */
+
+/* ===== SIGNED TABLE — جدول مختصر للمحطات الموقّعة: م + رقم المحطة + رقم الإشعار + رقم أمر العمل + القيمة ===== */
+function openSignedTable(){window._sttMode='all';window._sttSel=[];window._sttPick=null;
+  openModal(`<h3 style="margin:0 0 10px">📋 جدول المحطات الموقّعة (مختصر) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
+   <div class="seg" style="margin-bottom:10px"><button class="on" id="sttTabAll" onclick="sttMode('all')">كل الموقّعة</button><button id="sttTabMan" onclick="sttMode('manual')">تحديد يدوي</button></div>
+   <div id="sttAll"><p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 10px">يطلع جدول بكل المحطات الموقّعة: رقم المحطة + رقم الإشعار + رقم أمر العمل + القيمة.</p></div>
+   <div id="sttMan" style="display:none">
+     <label>رقم المحطة أو أمر العمل أو الإشعار</label>
+     <div class="row" style="margin-bottom:6px"><input id="stt_input" inputmode="numeric" autocomplete="off" placeholder="رقم المحطة أو أمر العمل أو الإشعار" style="flex:1;min-width:0;font-size:17px;text-align:center" onkeydown="if(event.key==='Enter'){event.preventDefault();sttAdd();}"><button class="btn sm" style="flex:none;width:96px" onclick="sttAdd()">➕ إضافة</button></div>
+     <div id="stt_pick"></div>
+     <div id="stt_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
+     <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 10px">أضف المحطات اللي تبيها في الجدول واحدة واحدة.</p>
+   </div>
+   <button class="btn" id="sttBtn" onclick="exportSignedTable()">⬇️ تصدير اكسل</button>
+   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+function sttMode(m){window._sttMode=m;document.getElementById('sttTabAll').classList.toggle('on',m==='all');document.getElementById('sttTabMan').classList.toggle('on',m==='manual');
+  document.getElementById('sttAll').style.display=m==='all'?'block':'none';document.getElementById('sttMan').style.display=m==='manual'?'block':'none';}
+function _sttAddProj(p){window._sttSel=window._sttSel||[];const key='pid:'+p.id;if(window._sttSel.some(s=>s.key===key))return false;const wo=String(p.wo_number||'').trim();window._sttSel.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});return true;}
+function sttAdd(){const inp=document.getElementById('stt_input');const raw=_drNorm(inp.value);const nums=(raw.match(/\d+/g)||[]);window._sttSel=window._sttSel||[];
+  let added=0,nf=[],multi=null;
+  for(const n of nums){const ms=(PROJECTS||[]).filter(p=>[_drNorm(p.code),_drNorm(p.wo_number),_drNorm(p.notice_no)].includes(n));
+    if(!ms.length){nf.push(n);continue;}
+    if(ms.length===1){if(_sttAddProj(ms[0]))added++;continue;}
+    multi={n,ms};}
+  inp.value='';window._sttPick=multi||null;sttRenderPick();sttRenderList();
+  if(nf.length)toast('غير موجود: '+nf.join('، '));else if(multi)toast('رقم مكرر — اختر المحطة');else if(!added&&nums.length)toast('مضافة مسبقاً');try{inp.focus();}catch(_){}}
+function sttPickChoose(pid){const p=(PROJECTS||[]).find(x=>x.id===pid);if(p)_sttAddProj(p);window._sttPick=null;sttRenderPick();sttRenderList();}
+function sttRenderPick(){const box=document.getElementById('stt_pick');if(!box)return;const m=window._sttPick;if(!m){box.innerHTML='';return;}
+  box.innerHTML=`<div style="background:#fff7e6;border:1px solid #f0cf8f;border-radius:10px;padding:10px;margin:2px 0 8px"><div style="font-weight:800;color:#8a4b00;font-size:13px;margin-bottom:7px">رقم ${m.n} مكرر (${m.ms.length}) — اختر المحطة:</div>${m.ms.map(p=>`<button class="btn sm" style="width:100%;margin-bottom:6px;background:#12343B;text-align:right" onclick="sttPickChoose('${p.id}')">محطة: ${p.code||'—'} · أمر عمل: ${p.wo_number||'—'}${p.notice_no?' · إشعار: '+p.notice_no:''}</button>`).join('')}<div style="text-align:center"><span onclick="window._sttPick=null;sttRenderPick();" style="cursor:pointer;color:#c0392b;font-weight:700;font-size:12.5px">إلغاء</span></div></div>`;}
+function sttDel(k){window._sttSel=(window._sttSel||[]).filter(x=>x.key!==k);sttRenderList();}
+function sttRenderList(){const box=document.getElementById('stt_list');if(!box)return;const list=window._sttSel||[];
+  box.innerHTML=list.length?list.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:13px">${s.label}<span onclick="sttDel('${s.key}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف محطة بعد</span>';}
+async function exportSignedTable(){
+  const mode=window._sttMode||'all',btn=document.getElementById('sttBtn');
+  let pidSet;
+  if(mode==='manual'){const sel=window._sttSel||[];if(!sel.length){toast('أضف محطة واحدة على الأقل');return;}pidSet=new Set(sel.map(s=>s.pid));}
+  else{const sg=(PROJECTS||[]).filter(p=>p.consultant_signed);if(!sg.length){toast('لا توجد محطات موقّعة');return;}pidSet=new Set(sg.map(p=>p.id));}
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  try{await ensureLib('exceljs');let PRICES={};try{PRICES=await _secLoad();}catch(_){}
+    const all=await _fetchAll(()=>sb.from('entries').select('project_id,item_code,qty, entry_finance(rate,amount)'));
+    const rd=e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{rate:f&&f.rate!=null?Number(f.rate):0,amount:f&&f.amount!=null?Number(f.amount):null};};
+    const tot={};all.forEach(e=>{if(!pidSet.has(e.project_id))return;const code=String(e.item_code||'').trim(),q=Number(e.qty||0),fin=rd(e);let rate=fin.rate;if(!rate){const pr=PRICES[code];if(pr)rate=Number(pr.p)||0;}const amt=(fin.amount!=null&&fin.amount>0)?fin.amount:q*rate;tot[e.project_id]=(tot[e.project_id]||0)+amt;});
+    let stations=[...pidSet].map(id=>(PROJECTS||[]).find(p=>p.id===id)).filter(Boolean);
+    stations.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))||String(a.code||'').localeCompare(String(b.code||'')));
+    const gt=stations.reduce((s,p)=>s+(tot[p.id]||0),0);
+    const HEADBG='FFEDF2EE',LINE='FFCBD5CF';const thin={style:'thin',color:{argb:LINE}},bord={top:thin,bottom:thin,left:thin,right:thin};const AR='Arial';
+    const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('المحطات الموقّعة',{views:[{rightToLeft:true,showGridLines:false,state:'frozen',ySplit:2}]});
+    ws.columns=[{width:5},{width:18},{width:16},{width:16},{width:15}];
+    const H=['م','رقم المحطة','رقم الإشعار','رقم أمر العمل','القيمة (﷼)'];
+    const t1=ws.addRow(['المحطات الموقّعة — نسق الطاقة · عدد: '+stations.length]);ws.mergeCells(1,1,1,H.length);
+    t1.font={name:AR,size:12,bold:true};t1.height=20;t1.getCell(1).alignment={horizontal:'right',vertical:'middle'};
+    const hr=ws.addRow(H);hr.height=22;hr.eachCell(c=>{c.font={name:AR,size:10,bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:HEADBG}};c.border=bord;c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+    stations.forEach((p,idx)=>{const r=ws.addRow([idx+1,p.code||'',p.notice_no||'',p.wo_number||'',Number((tot[p.id]||0).toFixed(2))]);r.height=16;
+      r.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:10};c.alignment={horizontal:'center',vertical:'middle'};if(i===5){c.numFmt='#,##0.00';c.font={name:AR,size:10,bold:true};}});});
+    const g1=ws.addRow(['الإجمالي','','','',Number(gt.toFixed(2))]);ws.mergeCells(g1.number,1,g1.number,4);
+    g1.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:11,bold:true};c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===5)c.numFmt='#,##0.00';});
+    const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='المحطات_الموقعة_'+todayKey()+'.xlsx';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+    closeModal();toast('تم التصدير ✓ — '+stations.length+' محطة');
+  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}}
+}
+/* ===== SIGNED TABLE END ===== */
 
 function openDailyReport(){const t=todayKey();window._drMode='day';window._drStations=[];window._drPick=null;
   openModal(`<h3 style="margin:0 0 10px">تقرير المقاول (اكسل) <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
