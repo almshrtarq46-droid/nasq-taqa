@@ -399,6 +399,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title">المصروفات</h2>
       <div style="display:flex;gap:8px;margin-bottom:12px"><button class="btn ghost" style="flex:1" onclick="openExpense()">+ إضافة يدوي</button><button class="btn ghost sm" style="flex:none" onclick="openTrash('expenses','المصروفات',e=>(e.category||'')+' — '+fmt(e.amount)+' ﷼')">🗑 المحذوفات</button></div>
       <div class="row"><div class="field"><label>الشهر</label><select id="ex_month" onchange="renderExpenses()"></select></div><div class="field"><label>التصنيف</label><select id="ex_cat" onchange="renderExpenses()"></select></div></div>
+      <input id="ex_search" type="search" placeholder="🔎 ابحث في المصروفات… (مثال: العصيمي)" oninput="renderExpenses()" autocomplete="off" style="margin-bottom:12px">
       <div class="card" style="background:#f6f8f7;box-shadow:none"><label style="font-size:12px;color:var(--muted)">تصدير لأي فترة</label>
         <div class="row" style="margin-top:6px"><div class="field" style="margin:0"><label>من</label><input type="date" id="ex_from"></div><div class="field" style="margin:0"><label>إلى</label><input type="date" id="ex_to"></div></div>
         <div class="row" style="margin-top:8px;gap:8px"><button class="btn copper sm" style="flex:1" onclick="exportExpenses()">📊 Excel</button><button class="btn sm" style="flex:1;background:var(--bad)" onclick="exportExpensesPdf()">📄 PDF</button></div></div>
@@ -602,7 +603,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='329';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='330';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3939,13 +3940,17 @@ async function exportExpensesPdf(){await ensureLib('jspdf','html2canvas');
     pdf.save('مصروفات_'+from+'_'+to+'.pdf');toast('تم تصدير PDF ✓');
   }catch(e){toast('خطأ في PDF: '+e.message);}
 }
+/* بحث عربي مرن: يتجاهل التشكيل والهمزات والتاء المربوطة والأرقام الهندية */
+function _srchNorm(s){return String(s==null?'':s).toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[إأآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)).replace(/\s+/g,' ').trim();}
 function renderExpenses(){
   const m=document.getElementById('ex_month').value,c=document.getElementById('ex_cat').value;
-  let list=ALL_EXP;if(m)list=list.filter(e=>(e.expense_date||'').slice(0,7)===m);if(c)list=list.filter(e=>e.category===c);
+  const term=_srchNorm((document.getElementById('ex_search')||{}).value||'');
+  let list=ALL_EXP;if(m&&!term)list=list.filter(e=>(e.expense_date||'').slice(0,7)===m);if(c)list=list.filter(e=>e.category===c);
+  if(term){const words=term.split(/\s+/).filter(Boolean);list=list.filter(e=>{const h=_srchNorm([e.description,e.category,e.expense_date,e.amount,fmt(e.amount)].join(' '));return words.every(w=>h.includes(w));});}
   const total=list.reduce((s,e)=>s+Number(e.amount||0),0);const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0);});
-  document.getElementById('exSummary').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">إجمالي المصروفات ${m||'(الكل)'}</h3><b style="color:var(--bad);font-size:17px">${fmt(total)} ﷼</b></div>
+  document.getElementById('exSummary').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">${term?'نتائج البحث ('+list.length+') — كل الأشهر':'إجمالي المصروفات '+(m||'(الكل)')}</h3><b style="color:var(--bad);font-size:17px">${fmt(total)} ﷼</b></div>
     <table class="tbl"><tbody>${EXP_CATS.filter(k=>byCat[k]).map(k=>`<tr><td>${k}</td><td style="text-align:left;font-weight:700">${fmt(byCat[k])} ﷼</td></tr>`).join('')||'<tr><td style="text-align:center;color:var(--muted)">لا مصروفات</td></tr>'}</tbody></table></div>`;
-  document.getElementById('exList').innerHTML=list.length?list.map(e=>`<div class="item"><div class="ic" style="background:#fbecea;color:var(--bad)">💸</div><div class="meta"><b>${e.category}</b><small>${e.expense_date}${e.description?' · '+e.description:''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill susp" style="background:#fbecea;color:var(--bad)">${fmt(e.amount)} ﷼</span>${e.photo?`<button class="link" onclick="viewInvPhoto('${e.photo}','صورة الإيصال')">📷</button>`:''}<button class="link" onclick='openExpense(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`).join(''):'<div class="empty">لا مصروفات في هذا التصنيف/الشهر</div>';
+  document.getElementById('exList').innerHTML=list.length?list.map(e=>`<div class="item"><div class="ic" style="background:#fbecea;color:var(--bad)">💸</div><div class="meta"><b>${e.category}</b><small>${e.expense_date}${e.description?' · '+e.description:''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill susp" style="background:#fbecea;color:var(--bad)">${fmt(e.amount)} ﷼</span>${e.photo?`<button class="link" onclick="viewInvPhoto('${e.photo}','صورة الإيصال')">📷</button>`:''}<button class="link" onclick='openExpense(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`).join(''):(term?'<div class="empty">لا يوجد مصروف يطابق «'+_irEsc((document.getElementById("ex_search")||{}).value||"")+'»</div>':'<div class="empty">لا مصروفات في هذا التصنيف/الشهر</div>');
 }
 function openExpense(e){expPhoto=null;openModal(`<h3 style="margin-bottom:14px">${e?'تعديل مصروف':'مصروف جديد'}</h3>
   <div class="row"><div class="field"><label>التاريخ</label><input type="date" id="ex_date" value="${e?e.expense_date:todayKey()}"></div><div class="field"><label>التصنيف</label><select id="ex_category">${EXP_CATS.map(c=>`<option ${e&&e.category===c?'selected':''}>${c}</option>`).join('')}</select></div></div>
