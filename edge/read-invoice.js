@@ -60,7 +60,7 @@ ${isPdf ? "The invoice is the attached PDF document." : `Image 1 is the whole in
 RULES
 1. Copy values EXACTLY as printed. Never estimate, never invent. If a field is not printed or not legible, use null.
 2. Convert Arabic-Indic digits (٠١٢٣٤٥٦٧٨٩ / ۰-۹) to Western digits. Remove thousands separators. Decimal point is "." (convert "٫" or a decimal comma). Watch carefully for 1 vs 7, 3 vs 8, 5 vs 6, 0 vs 6 and the position of the decimal point.
-3. supplier = the SELLER / issuer of the invoice (normally at the top with its VAT and CR numbers). NOT the buyer/customer.
+3. supplier = the SELLER / issuer of the invoice (normally at the top with its VAT and CR numbers). NOT the buyer/customer. LANGUAGE: if the seller name is printed in Arabic anywhere (logo, header, stamp or footer), return the ARABIC name exactly as printed, even when an English name is also printed. Return the English name only if no Arabic name is printed at all.
 4. supplier_vat_no = the SELLER's VAT registration number (Saudi format: 15 digits starting and ending with 3). Not the buyer's.
 5. invoice_number = the invoice number (رقم الفاتورة / فاتورة رقم / Invoice No / Bill No / Receipt No). Not phone, CR, order, customer or reference numbers unless it is clearly the invoice number.
 6. invoice_date = the issue date (تاريخ الفاتورة / تاريخ الإصدار / Date). Output ISO YYYY-MM-DD. Saudi documents write DD/MM/YYYY (day first). Copy the printed date text into date_text. If only a Hijri date is printed, convert it to Gregorian accurately and set date_is_hijri=true. Never use a due/delivery/expiry date. If no date is printed: null.
@@ -256,9 +256,10 @@ function getVal(r, k) {
   }
 }
 const empty = (x) => x === null || x === undefined || x === "";
+const hasAr = (x) => /[\u0600-\u06FF]/.test(String(x || ""));
 function same(k, a, b) {
   if (empty(a) || empty(b)) return empty(a) && empty(b);
-  if (k === "party") return sameName(a, b);
+  if (k === "party") return sameName(a, b) || (hasAr(a) !== hasAr(b)); // نفس المورّد بلغتين لا يُعد اختلافاً
   if (k === "number") return normNo(a) === normNo(b);
   if (k === "vat_no" || k === "date") return String(a) === String(b);
   return Math.abs(Number(a) - Number(b)) <= 0.011;
@@ -283,6 +284,7 @@ function merge(reads, qr) {
   const votes = vote(reads);
   const base = reads.slice().sort((a, b) => a.v.hard - b.v.hard)[0];
   const f = JSON.parse(JSON.stringify(base.f));
+  if (!hasAr(votes.party.val)) { const ar = votes.party.all.find((x) => hasAr(x)); if (ar) votes.party.val = ar; }
   f.supplier = votes.party.val || null; f.supplier_vat_no = votes.vat_no.val || null; f.invoice_number = votes.number.val || null; f.invoice_date = votes.date.val || null;
   f.subtotal = votes.subtotal.val; f.vat_amount = votes.vat.val; f.total = votes.total.val;
   const conf = Object.assign({}, f.confidence || {});

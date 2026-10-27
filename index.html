@@ -582,7 +582,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='325';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='326';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3961,7 +3961,7 @@ function _irMergeQR(r,qr){if(!qr)return;r.qr=qr;const F=r.fields,S=r.status,R=r.
   money('total',qr.total,'الإجمالي');money('vat',qr.vat,'الضريبة');
   if(qr.vat!=null){money('subtotal',Math.round((qr.total-qr.vat)*100)/100,'قبل الضريبة');const sb_=qr.total-qr.vat;if(sb_>0)F.vat_rate=Math.round(qr.vat/sb_*1000)/10;}
   if(F.vat_no===qr.vat_no){S.vat_no='ok';R.vat_no='qr+print';}else{if(has(F.vat_no)){bad.push('الرقم الضريبي يختلف عن رمز QR');S.vat_no='warn';}else S.vat_no='ok';F.vat_no=qr.vat_no;R.vat_no='qr';}
-  if(qr.seller){if(_irSameName(F.party,qr.seller)){S.party='ok';R.party='qr+print';}else if(!has(F.party)||S.party!=='ok'){F.party=qr.seller;S.party='ok';R.party='qr';}}
+  if(qr.seller){const ar=x=>/[\u0600-\u06FF]/.test(x||'');if(_irSameName(F.party,qr.seller)){S.party='ok';R.party='qr+print';}else if(!has(F.party)||S.party!=='ok'||(!ar(F.party)&&ar(qr.seller))){F.party=qr.seller;S.party='ok';R.party='qr';}}
   const qd=qr.date_alt||qr.date;if(qd){if(has(F.date)&&(F.date===qr.date||F.date===qr.date_alt)){S.date='ok';R.date='qr+print';}
     else{if(has(F.date)){bad.push('التاريخ: المكتوب '+F.date+' ≠ رمز QR '+qd);S.date='warn';}else S.date='ok';F.date=qd;R.date='qr';}}
   r.checks=(r.checks||[]).filter(c=>c.id!=='qr');r.checks.push({id:'qr',ok:!bad.length,msg:bad.length?bad.join(' · '):'المكتوب مطابق لرمز QR الضريبي'});}
