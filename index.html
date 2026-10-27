@@ -200,6 +200,30 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .actile>b{font-size:20px;font-weight:400;line-height:1}
 .actile.danger{color:var(--bad);border-color:#efc9c6;background:#fdf2f1}
 .actile.danger:hover{background:#fbe7e5}.station.open .body{display:block;animation:viewIn .3s cubic-bezier(.4,0,.2,1)}
+.irpick{display:flex;gap:8px;margin:8px 0}
+.irpbtn{position:relative;overflow:hidden;flex:1;text-align:center;border:1.5px dashed #cfdcd5;border-radius:11px;padding:9px 6px;font-size:13px;font-weight:700;color:var(--green);cursor:pointer;background:#fbfdfc}
+.irpbtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.irload{display:flex;align-items:center;gap:9px;color:var(--copper);font-size:12.5px;font-weight:700;padding:6px 2px;animation:irIn .3s ease}
+.irspin{width:15px;height:15px;border:2px solid rgba(181,115,47,.25);border-top-color:var(--copper);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;flex:none}
+.irok{border-color:#2e9b6a!important;box-shadow:0 0 0 2px rgba(46,155,106,.14)}
+.irwarn{border-color:#d9822b!important;background:#fff6ec!important;box-shadow:0 0 0 2px rgba(217,130,43,.22)}
+.irrev{border-color:#7a8a82!important}
+.ircard{border:1px solid var(--line);border-radius:14px;padding:10px 12px;background:#fbfcfb;animation:irIn .35s ease}
+.ircard.ok{border-color:#bfe0cf;background:#f3faf6}.ircard.warn{border-color:#f0cfa6;background:#fffaf3}
+@keyframes irIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.irh{font-weight:800;font-size:13.5px;margin-bottom:8px}.irh.ok{color:var(--green)}.irh.warn{color:#b8661b}
+.irg{display:grid;gap:3px}
+.irr{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 6px;border-radius:8px}
+.irr.warn{background:#fdebd6}
+.irl{color:var(--muted);min-width:80px;font-size:12px;flex:none}
+.irv{flex:1;font-weight:700;word-break:break-word;unicode-bidi:plaintext}
+.irb{font-size:11px;font-weight:800;border-radius:20px;padding:1px 8px;white-space:nowrap;flex:none}
+.irb.ok{background:#dff1e7;color:#1d7a50}.irb.warn{background:#fbd9b0;color:#9a5414}.irb.chk{background:#eef1ef;color:#5d6b64}.irb.na{background:#f1f1f1;color:#999}
+.ircs{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px;display:grid;gap:2px}
+.irc{font-size:11.8px;line-height:1.6}.irc.ok{color:#1d7a50}.irc.bad{color:#b8661b;font-weight:700}.irc.soft{color:var(--muted)}
+.iri{margin-top:6px;font-size:12px}.iri summary{cursor:pointer;color:var(--green);font-weight:700}
+.iri table{width:100%;border-collapse:collapse;margin-top:4px}.iri td{border-bottom:1px solid var(--line);padding:3px 4px;font-size:11.5px}
+.irm{margin-top:6px;font-size:10.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -546,7 +570,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='322';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='324';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3680,26 +3704,18 @@ function openInvoice(inv){invPhoto=null;invFile=null;invIsPdf=false;invEditId=in
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);invKind='in';}
 let invKind='in',invPhoto=null,invFile=null,invIsPdf=false,invEditId=null,invExistingPhoto='';
 function autoVat(){const a=parseFloat(document.getElementById('iv_amount').value)||0;document.getElementById('iv_vat').value=(a-a/1.15).toFixed(2);}
-function pickInvPhoto(input){const f=input.files[0];if(!f)return;const b=document.getElementById('pb_inv');b.querySelectorAll('img,.pdftag').forEach(x=>x.remove());
-  if(f.type==='application/pdf'||/\.pdf$/i.test(f.name)){invIsPdf=true;invFile=f;invPhoto='pdf';const t=document.createElement('div');t.className='pdftag';t.textContent='📄 '+f.name;t.style.cssText='margin-top:6px;font-size:12px;color:var(--green);font-weight:700';b.appendChild(t);
-    const r2=new FileReader();r2.onload=()=>autoReadInvoice(r2.result,'application/pdf');r2.readAsDataURL(f);return;}
-  invIsPdf=false;invFile=null;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{invPhoto=d;const img=document.createElement('img');img.src=d;b.appendChild(img);autoReadInvoice(d,'image/jpeg');});rd.readAsDataURL(f);}
-async function autoReadInvoice(b64,media){
-  const el=document.getElementById('iv_ocr');if(el)el.innerHTML='<span style="color:var(--copper)">🔍 يقرأ الفاتورة تلقائياً…</span>';
-  try{const data64=String(b64).indexOf(',')>=0?String(b64).split(',')[1]:b64;
-    const{data,error}=await sb.functions.invoke('read-invoice',{body:{data:data64,media_type:media}});
-    if(error)throw error;const fnd=data&&data.fields;if(!fnd)throw new Error('no fields');
-    const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&String(v).trim()!=='')e.value=v;};
-    set('iv_party',fnd.party);set('iv_number',fnd.number);set('iv_amount',fnd.amount);set('iv_date',fnd.date);
-    if(fnd.vat!=null&&String(fnd.vat).trim()!==''&&Number(fnd.vat)>0){const e=document.getElementById('iv_vat');if(e)e.value=fnd.vat;}
-    else if(fnd.amount)autoVat();
-    if(el)el.innerHTML='<span style="color:var(--green);font-weight:700">✓ تمت قراءة الفاتورة — راجع الأرقام قبل الحفظ.</span>';
-  }catch(e){if(el)el.innerHTML='<span style="color:var(--muted)">تعذّرت القراءة التلقائية — عبّئ الحقول يدوياً. (تحتاج تفعيل مفتاح الذكاء الاصطناعي في Supabase)</span>';}
-}
+function pickInvPhoto(input){const f=input.files&&input.files[0];input.value='';if(!f)return;
+  const isPdf=_isPdfFile(f);invIsPdf=isPdf;invFile=isPdf?f:null;invPhoto=isPdf?'pdf':null;_irPreview('pb_inv',f,isPdf);_irResetBtn('ivSave',invEditId?'حفظ التعديل':'حفظ الفاتورة');
+  _irRead(f,_irLoading('iv_ocr'),p=>{if(!isPdf)invPhoto=p.store;}).then(r=>{if(r.stale)return;
+    _irApply(r,{party:'iv_party',number:'iv_number',total:'iv_amount',vat:'iv_vat',date:'iv_date'});
+    if((r.fields.vat==null||r.fields.vat==='')&&r.fields.total)autoVat();
+    _irRender('iv_ocr',r);
+  }).catch(async e=>{if(!isPdf&&!invPhoto){try{invPhoto=await _irStoreOnly(f);}catch(_){}}_irFail('iv_ocr',e,'عبّئ الحقول يدوياً — الملف مرفق مع الفاتورة.');});}
 function _fileToBlob(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(new Blob([r.result],{type:file.type||'application/pdf'}));r.onerror=()=>rej(new Error('تعذّر قراءة الملف'));r.readAsArrayBuffer(file);});}
 async function uploadFileDoc(file,tag){const ext=((file.name.split('.').pop()||'pdf').toLowerCase().replace(/[^a-z0-9]/g,''))||'pdf';const path=`${ME.id}/${Date.now()}_${Math.round(performance.now())}_${tag}.${ext}`;if(!file||!file.size)throw new Error('الملف فارغ — أعد اختياره');const{error}=await sb.storage.from('photos').upload(path,file,{contentType:file.type||'application/pdf',upsert:true});if(error)throw error;return path;}
 async function saveInvoice(){
   const amount=parseFloat(document.getElementById('iv_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
+  if(!_irGuard(['iv_party','iv_number','iv_amount','iv_vat','iv_date'],'ivSave'))return;
   const btn=document.getElementById('ivSave');const oldLbl=btn.textContent;btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{let photo=invEditId?(invExistingPhoto||''):'';
     if(invIsPdf&&invFile)photo=await uploadFileDoc(invFile,'inv');else if(invPhoto&&invPhoto!=='pdf')photo=await uploadPhoto(invPhoto,'inv');
@@ -3861,37 +3877,152 @@ async function saveExpense(id){const amount=parseFloat(document.getElementById('
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='حفظ';}}
 async function deleteExpense(id){closeModal();await softDelete('expenses',id);}
 
-/* ===== QUICK EXPENSE — مصروف سريع: صوّر الفاتورة، الـ OCR يعبّي، والحفظ بضغطة ===== */
-let qePhoto=null;
-function openQuickExpense(){qePhoto=null;
+/* ===== INVOICE READER v2 — رمز QR الضريبي + قراءة ذكية + تحقق حسابي لكل حقل ===== */
+const _IR_LIBS={
+  jsqr:{urls:['https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js','https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js'],ok:()=>window.jsQR},
+  pdfjs:{urls:['https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js'],ok:()=>window.pdfjsLib}
+};
+const _irP={};
+async function _irLoad(n){const L=_IR_LIBS[n];if(L.ok())return L.ok();
+  if(!_irP[n])_irP[n]=(async()=>{let err;for(const u of L.urls){try{await _loadScript(u);if(L.ok()){if(n==='pdfjs')window.pdfjsLib.GlobalWorkerOptions.workerSrc=u.replace('pdf.min.js','pdf.worker.min.js');return L.ok();}}catch(e){err=e;}}throw err||new Error('تعذّر تحميل مكتبة '+n);})();
+  try{return await _irP[n];}catch(e){_irP[n]=null;throw e;}}
+function _irEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* --- رمز QR الضريبي (هيئة الزكاة): TLV base64 → المورّد/الرقم الضريبي/الوقت/الإجمالي/الضريبة --- */
+function _irParseZatca(text){
+  if(!text)return null;let bytes;
+  try{const b=atob(String(text).trim().replace(/\s+/g,''));bytes=new Uint8Array(b.length);for(let i=0;i<b.length;i++)bytes[i]=b.charCodeAt(i);}catch(e){return null;}
+  const out={},dec=new TextDecoder('utf-8');let i=0;
+  while(i+2<=bytes.length){const tag=bytes[i];let len=bytes[i+1];i+=2;
+    if(len===0x81){len=bytes[i];i+=1;}else if(len===0x82){len=(bytes[i]<<8)|bytes[i+1];i+=2;}
+    if(i+len>bytes.length)break;if(tag>=1&&tag<=5)out[tag]=dec.decode(bytes.subarray(i,i+len));i+=len;}
+  const vatNo=String(out[2]||'').replace(/\D/g,'');
+  const nb=s=>{const v=parseFloat(String(s==null?'':s).replace(/[^\d.]/g,''));return isFinite(v)?v:null;};
+  const total=nb(out[4]),vat=nb(out[5]);
+  if(!/^3\d{13}3$/.test(vatNo)||total==null)return null;
+  const ts=String(out[3]||'').trim();let date=null,date_alt=null;
+  const m=/(\d{4})[-\/](\d{2})[-\/](\d{2})(?:[T ](\d{2}):(\d{2}))?/.exec(ts);
+  if(m){date=`${m[1]}-${m[2]}-${m[3]}`;if(/Z$/i.test(ts)&&m[4]&&+m[4]>=21){date_alt=new Date(Date.UTC(+m[1],+m[2]-1,+m[3]+1)).toISOString().slice(0,10);}}
+  return{seller:String(out[1]||'').trim(),vat_no:vatNo,timestamp:ts,date,date_alt,total,vat};
+}
+function _irRegionCanvas(src,sx,sy,sw,sh,maxDim){sw=Math.max(1,Math.round(sw));sh=Math.max(1,Math.round(sh));sx=Math.round(sx);sy=Math.round(sy);
+  const s=Math.min(1,maxDim/Math.max(sw,sh));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(sw*s));c.height=Math.max(1,Math.round(sh*s));
+  const x=c.getContext('2d',{willReadFrequently:true});x.imageSmoothingQuality='high';x.drawImage(src,sx,sy,sw,sh,0,0,c.width,c.height);return c;}
+async function _irScanQR(src,W,H){
+  const t0=Date.now();
+  try{if('BarcodeDetector'in window){if(_irScanQR.bd===undefined){const fm=await BarcodeDetector.getSupportedFormats();_irScanQR.bd=fm.includes('qr_code')?new BarcodeDetector({formats:['qr_code']}):null;}
+    if(_irScanQR.bd){const res=await _irScanQR.bd.detect(src);for(const c of res){const z=_irParseZatca(c.rawValue);if(z)return z;}}}}catch(e){_irScanQR.bd=null;}
+  let jsQR;try{jsQR=await _irLoad('jsqr');}catch(e){return null;}
+  const R=[[0,0,W,H,1000],[0,0,W,H,1700],[0,H*.45,W,H*.55,1800],[0,0,W,H*.55,1800],[0,0,W*.55,H*.55,1300],[W*.45,0,W*.55,H*.55,1300],[0,H*.45,W*.55,H*.55,1300],[W*.45,H*.45,W*.55,H*.55,1300],[0,H*.5,W,H*.5,2600],[0,0,W,H,2600]];
+  for(const[x,y,w,h,m]of R){if(Date.now()-t0>6000)break;
+    const c=_irRegionCanvas(src,x,y,w,h,m);const d=c.getContext('2d',{willReadFrequently:true}).getImageData(0,0,c.width,c.height);
+    const r=jsQR(d.data,c.width,c.height,{inversionAttempts:'attemptBoth'});if(r&&r.data){const z=_irParseZatca(r.data);if(z)return z;}
+    await new Promise(s=>setTimeout(s,0));}
+  return null;}
+
+/* --- تجهيز الصورة: نظرة كاملة + مقاطع مكبّرة عالية الدقة (للفواتير الطويلة) + نسخة حفظ واضحة --- */
+function _irLoadImg(file){return new Promise((res,rej)=>{const u=URL.createObjectURL(file);const im=new Image();im.onload=()=>res(im);im.onerror=()=>rej(new Error('تعذّر فتح الصورة — جرّب صورة JPG أو PNG'));im.src=u;});}
+const _irB64=d=>String(d).split(',')[1]||'';
+function _irTiles(img,W,H){const tiles=[];if(W*H<=1.6e6)return tiles;const ov=.15;let th=Math.round(W*.75);if(th>=H)return tiles;
+  let n=Math.ceil((H-th*ov)/(th*(1-ov)));if(n>4){n=4;th=Math.ceil(H/(n-(n-1)*ov));}if(n<2)return tiles;
+  const step=(H-th)/(n-1);for(let k=0;k<n;k++){const y=Math.round(k*step),sh=Math.min(th,H-y);const sc=Math.min(1,Math.sqrt(1.15e6/(W*sh)),1568/Math.max(W,sh));
+    tiles.push(_irB64(_irRegionCanvas(img,0,y,W,sh,Math.max(W,sh)*sc).toDataURL('image/jpeg',.9)));}
+  return tiles;}
+async function _irPrepareImage(file){const img=await _irLoadImg(file);const W=img.naturalWidth,H=img.naturalHeight;
+  return{img,W,H,overview:_irRegionCanvas(img,0,0,W,H,1568).toDataURL('image/jpeg',.86),store:_irRegionCanvas(img,0,0,W,H,1800).toDataURL('image/jpeg',.82),tiles:_irTiles(img,W,H)};}
+function _irBufToB64(buf){return new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=()=>rej(new Error('تعذّر قراءة الملف'));fr.readAsDataURL(new Blob([buf]));});}
+async function _irPreparePdf(file){if(file.size>15*1024*1024)throw new Error('ملف PDF أكبر من 15MB — صوّر الفاتورة بدلاً منه');
+  const buf=await file.arrayBuffer();const pdf=await _irBufToB64(buf);let qr=null;
+  try{const pdfjs=await _irLoad('pdfjs');const doc=await pdfjs.getDocument({data:new Uint8Array(buf.slice(0))}).promise;const pages=[1];if(doc.numPages>1)pages.push(doc.numPages);
+    for(const p of pages){const pg=await doc.getPage(p);const v1=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(4,2400/Math.max(v1.width,v1.height))});
+      const c=document.createElement('canvas');c.width=Math.round(vp.width);c.height=Math.round(vp.height);const cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,c.width,c.height);
+      await pg.render({canvasContext:cx,viewport:vp}).promise;qr=await _irScanQR(c,c.width,c.height);if(qr)break;}}catch(e){console.warn('PDF QR',e);}
+  return{pdf,qr};}
+
+/* --- القراءة الكاملة --- */
+let _irSeq=0;
+async function _irRead(file,onStatus,onPrep){const seq=++_irSeq;const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name||'');let prep,body;
+  if(isPdf){onStatus('📄 يجهّز ملف PDF ويبحث عن رمز QR…');prep=await _irPreparePdf(file);body={data:prep.pdf,media_type:'application/pdf',qr:prep.qr};}
+  else{onStatus('🖼 يجهّز الصورة بدقة عالية…');prep=await _irPrepareImage(file);onPrep&&onPrep(prep);onStatus('🔎 يبحث عن رمز QR الضريبي…');
+    prep.qr=await _irScanQR(prep.img,prep.W,prep.H);body={data:_irB64(prep.overview),media_type:'image/jpeg',tiles:prep.tiles,qr:prep.qr};}
+  onStatus(prep.qr?'✓ قُرئ رمز QR الضريبي — يكمل باقي التفاصيل ويتحقق…':'🤖 يقرأ الفاتورة ويتحقق من كل رقم… (قد يأخذ حتى دقيقة)');
+  const{data,error}=await sb.functions.invoke('read-invoice',{body});
+  if(error){let m=error.message||String(error);try{if(error.context&&typeof error.context.json==='function'){const j=await error.context.json();if(j&&j.error)m=j.error;}}catch(_){}throw new Error(m);}
+  if(!data||data.error)throw new Error((data&&data.error)||'لا يوجد رد من الخادم');
+  const r=_irNormalize(data,prep.qr);r.stale=seq!==_irSeq;r.store=prep.store||null;r.isPdf=isPdf;r.qr=prep.qr;return r;}
+function _irNormalize(d,qr){const f=d.fields||{};
+  const r={v:d.v||1,fields:{party:f.party||'',vat_no:f.vat_no||'',number:f.number==null?'':String(f.number),date:f.date||'',subtotal:f.subtotal==null?null:f.subtotal,vat:f.vat==null?null:f.vat,vat_rate:f.vat_rate==null?null:f.vat_rate,total:f.total!=null?f.total:(f.amount!=null?f.amount:null)},
+    status:Object.assign({},d.status||{}),sources:Object.assign({},d.sources||{}),checks:(d.checks||[]).slice(),items:d.items||[],model:d.model||'',passes:d.passes||1};
+  if(r.v<2){['party','number','date','total','vat'].forEach(k=>r.status[k]=(r.fields[k]!==''&&r.fields[k]!=null)?'check':'warn');r.status.vat_no='na';r.status.subtotal='na';}
+  if(qr&&!d.qr_used){r.fields.total=qr.total;r.status.total='ok';r.sources.total='qr';
+    if(qr.vat!=null){r.fields.vat=qr.vat;r.status.vat='ok';r.sources.vat='qr';r.fields.subtotal=Math.round((qr.total-qr.vat)*100)/100;r.status.subtotal='ok';r.sources.subtotal='qr';}
+    r.fields.vat_no=qr.vat_no;r.status.vat_no='ok';r.sources.vat_no='qr';if(qr.seller){r.fields.party=qr.seller;r.status.party='ok';r.sources.party='qr';}
+    const qd=qr.date_alt||qr.date;if(qd){r.fields.date=qd;r.status.date='ok';r.sources.date='qr';}
+    r.checks.push({id:'qr',ok:true,msg:'الأرقام الرئيسية مأخوذة من رمز QR الضريبي'});}
+  return r;}
+
+/* --- العرض: بطاقة تحقق + تلوين الحقول --- */
+const _IR_LBL={party:'المورّد',vat_no:'الرقم الضريبي',number:'رقم الفاتورة',date:'التاريخ',subtotal:'قبل الضريبة',vat:'الضريبة',total:'الإجمالي'};
+function _irFmt(k,v,r){if(v==null||v==='')return'—';if(k==='subtotal'||k==='vat'||k==='total'){let s=Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});if(k==='vat'&&r.fields.vat_rate!=null)s+=' ('+r.fields.vat_rate+'%)';return s;}return _irEsc(v);}
+const _IR_SRC={'qr+print':'المطبوع + QR','qr':'رمز QR','print2':'قراءتان متطابقتان','derived':'محسوب','print':'متحقق','ai':'متحقق'};
+function _irBadge(st,src){if(st==='ok')return'<span class="irb ok">✓ '+(_IR_SRC[src]||'متحقق')+'</span>';if(st==='warn')return'<span class="irb warn">⚠ راجع</span>';if(st==='na')return'<span class="irb na">غير مذكور</span>';return'<span class="irb chk">مقروء</span>';}
+function _irRender(boxId,r){const box=document.getElementById(boxId);if(!box)return;
+  const keys=['party','vat_no','number','date','subtotal','vat','total'];const warns=keys.filter(k=>r.status[k]==='warn');
+  const allOk=!warns.length&&['party','date','total'].every(k=>r.status[k]==='ok');
+  const head=allOk?'<div class="irh ok">✅ تم التحقق من الفاتورة — الأرقام متطابقة</div>':'<div class="irh warn">⚠ راجع '+(warns.length?'الحقول المعلّمة بالبرتقالي':'الأرقام')+' قبل الحفظ</div>';
+  const rows=keys.map(k=>'<div class="irr '+(r.status[k]||'')+'"><span class="irl">'+_IR_LBL[k]+'</span><span class="irv">'+_irFmt(k,r.fields[k],r)+'</span>'+_irBadge(r.status[k],r.sources[k])+'</div>').join('');
+  const checks=(r.checks||[]).map(c=>'<div class="irc '+(c.ok?'ok':(c.soft?'soft':'bad'))+'">'+(c.ok?'✓':(c.soft?'ℹ':'✗'))+' '+_irEsc(c.msg)+'</div>').join('');
+  const items=r.items&&r.items.length?'<details class="iri"><summary>البنود ('+r.items.length+')</summary><table>'+r.items.map((it,i)=>'<tr><td>'+(i+1)+'</td><td>'+_irEsc(it.description)+'</td><td>'+(it.quantity==null?'':it.quantity)+'</td><td>'+(it.line_total==null?'':Number(it.line_total).toFixed(2))+'</td></tr>').join('')+'</table></details>':'';
+  const meta='<div class="irm">'+(r.qr?'رمز QR الضريبي ✓ · ':'')+(r.passes>1?r.passes+' قراءات مستقلة للمكتوب':'قراءة ذكية')+(r.model?' ('+_irEsc(String(r.model).replace('claude-',''))+')':'')+'</div>';
+  box.innerHTML='<div class="ircard '+(allOk?'ok':'warn')+'">'+head+'<div class="irg">'+rows+'</div>'+(checks?'<div class="ircs">'+checks+'</div>':'')+items+meta+'</div>';}
+function _irMark(el,st){if(!el)return;el.classList.remove('irok','irwarn','irrev');if(st==='warn')el.classList.add('irwarn');else if(st==='ok')el.classList.add('irok');
+  if(!el._irBound){el._irBound=1;el.addEventListener('input',()=>{if(el.classList.contains('irwarn')){el.classList.remove('irwarn');el.classList.add('irrev');}});}}
+function _irApply(r,map){for(const k in map){const el=document.getElementById(map[k]);if(!el)continue;const v=r.fields[k];
+    if(v!=null&&v!=='')el.value=(k==='subtotal'||k==='vat'||k==='total')?Number(v).toFixed(2):v;_irMark(el,r.status[k]);}}
+function _irGuard(ids,btnId){const bad=ids.map(i=>document.getElementById(i)).filter(e=>e&&e.classList.contains('irwarn'));if(!bad.length)return true;
+  const b=document.getElementById(btnId);if(b&&b.dataset.irConfirm==='1')return true;
+  if(b){b.dataset.irConfirm='1';b.textContent='⚠ تأكيد الحفظ رغم التنبيهات';b.style.background='var(--copper)';}
+  try{bad[0].scrollIntoView({behavior:'smooth',block:'center'});bad[0].focus({preventScroll:true});}catch(_){}
+  toast('فيه حقول ⚠ ما راجعتها — راجعها، أو اضغط الحفظ مرة ثانية للتأكيد');return false;}
+function _irResetBtn(btnId,label){const b=document.getElementById(btnId);if(b){delete b.dataset.irConfirm;b.textContent=label;b.style.background='';}}
+function _irLoading(boxId){const el=document.getElementById(boxId);return m=>{if(el)el.innerHTML='<div class="irload"><span class="irspin"></span>'+m+'</div>';};}
+function _irFail(boxId,e,tail){const el=document.getElementById(boxId);if(el)el.innerHTML='<div class="ircard warn"><div class="irh warn">⚠ تعذّرت القراءة التلقائية</div><div style="font-size:12.5px;line-height:1.7">'+_irEsc((e&&e.message)||e)+'</div><div class="irm">'+tail+'</div></div>';}
+function _irPreview(boxId,f,isPdf){const b=document.getElementById(boxId);if(!b)return;b.querySelectorAll('img,.pdftag').forEach(x=>x.remove());
+  if(isPdf){const t=document.createElement('div');t.className='pdftag';t.textContent='📄 '+f.name;t.style.cssText='margin-top:6px;font-size:12px;color:var(--green);font-weight:700;position:relative;z-index:1';b.appendChild(t);}
+  else{const img=document.createElement('img');img.src=URL.createObjectURL(f);b.appendChild(img);}}
+const _isPdfFile=f=>f.type==='application/pdf'||/\.pdf$/i.test(f.name||'');
+async function _irStoreOnly(f){const img=await _irLoadImg(f);return _irRegionCanvas(img,0,0,img.naturalWidth,img.naturalHeight,1800).toDataURL('image/jpeg',.82);}
+/* ===== INVOICE READER v2 END ===== */
+
+/* ===== QUICK EXPENSE — مصروف سريع: صوّر أو ارفع الفاتورة، يقرأ ويتحقق، والحفظ بضغطة ===== */
+let qePhoto=null,qeFile=null,qeIsPdf=false;
+function openQuickExpense(){qePhoto=null;qeFile=null;qeIsPdf=false;
   openModal(`<h3 style="margin:0 0 4px">⚡ مصروف سريع <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
-   <div class="hint" style="margin:0 0 12px">صوّر الفاتورة ويتعبّى المبلغ والمورّد والتاريخ تلقائياً — راجع المبلغ واحفظ بضغطة.</div>
+   <div class="hint" style="margin:0 0 12px">صوّر الفاتورة أو ارفع ملفها — يقرأ رمز QR الضريبي والأرقام ويتحقق منها، وأي رقم مشكوك فيه يتلوّن بالبرتقالي.</div>
    <div class="photobox" id="pb_qe" style="aspect-ratio:auto;height:155px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>اضغط للتصوير<input type="file" accept="image/*" capture="environment" onchange="qePick(this)"></div>
-   <div style="text-align:center;margin:8px 0 6px"><label class="link" style="cursor:pointer;position:relative;overflow:hidden;display:inline-block">🖼 أو اختر من الاستديو<input type="file" accept="image/*" onchange="qePick(this)" style="position:absolute;inset:0;opacity:0"></label></div>
-   <div id="qe_ocr" style="font-size:12.5px;margin-bottom:10px;min-height:16px"></div>
-   <div class="row"><div class="field"><label>المبلغ (﷼)</label><input id="qe_amount" type="number" inputmode="decimal" placeholder="0.00"></div><div class="field"><label>التاريخ</label><input type="date" id="qe_date" value="${todayKey()}"></div></div>
+   <div class="irpick"><label class="irpbtn">🖼 من الاستديو<input type="file" accept="image/*" onchange="qePick(this)"></label><label class="irpbtn">📄 ملف PDF أو صورة<input type="file" accept="application/pdf,image/*" onchange="qePick(this)"></label></div>
+   <div id="qe_ocr" style="margin-bottom:10px;min-height:16px"></div>
+   <div class="row"><div class="field"><label>المبلغ الإجمالي (﷼)</label><input id="qe_amount" type="number" inputmode="decimal" placeholder="0.00"></div><div class="field"><label>التاريخ</label><input type="date" id="qe_date" value="${todayKey()}"></div></div>
    <div class="field"><label>التصنيف</label><select id="qe_category">${EXP_CATS.map(c=>`<option ${c==='مشتريات'?'selected':''}>${c}</option>`).join('')}</select></div>
    <div class="field"><label>البيان / المورّد</label><input id="qe_desc" placeholder="مثال: حديد — مؤسسة النور"></div>
    <button class="btn" id="qeSave" style="padding:14px;font-size:16px" onclick="saveQuickExpense()">حفظ المصروف</button>
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
-function qePick(input){const f=input.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>compress(rd.result,d=>{qePhoto=d;const b=document.getElementById('pb_qe');if(b){b.querySelectorAll('img').forEach(x=>x.remove());const img=document.createElement('img');img.src=d;b.appendChild(img);}qeRead(d,'image/jpeg');});rd.readAsDataURL(f);}
-async function qeRead(b64,media){const el=document.getElementById('qe_ocr');if(el)el.innerHTML='<span style="color:var(--copper)">🔍 يقرأ الفاتورة…</span>';
-  try{const data64=String(b64).indexOf(',')>=0?String(b64).split(',')[1]:b64;
-    const{data,error}=await sb.functions.invoke('read-invoice',{body:{data:data64,media_type:media}});
-    if(error)throw error;const fnd=data&&data.fields;if(!fnd)throw new Error('no fields');
-    const set=(id,v)=>{const e=document.getElementById(id);if(e&&v!=null&&String(v).trim()!=='')e.value=v;};
-    set('qe_amount',fnd.amount);set('qe_date',fnd.date);
-    const party=(fnd.party||'').trim(),num=(fnd.number||'').trim();
-    if(party||num){const e=document.getElementById('qe_desc');if(e&&!e.value)e.value=party+(num?' — فاتورة '+num:'');}
-    if(el)el.innerHTML='<span style="color:var(--green);font-weight:700">✓ تمت القراءة — راجع المبلغ قبل الحفظ.</span>';
-  }catch(e){if(el)el.innerHTML='<span style="color:var(--muted)">تعذّرت القراءة التلقائية — اكتب المبلغ يدوياً والصورة محفوظة.</span>';}}
+async function qePick(input){const f=input.files&&input.files[0];input.value='';if(!f)return;
+  const isPdf=_isPdfFile(f);qeIsPdf=isPdf;qeFile=isPdf?f:null;qePhoto=null;_irPreview('pb_qe',f,isPdf);_irResetBtn('qeSave','حفظ المصروف');
+  try{const r=await _irRead(f,_irLoading('qe_ocr'),p=>{if(!isPdf)qePhoto=p.store;});if(r.stale)return;
+    _irApply(r,{total:'qe_amount',date:'qe_date'});
+    const d=document.getElementById('qe_desc');const p=r.fields.party||'',n=r.fields.number||'';const txt=(p+(n?' — فاتورة '+n:'')).trim();
+    if(d&&txt){d.value=txt;_irMark(d,(r.status.party==='warn'||r.status.number==='warn')?'warn':'ok');}
+    _irRender('qe_ocr',r);
+  }catch(e){if(!isPdf&&!qePhoto){try{qePhoto=await _irStoreOnly(f);}catch(_){}}_irFail('qe_ocr',e,'اكتب المبلغ يدوياً — '+(isPdf?'الملف':'الصورة')+' محفوظ مع المصروف.');}}
 async function saveQuickExpense(){const amount=parseFloat(document.getElementById('qe_amount').value)||0;if(!amount){toast('أدخل المبلغ');return;}
+  if(!_irGuard(['qe_amount','qe_date','qe_desc'],'qeSave'))return;
   const btn=document.getElementById('qeSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const rec={expense_date:document.getElementById('qe_date').value||todayKey(),category:document.getElementById('qe_category').value||'مشتريات',amount,description:document.getElementById('qe_desc').value.trim()};
-    if(qePhoto)rec.photo=await uploadPhoto(qePhoto,'exp');
+    if(qeIsPdf&&qeFile)rec.photo=await uploadFileDoc(qeFile,'exp');else if(qePhoto)rec.photo=await uploadPhoto(qePhoto,'exp');
     rec.created_by=ME.id;const{error}=await sb.from('expenses').insert(rec);if(error)throw error;
     closeModal();toast('تم حفظ المصروف ✓');initExpenses();
-  }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent='حفظ المصروف';}}
+  }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent='حفظ المصروف';btn.style.background='';}}
 /* ===== QUICK EXPENSE END ===== */
 
 /* ===== فاتورة ضريبية (ZATCA — المرحلة الأولى) ===== */
