@@ -9,8 +9,9 @@ const CORS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const DEFAULT_MODELS = ["claude-sonnet-5-5", "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-haiku-4-5"];
-let WORKING_MODEL = null; // يُحفظ أول موديل نجح (لنفس النسخة الدافئة)
+const FAST_MODELS = ["claude-haiku-4-5", "claude-sonnet-4-5"];            // القراءتان المتوازيتان (سريع)
+const STRONG_MODELS = ["claude-sonnet-5-5", "claude-sonnet-4-6", "claude-sonnet-4-5", "claude-haiku-4-5"]; // القراءة الحاسمة عند الاختلاف
+const WORKING = {}; // أول موديل نجح لكل سلسلة (للنسخة الدافئة)
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, "content-type": "application/json" } });
@@ -69,8 +70,8 @@ RULES
    - vat_amount = VAT amount (ضريبة القيمة المضافة / الضريبة / VAT / Tax).
    - vat_rate = VAT percentage as a number (e.g. 15).
    - discount = total discount, if printed.
-8. items = EVERY line item in order: description, quantity, unit_price, line_total (exactly as printed). Set items_include_vat=true if line totals include VAT.
-9. Evidence: total_text, subtotal_text, vat_text = the exact printed text of those amounts; number_text = printed invoice number.
+8. line_totals = the printed line-total amount of EVERY line item, in order (numbers only); items_count = number of line items. Set items_include_vat=true if line totals include VAT.
+9. Keep notes under 15 words. No other text.
 10. confidence for each key field: "high" | "medium" | "low" ("low" when blurry, cut off, handwritten, covered or ambiguous).
 `;
   if (variant === "B") p += `
@@ -78,14 +79,16 @@ READING ORDER for this pass: start with the TOTALS block (read every amount digi
 `;
   p += `
 Return ONLY one JSON object (no markdown, no commentary) with exactly these keys:
-{"supplier":string|null,"supplier_vat_no":string|null,"invoice_number":string|null,"number_text":string|null,"invoice_date":"YYYY-MM-DD"|null,"date_text":string|null,"date_is_hijri":boolean,"currency":string,"subtotal":number|null,"subtotal_text":string|null,"discount":number|null,"vat_amount":number|null,"vat_text":string|null,"vat_rate":number|null,"total":number|null,"total_text":string|null,"items":[{"description":string,"quantity":number|null,"unit_price":number|null,"line_total":number|null}],"items_include_vat":boolean,"confidence":{"supplier":string,"invoice_number":string,"invoice_date":string,"total":string,"vat_amount":string},"notes":string}`;
+{"supplier":string|null,"supplier_vat_no":string|null,"invoice_number":string|null,"invoice_date":"YYYY-MM-DD"|null,"date_text":string|null,"date_is_hijri":boolean,"currency":string,"subtotal":number|null,"discount":number|null,"vat_amount":number|null,"vat_rate":number|null,"total":number|null,"line_totals":[number],"items_count":number,"items_include_vat":boolean,"confidence":{"supplier":string,"invoice_number":string,"invoice_date":string,"total":string,"vat_amount":string},"notes":string}`;
   return p;
 }
 
 // ---------- استدعاء Claude مع تبديل تلقائي للموديل ----------
-async function callClaude(key, content) {
+async function callClaude(key, content, tier = "fast") {
   const override = (Deno.env.get("INVOICE_MODEL_OVERRIDE") || "").trim();
-  const list = [...new Set([override, WORKING_MODEL, ...DEFAULT_MODELS].filter(Boolean))];
+  const chain = tier === "strong" ? STRONG_MODELS : FAST_MODELS;
+  const list = [...new Set([override, WORKING[tier], ...chain].filter(Boolean))];
+  const maxTokens = tier === "strong" ? 4000 : 1500;
   let lastErr = "";
   for (const model of list) {
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -94,7 +97,7 @@ async function callClaude(key, content) {
         r = await fetch("https://api.anthropic.com/v1/messages", {
           method: "POST",
           headers: { "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json" },
-          body: JSON.stringify({ model, max_tokens: 8000, messages: [{ role: "user", content }] }),
+          body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: "user", content }] }),
         });
         out = await r.json().catch(() => ({}));
       } catch (e) {
@@ -103,7 +106,7 @@ async function callClaude(key, content) {
         continue;
       }
       if (r.ok) {
-        WORKING_MODEL = model;
+        WORKING[tier] = model;
         const text = ((out && out.content) || []).filter((c) => c && c.type === "text").map((c) => c.text).join("").trim();
         return { text, model };
       }
@@ -131,10 +134,12 @@ function parseJSON(text) {
 
 // ---------- التطبيع والتحقق ----------
 function normalize(raw) {
-  const items = Array.isArray(raw.items) ? raw.items.map((it) => ({
+  let items = [];
+  if (Array.isArray(raw.items)) items = raw.items.map((it) => ({
     description: (it && it.description != null ? String(it.description) : "").trim(),
     quantity: num(it && it.quantity), unit_price: num(it && it.unit_price), line_total: num(it && it.line_total),
-  })) : [];
+  }));
+  else if (Array.isArray(raw.line_totals)) items = raw.line_totals.map((x) => ({ description: "", quantity: null, unit_price: null, line_total: num(x) }));
   return {
     supplier: raw.supplier ? String(raw.supplier).trim() : null,
     supplier_vat_no: raw.supplier_vat_no ? digitsOnly(raw.supplier_vat_no) || null : null,
@@ -335,10 +340,10 @@ function finalize(f, v, qr, votes, disputed, nReads) {
 }
 
 // ---------- المعالج ----------
-async function extract(key, files, prompt) {
-  let { text, model } = await callClaude(key, [...files, { type: "text", text: prompt }]);
+async function extract(key, files, prompt, tier = "fast") {
+  let { text, model } = await callClaude(key, [...files, { type: "text", text: prompt }], tier);
   let raw = parseJSON(text);
-  if (!raw) { ({ text, model } = await callClaude(key, [...files, { type: "text", text: prompt + "\n\nIMPORTANT: respond with the JSON object only." }])); raw = parseJSON(text); }
+  if (!raw) { ({ text, model } = await callClaude(key, [...files, { type: "text", text: prompt + "\n\nIMPORTANT: respond with the JSON object only." }], tier)); raw = parseJSON(text); }
   if (!raw) throw new Error("تعذّر تفسير رد الذكاء الاصطناعي");
   return { raw, f: normalize(raw), model };
 }
@@ -389,7 +394,7 @@ async function handle(req) {
 VERIFICATION PASS. ${reads.length >= 2 ? "Independent readings of this same invoice produced different values" : "A previous reading produced values"} — problems found:
 ${lines.join("\n") || "- (confirm every value)"}
 Look again very carefully at exactly these printed values (digit by digit, check decimal points, seller vs buyer, issue date vs other dates) and return the complete JSON with the values as truly PRINTED. Do not average or guess.`;
-        try { const c = await extract(key, files, fixPrompt); c.v = validate(c.f, qr); reads.push(c); m = merge(reads, qr); } catch (_) { /* نكمل بما لدينا */ }
+        try { const c = await extract(key, files, fixPrompt, "strong"); c.v = validate(c.f, qr); reads.push(c); m = merge(reads, qr); } catch (_) { /* نكمل بما لدينا */ }
       }
     }
 
@@ -401,7 +406,7 @@ Look again very carefully at exactly these printed values (digit by digit, check
         ? { id: "double", ok: false, msg: "القراءات المستقلة اختلفت في: " + dk.map((k) => `${KEY_AR[k]} (${[...new Set(m.votes[k].all.map((x) => fmtV(k, x)))].join(" / ")})`).join("، ") }
         : { id: "double", ok: true, msg: `${reads.length} قراءات مستقلة للمكتوب متطابقة` });
     }
-    return json({ v: VERSION, ...out, checks, items: m.f.items, items_include_vat: m.f.items_include_vat, notes: m.f.notes, model: reads[0].model, passes: reads.length, qr_used: !!qr });
+    return json({ v: VERSION, ...out, checks, items: m.f.items, items_include_vat: m.f.items_include_vat, notes: m.f.notes, model: reads.map((r) => r.model).filter((x, i, a) => a.indexOf(x) === i).join(" + "), passes: reads.length, qr_used: !!qr });
   } catch (e) {
     return json({ error: (e && e.message) || String(e) }, 502);
   }
