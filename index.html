@@ -603,7 +603,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='331';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='332';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3685,7 +3685,7 @@ function renderInvKpis(){const inc=_invFiltered();const sum=inc.reduce((s,i)=>s+
 function renderInvList(){
   const inc=_invFiltered();const box=document.getElementById('invList');if(!box)return;
   const term=(document.getElementById('inv_search')?.value||'').trim().toLowerCase();
-  const list=term?inc.filter(i=>String(i.party||'').toLowerCase().includes(term)||String(i.number||'').toLowerCase().includes(term)):inc;
+  const list=term?inc.filter(i=>_srchMatch([i.party,i.number,i.note,i.invoice_date,i.amount].join(' '),term)):inc;
   box.innerHTML=list.length?list.map(i=>`<div class="item ivcard" onclick='openInvView(${JSON.stringify(i).replace(/'/g,"&#39;")})'><div class="ic" style="background:#f6ecdf;color:var(--copper)">↘</div>
     <div class="meta"><b>${i.party||'مورّد'}</b><small>${i.invoice_date||'—'}${i.number?' · رقم '+i.number:''} · ضريبة ${fmt(i.vat)} ﷼${i._exp?' · <span style="color:var(--green);font-weight:700">✓ ضمن المصروفات</span>':''}</small></div>
     <div style="text-align:left;display:flex;align-items:center;gap:8px;flex:none"><span class="pill role">${fmt(i.amount)} ﷼</span><span class="ivopen">${i.photo?'📄 عرض':'عرض'} ›</span></div></div>`).join(''):'<div class="empty">'+(term?'لا توجد فاتورة بهذا المورّد أو الرقم':'لا توجد فواتير واردة — أضف أول فاتورة')+'</div>';
@@ -3758,7 +3758,7 @@ function renderSuppliers(){
   const period=window._supPeriod||'all';
   const term=(document.getElementById('sup_search')?.value||'').trim().toLowerCase();
   let inv=all.filter(i=>_supInPeriod(i,period));
-  if(term)inv=inv.filter(i=>String(i.party||'').toLowerCase().includes(term));
+  if(term)inv=inv.filter(i=>_srchMatch(i.party,term));
   const g={};inv.forEach(i=>{const key=(String(i.party||'').trim())||'مورّد غير مسمّى';(g[key]=g[key]||[]).push(i);});
   const groups=Object.entries(g).map(([name,arr])=>({name,arr,total:arr.reduce((s,i)=>s+Number(i.amount||0),0),vat:arr.reduce((s,i)=>s+Number(i.vat||0),0)})).sort((a,b)=>b.total-a.total);
   const grand=groups.reduce((s,x)=>s+x.total,0);
@@ -3941,12 +3941,28 @@ async function exportExpensesPdf(){await ensureLib('jspdf','html2canvas');
   }catch(e){toast('خطأ في PDF: '+e.message);}
 }
 /* بحث عربي مرن: يتجاهل التشكيل والهمزات والتاء المربوطة والأرقام الهندية */
-function _srchNorm(s){return String(s==null?'':s).normalize('NFKC').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00AD]/g,'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[إأآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)).replace(/\s+/g,' ').trim();}
+function _srchNorm(s){return String(s==null?'':s).normalize('NFKC').replace(/[\u200B-\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00AD]/g,'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[إأآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي').replace(/ء/g,'').replace(/[٠-٩]/g,d=>String(d.charCodeAt(0)-1632)).replace(/[۰-۹]/g,d=>String(d.charCodeAt(0)-1776)).replace(/\s+/g,' ').trim();}
+/* بحث ذكي بالعربي: الجمع/المفرد (حادث↔حوادث، مخالفة↔مخالفات)، أل والحروف الملتصقة، الهمزات والتشكيل، وغلطة حرف في الكلمات الطويلة */
+const _AR_PRE2=['وبال','وال','بال','كال','فال','لل','ال'],_AR_PRE1=['و','ب','ل','ف','ك'],_AR_SUF=['ات','ين','ون','ان','يه','ه','ي','ا'];
+function _arStems(w){const v=new Set([w]);for(const p of _AR_PRE2)if(w.length-p.length>=3&&w.startsWith(p)){v.add(w.slice(p.length));break;}
+  for(const p of _AR_PRE1)if(w.length-1>=3&&w.startsWith(p)){v.add(w.slice(1));break;}
+  for(const x of [...v])for(const sf of _AR_SUF)if(x.length-sf.length>=3&&x.endsWith(sf)){v.add(x.slice(0,-sf.length));break;}return[...v];}
+function _arSkel(w,ya){return w.length<=2?w:w[0]+w.slice(1).replace(ya?/[اوي]/g:/[او]/g,'');}
+function _lev1(a,b){if(a===b)return true;const la=a.length,lb=b.length;if(Math.abs(la-lb)>1)return false;let i=0,j=0,d=0;while(i<la&&j<lb){if(a[i]===b[j]){i++;j++;continue;}if(++d>1)return false;if(la>lb)i++;else if(lb>la)j++;else{i++;j++;}}return d+(la-i)+(lb-j)<=1;}
+function _arWordMatch(ws,xs){if(ws.length>=2&&xs.startsWith(ws))return true;
+  if(/[او]/.test(ws.slice(1))&&xs.length>=ws.length){const y=ws.length>=5,a=_arSkel(ws,y),b=_arSkel(xs,y);if(a.length>=3&&(a===b||b.startsWith(a)))return true;}
+  if(ws[1]==='و'&&xs[1]==='ا'){const a=_arSkel(ws,true);if(a.length>=3&&a===_arSkel(xs,true))return true;}
+  if(ws.length<=4&&xs.length<ws.length&&/[او]/.test(ws.slice(1))){const a=_arSkel(ws,false);if(a.length>=3&&a===xs)return true;}
+  if(ws.length>=4&&xs.length===ws.length+1&&xs[2]==='ا'&&xs.slice(0,2)+xs.slice(3)===ws)return true;
+  return ws.length>=5&&ws.length===xs.length&&_lev1(ws,xs);}
+function _srchMatch(hay,term){const words=_srchNorm(term).split(' ').filter(Boolean);if(!words.length)return true;const H=_srchNorm(hay);
+  const toks=H.split(/[^\p{L}\p{N}.]+/u).filter(Boolean).map(_arStems);
+  return words.every(w=>{if(H.includes(w))return true;const qs=_arStems(w);return toks.some(ts=>qs.some(q=>ts.some(t=>_arWordMatch(q,t))));});}
 function renderExpenses(){
   const m=document.getElementById('ex_month').value,c=document.getElementById('ex_cat').value;
   const term=_srchNorm((document.getElementById('ex_search')||{}).value||'');
   let list=ALL_EXP;if(m&&!term)list=list.filter(e=>(e.expense_date||'').slice(0,7)===m);if(c)list=list.filter(e=>e.category===c);
-  if(term){const words=term.split(/\s+/).filter(Boolean);list=list.filter(e=>{const h=_srchNorm([e.description,e.category,e.expense_date,e.amount,fmt(e.amount)].join(' '));return words.every(w=>h.includes(w));});}
+  if(term)list=list.filter(e=>_srchMatch([e.description,e.category,e.expense_date,e.amount,fmt(e.amount)].join(' '),term));
   const total=list.reduce((s,e)=>s+Number(e.amount||0),0);const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0);});
   document.getElementById('exSummary').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">${term?'نتائج البحث ('+list.length+') — كل الأشهر':'إجمالي المصروفات '+(m||'(الكل)')}</h3><b style="color:var(--bad);font-size:17px">${fmt(total)} ﷼</b></div>
     <table class="tbl"><tbody>${EXP_CATS.filter(k=>byCat[k]).map(k=>`<tr><td>${k}</td><td style="text-align:left;font-weight:700">${fmt(byCat[k])} ﷼</td></tr>`).join('')||'<tr><td style="text-align:center;color:var(--muted)">لا مصروفات</td></tr>'}</tbody></table></div>`;
