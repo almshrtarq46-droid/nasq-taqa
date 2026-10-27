@@ -600,7 +600,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='327';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='328';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2440,6 +2440,8 @@ async function saveSettings(){
   try{const{error}=await sb.from('settings').update(rec).eq('id',1);if(error)throw error;SETTINGS={id:1,...rec};toast('تم حفظ الإعدادات ✓');}catch(e){toast('خطأ: '+e.message);}finally{btn.disabled=false;btn.textContent='حفظ الإعدادات';}
 }
 
+/* ترتيب موحّد: الأحدث تاريخاً أولاً، وعند تساوي التاريخ الأحدث إضافة */
+function _byDateDesc(k){return(a,b)=>String(b[k]||'').slice(0,10).localeCompare(String(a[k]||'').slice(0,10))||String(b.created_at||'').localeCompare(String(a.created_at||''));}
 function _loadScript(src){return new Promise((res,rej)=>{const el=document.createElement('script');el.src=src;el.onload=()=>res();el.onerror=()=>rej(new Error('فشل تحميل مكتبة الضغط'));document.head.appendChild(el);});}
 const _LIBS={
   xlsx:['https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js',()=>window.XLSX],
@@ -3649,7 +3651,7 @@ function finTab2(tab,btn){
 }
 async function loadInvoices(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  const inc=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.invoice_date||'').localeCompare(String(a.created_at||a.invoice_date||'')));const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
+  const inc=(data||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('invoice_date'));const sum=inc.reduce((s,i)=>s+Number(i.amount),0),sv=inc.reduce((s,i)=>s+Number(i.vat),0);
   let _lset=new Set();try{const{data:_ex}=await sb.from('expenses').select('invoice_id').is('deleted_at',null).not('invoice_id','is',null);(_ex||[]).forEach(r=>r.invoice_id&&_lset.add(r.invoice_id));}catch(_){}
   inc.forEach(i=>{i._exp=_lset.has(i.id);});
   window._INVALL=inc;
@@ -3727,7 +3729,7 @@ function _supInPeriod(inv,period){const d=String(inv.invoice_date||'').slice(0,1
 function supPeriod(p,btn){window._supPeriod=p;document.querySelectorAll('#supSeg button').forEach(b=>b.classList.remove('on'));if(btn)btn.classList.add('on');renderSuppliers();}
 async function loadSuppliers(){
   const{data}=await sb.from('invoices').select('*').eq('kind','in').order('invoice_date',{ascending:false});
-  window._SUPINV=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.invoice_date||'').localeCompare(String(a.created_at||a.invoice_date||'')));
+  window._SUPINV=(data||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('invoice_date'));
   const _nm=new Set();window._SUPINV.forEach(i=>{const p=String(i.party||'').trim();if(p)_nm.add(p);});window._SUPNAMES=[..._nm].sort();
   renderSuppliers();
 }
@@ -3835,7 +3837,7 @@ async function initExpenses(){
   document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
   document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
   const{data}=await sb.from('expenses').select('*').order('expense_date',{ascending:false});
-  ALL_EXP=(data||[]).filter(x=>!x.deleted_at).sort((a,b)=>String(b.created_at||b.expense_date||'').localeCompare(String(a.created_at||a.expense_date||'')));
+  ALL_EXP=(data||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('expense_date'));
   const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
   const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
   document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
@@ -4147,7 +4149,7 @@ async function previewTaxInvoice(){
 }
 async function openTaxInvoiceList(){
   openModal('<h3 style="margin-bottom:12px">الفواتير الضريبية المحفوظة</h3><div id="txList" style="color:var(--muted)">جارٍ التحميل…</div><button class="link" style="display:block;margin:14px auto 0" onclick="closeModal()">إغلاق</button>');
-  const{data}=await sb.from('tax_invoices').select('*').order('created_at',{ascending:false}).limit(200);
+  const{data}=await sb.from('tax_invoices').select('*').order('invoice_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
   window._txInvs=data||[];
   document.getElementById('txList').innerHTML=(data&&data.length)?data.map((inv,i)=>`<div class="item"><div class="ic">🧾</div><div class="meta"><b>${inv.number||'—'}</b><small>${inv.buyer||'—'} · ${inv.invoice_date||''} · ${fmt(inv.total)} ﷼</small></div><button class="link" onclick="reprintTax(${i})">🖨️ عرض</button></div>`).join(''):'<div class="empty">لا توجد فواتير ضريبية محفوظة</div>';
 }
