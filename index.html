@@ -257,6 +257,8 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .ivvzbar button{background:rgba(255,255,255,.15);color:#fff;border:0;border-radius:11px;padding:9px 16px;font-size:16px;font-weight:800;font-family:inherit}
 .ivvzs{flex:1;overflow:hidden;position:relative;touch-action:none;-webkit-user-select:none;user-select:none}
 .ivvzs img{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;max-width:none;-webkit-user-drag:none;pointer-events:none}.ivvzs img.anim{transition:transform .22s ease}
+.expinv{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#f3faf6;border:1px solid #bfe0cf;border-radius:13px;padding:10px 12px;margin:2px 0 12px}
+.expinv b{display:block;font-size:13.5px;color:var(--green)}.expinv small{font-size:11.5px;color:var(--muted)}.expinv .btn{flex:none;width:auto;padding:9px 14px}
 </style>
 </head>
 <body>
@@ -603,7 +605,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='332';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='333';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3966,13 +3968,17 @@ function renderExpenses(){
   const total=list.reduce((s,e)=>s+Number(e.amount||0),0);const byCat={};list.forEach(e=>{byCat[e.category]=(byCat[e.category]||0)+Number(e.amount||0);});
   document.getElementById('exSummary').innerHTML=`<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:15px">${term?'نتائج البحث ('+list.length+') — كل الأشهر':'إجمالي المصروفات '+(m||'(الكل)')}</h3><b style="color:var(--bad);font-size:17px">${fmt(total)} ﷼</b></div>
     <table class="tbl"><tbody>${EXP_CATS.filter(k=>byCat[k]).map(k=>`<tr><td>${k}</td><td style="text-align:left;font-weight:700">${fmt(byCat[k])} ﷼</td></tr>`).join('')||'<tr><td style="text-align:center;color:var(--muted)">لا مصروفات</td></tr>'}</tbody></table></div>`;
-  document.getElementById('exList').innerHTML=list.length?list.map(e=>`<div class="item"><div class="ic" style="background:#fbecea;color:var(--bad)">💸</div><div class="meta"><b>${e.category}</b><small>${e.expense_date}${e.description?' · '+e.description:''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill susp" style="background:#fbecea;color:var(--bad)">${fmt(e.amount)} ﷼</span>${e.photo?`<button class="link" onclick="viewInvPhoto('${e.photo}','صورة الإيصال')">📷</button>`:''}<button class="link" onclick='openExpense(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`).join(''):(term?'<div class="empty">لا يوجد مصروف يطابق «'+_irEsc((document.getElementById("ex_search")||{}).value||"")+'»</div>':'<div class="empty">لا مصروفات في هذا التصنيف/الشهر</div>');
+  document.getElementById('exList').innerHTML=list.length?list.map(e=>`<div class="item"><div class="ic" style="background:#fbecea;color:var(--bad)">💸</div><div class="meta"><b>${e.category}</b><small>${e.expense_date}${e.description?' · '+e.description:''}</small></div><div style="text-align:left;display:flex;align-items:center;gap:6px"><span class="pill susp" style="background:#fbecea;color:var(--bad)">${fmt(e.amount)} ﷼</span>${e.photo?`<button class="link" onclick="viewInvPhoto('${e.photo}','صورة الإيصال')">📷</button>`:(e.invoice_id?`<button class="link" style="white-space:nowrap" onclick="openExpInvoice('${e.invoice_id}')">📄 الفاتورة</button>`:'')}<button class="link" onclick='openExpense(${JSON.stringify(e).replace(/'/g,"&#39;")})'>تعديل</button></div></div>`).join(''):(term?'<div class="empty">لا يوجد مصروف يطابق «'+_irEsc((document.getElementById("ex_search")||{}).value||"")+'»</div>':'<div class="empty">لا مصروفات في هذا التصنيف/الشهر</div>');
 }
+async function openExpInvoice(id){let inv=(window._INVALL||[]).concat(window._SUPINV||[]).find(x=>x.id===id);
+  if(!inv){try{const{data,error}=await sb.from('invoices').select('*').eq('id',id).maybeSingle();if(error)throw error;inv=data;}catch(e){toast('تعذّر فتح الفاتورة: '+(e&&e.message||e));return;}}
+  if(!inv||inv.deleted_at){toast('الفاتورة المرتبطة غير موجودة (ربما محذوفة)');return;}openInvView(Object.assign({},inv,{_exp:true}));}
 function openExpense(e){expPhoto=null;openModal(`<h3 style="margin-bottom:14px">${e?'تعديل مصروف':'مصروف جديد'}</h3>
   <div class="row"><div class="field"><label>التاريخ</label><input type="date" id="ex_date" value="${e?e.expense_date:todayKey()}"></div><div class="field"><label>التصنيف</label><select id="ex_category">${EXP_CATS.map(c=>`<option ${e&&e.category===c?'selected':''}>${c}</option>`).join('')}</select></div></div>
   <div class="field"><label>المبلغ (﷼)</label><input id="ex_amount" type="number" inputmode="decimal" value="${e?e.amount:''}"></div>
   <div class="field"><label>الوصف / البيان</label><input id="ex_desc" value="${e?(e.description||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: راتب شهر أغسطس"></div>
-  <div class="field"><label>صورة الإيصال (اختياري)</label><div class="photobox" id="pb_exp" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الإيصال<input type="file" accept="image/*" onchange="pickExpPhoto(this)"></div></div>
+  ${e&&e.invoice_id?`<div class="expinv"><div><b>📄 هذا المصروف من فاتورة واردة</b><small>الصورة والتفاصيل محفوظة في المالية ← الفواتير الواردة</small></div><button class="btn sm" onclick="openExpInvoice('${e.invoice_id}')">عرض الفاتورة</button></div>`:''}
+  <div class="field"${e&&e.invoice_id?' style="display:none"':''}><label>صورة الإيصال (اختياري)</label><div class="photobox" id="pb_exp" style="aspect-ratio:auto;height:120px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>صورة الإيصال<input type="file" accept="image/*" onchange="pickExpPhoto(this)"></div></div>
   <button class="btn" id="exSave" onclick="saveExpense('${e?e.id:''}')">حفظ</button>
   ${e?`<button class="btn danger" style="margin-top:9px" onclick="deleteExpense('${e.id}')">حذف</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
