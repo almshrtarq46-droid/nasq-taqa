@@ -224,6 +224,17 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .sapfile{display:inline-flex;align-items:center;gap:4px;background:#f3f6f5;border:1px solid var(--line);border-radius:10px;padding:2px 2px 2px 9px;max-width:100%}
 .sapfv{background:none;border:none;color:#0f5e8c;font-weight:600;cursor:pointer;font-size:12.5px;padding:4px 2px;text-align:right;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sapx{background:none;border:none;cursor:pointer;font-size:13px;padding:4px 6px;opacity:.7}
+.ckrow{display:flex;align-items:flex-start;gap:9px;font-size:13.5px;line-height:1.5;margin:6px 0;cursor:pointer}
+.ckrow input{width:20px;height:20px;flex:none;margin-top:1px;accent-color:var(--green)}
+.custbox{margin:8px 0 2px;padding:10px;border:1.5px solid #e8a34a;background:#fff8ef;border-radius:11px}
+.custhd{font-size:12.5px;font-weight:800;color:#b5732f;margin-bottom:7px}
+.custrow{display:flex;gap:6px;align-items:center;margin-bottom:6px}
+.custrow select{flex:1;min-width:0;font-size:13px;padding:7px 8px}
+.custrow input{width:84px;flex:none;font-size:15px;text-align:center;padding:7px 4px}
+.custrow .cu{font-size:11.5px;color:var(--muted);width:34px;flex:none}
+.custrow .cx{background:none;border:none;color:var(--bad);font-weight:800;cursor:pointer;font-size:15px;padding:0 4px;flex:none}
+.custadd{width:100%;background:#fff;border:1px dashed #e8a34a;color:#b5732f;border-radius:9px;padding:8px;font-size:12.5px;font-weight:700;cursor:pointer}
+.custtag{font-size:11px;font-weight:700;background:#fff1df;color:#b5732f;border:1px solid #e8a34a;border-radius:12px;padding:2px 9px}
 .irload{display:flex;align-items:center;gap:9px;color:var(--copper);font-size:13px;font-weight:700;padding:11px 12px;border-radius:12px;background:#fdf6ee;animation:irIn .3s ease}
 .irload .irt{margin-inline-start:auto;font-variant-numeric:tabular-nums;color:var(--muted)}
 .irspin{width:15px;height:15px;border:2px solid rgba(181,115,47,.25);border-top-color:var(--copper);border-radius:50%;animation:sp .7s linear infinite;display:inline-block;flex:none}
@@ -487,7 +498,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     </div>
     <div class="view" id="v-inventory">
       <h2 class="section-title">المخزون</h2>
-      <div class="hint">جرد المواد: كل مادة برصيدها الحالي. عند رفع بند مرتبط بمادة يُخصم تلقائياً من الرصيد. التوريد والصرف اليدوي متاحان أيضاً.</div>
+      <div class="hint">جرد المواد: كل مادة برصيدها الحالي. مواد «العهدة» المصروفة من شركة الكهرباء (كيبل 70، لقز، سيكلمب...) تُتابع في قسم مستقل وتُخصم تلقائياً عند رفع محطة فيها بند تأريض ونحوه. للتوريد (استلام عهدة جديدة) استخدم زر «توريد».</div>
       <button class="btn" style="margin-bottom:10px" onclick="openMaterial()">+ إضافة مادة</button>
       <input id="invSearch" placeholder="بحث باسم المادة…" oninput="renderInventory()" style="margin-bottom:12px">
       <div id="invList"></div>
@@ -628,7 +639,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='338';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='339';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2553,17 +2564,27 @@ function openCatalogItem(it){openModal(`<h3 style="margin-bottom:14px">${it?'ت�
       <div class="field"><label>الكمية المستهلكة لكل وحدة</label><input id="ci_matper" type="number" inputmode="decimal" value="${it?(it.material_per_unit||''):''}" placeholder="مثال: 1"></div></div>
     <div class="hint" style="margin-top:4px">مثال: بند تأريض → المادة «كابل»، الكمية 1 (يعني كل وحدة من البند تستهلك 1 متر كابل).</div>
   </div>
+  <div class="card" style="padding:12px;background:#fff8ef;box-shadow:none;border:1px solid #e8a34a;margin:8px 0 2px">
+    <label class="ckrow"><input type="checkbox" id="ci_needs_custody" ${it&&_needsCustody(it.id)?'checked':''}> هذا البند يتطلب إدخال مواد عهدة الكهرباء (كيبل 70، لقز، سيكلمب...) عند رفع المحطة — إجباري وبكميات يُدخلها الموظف</label>
+  </div>
   <button class="btn" id="ciSave" onclick="saveCatalogItem('${it?it.id:''}')">حفظ</button>
   ${it?`<button class="btn danger" style="margin-top:9px" onclick="delCatalogItem('${it.id}')">حذف</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+async function _setCustodyFlag(itemId,on){if(!itemId)return;
+  let ids=(((SETTINGS&&SETTINGS.custody_item_ids)||[])).filter(Boolean);const has=ids.includes(itemId);
+  if(on&&!has)ids=[...ids,itemId];else if(!on&&has)ids=ids.filter(x=>x!==itemId);else return;
+  try{const{error}=await sb.from('settings').update({custody_item_ids:ids}).eq('id',1);if(error)throw error;SETTINGS=Object.assign(SETTINGS||{},{custody_item_ids:ids});}
+  catch(e){toast('لتفعيل مواد العهدة نفّذ كود SQL أولًا');}}
 async function saveCatalogItem(id){const name=document.getElementById('ci_name').value.trim();if(!name){toast('أدخل اسم البند');return;}
   {const _c=document.getElementById('ci_code').value.trim();const _d=_c&&(CATALOG||[]).find(x=>String(x.code||'').trim()===_c&&x.id!==id);if(_d){toast('رقم البند '+_c+' مستخدم لبند ثاني: '+(_d.name||''));return;}}
   const rec={code:document.getElementById('ci_code').value.trim(),name,name_full:document.getElementById('ci_name_full').value.trim(),unit:document.getElementById('ci_unit').value.trim()||'وحدة',rate:parseFloat(document.getElementById('ci_rate').value)||0,material_id:document.getElementById('ci_material').value||null,material_per_unit:parseFloat(document.getElementById('ci_matper').value)||0};
   const btn=document.getElementById('ciSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  const save=async r=>{if(id){return await sb.from('catalog_items').update(r).eq('id',id);}return await sb.from('catalog_items').insert(r);};
-  try{let{error}=await save(rec);
-    if(error&&/material/i.test(error.message||'')){delete rec.material_id;delete rec.material_per_unit;({error}=await save(rec));toast('حُفظ البند — لتفعيل ربط المخزون نفّذ كود المخزون (SQL)');}
+  const wantCustody=!!(document.getElementById('ci_needs_custody')&&document.getElementById('ci_needs_custody').checked);
+  const save=async r=>{if(id){const res=await sb.from('catalog_items').update(r).eq('id',id);return{error:res.error,id};}const res=await sb.from('catalog_items').insert(r).select('id').single();return{error:res.error,id:res.data&&res.data.id};};
+  try{let{error,id:savedId}=await save(rec);
+    if(error&&/material/i.test(error.message||'')){delete rec.material_id;delete rec.material_per_unit;({error,id:savedId}=await save(rec));toast('حُفظ البند — لتفعيل ربط المخزون نفّذ كود المخزون (SQL)');}
     if(error)throw error;
+    await _setCustodyFlag(savedId,wantCustody);
     // تحديث كل الإدخالات السابقة لهذا البند بالرقم/الاسم الجديد (أول بأول)
     let upd='';if(id){const{error:ue,count}=await sb.from('entries').update({item_code:rec.code,item_name:rec.name,item_name_full:rec.name_full||rec.name},{count:'exact'}).eq('item_id',id);
       upd=ue?' — تنبيه: تعذّر تحديث الإدخالات السابقة ('+ue.message+')':(count?' + تحديث '+count+' إدخال':'');}
@@ -2580,11 +2601,11 @@ function renderInventory(){
   const list=q?MATERIALS.filter(m=>(m.name||'').includes(q)):MATERIALS;
   if(!MATERIALS.length){box.innerHTML='<div class="empty">لا مواد بعد — أضف أول مادة</div>';return;}
   if(!list.length){box.innerHTML='<div class="empty">لا مادة بهذا الاسم</div>';return;}
-  box.innerHTML=list.map(m=>{const qty=Number(m.qty||0),low=Number(m.min_alert||0)>0&&qty<=Number(m.min_alert);
-    return `<div class="card" style="padding:13px;margin-bottom:10px">
+  const card=m=>{const qty=Number(m.qty||0),low=Number(m.min_alert||0)>0&&qty<=Number(m.min_alert);
+    return `<div class="card" style="padding:13px;margin-bottom:10px${m.is_custody?';border:1px solid #e8a34a;background:#fffdf8':''}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><b style="font-size:15px">${m.name}</b><div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}</small></div></div>
-        <div style="text-align:left"><div style="font-weight:900;font-size:20px;color:${low?'var(--bad)':'var(--green)'}">${fmt(qty)}</div><small style="color:var(--muted)">${m.unit||'قطعة'}</small></div>
+        <div><b style="font-size:15px">${m.name}</b> ${m.is_custody?'<span class="custtag">عهدة</span>':''}<div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}</small></div></div>
+        <div style="text-align:left"><div style="font-weight:900;font-size:20px;color:${low?'var(--bad)':(m.is_custody?'#b5732f':'var(--green)')}">${fmt(qty)}</div><small style="color:var(--muted)">${m.unit||'قطعة'}</small></div>
       </div>
       ${low?'<div style="margin-top:6px"><span class="pill susp">⚠ الرصيد منخفض</span></div>':''}
       <div class="row" style="margin-top:10px;flex-wrap:wrap;gap:6px">
@@ -2592,23 +2613,31 @@ function renderInventory(){
         <button class="btn sm" style="flex:1;background:var(--copper)" onclick="materialMove('${m.id}','out')">− صرف</button>
         <button class="link" onclick="materialLedger('${m.id}')">📜 السجل</button>
         <button class="link" onclick='openMaterial(${JSON.stringify(m).replace(/'/g,"&#39;")})'>⚙ تعديل</button>
-      </div></div>`;}).join('');
+      </div></div>`;};
+  const cust=list.filter(m=>m.is_custody),own=list.filter(m=>!m.is_custody);
+  const sec=(t,arr)=>arr.length?`<div style="font-size:13px;font-weight:800;color:var(--muted);margin:6px 2px 8px">${t} (${arr.length})</div>${arr.map(card).join('')}`:'';
+  box.innerHTML=(cust.length?sec('⚡ عهدة شركة الكهرباء',cust):'')+(own.length?sec('📦 مواد الشركة',own):'')||list.map(card).join('');
 }
 function openMaterial(m){openModal(`<h3 style="margin-bottom:14px">${m?'تعديل مادة':'مادة جديدة'}</h3>
   <div class="field"><label>اسم المادة</label><input id="mt_name" value="${m?(m.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: مروحة شفط / كابل نحاس"></div>
   <div class="row"><div class="field"><label>الوحدة</label><input id="mt_unit" value="${m?(m.unit||''):''}" placeholder="قطعة / متر / لفة"></div>
     <div class="field"><label>حد التنبيه للنقص</label><input id="mt_min" type="number" inputmode="decimal" value="${m?(m.min_alert||0):0}"></div></div>
   ${m?'':'<div class="field"><label>الرصيد الابتدائي</label><input id="mt_qty" type="number" inputmode="decimal" value="0"></div>'}
+  <div class="card" style="padding:12px;background:#fff8ef;box-shadow:none;border:1px solid #e8a34a;margin:2px 0 10px">
+    <label class="ckrow"><input type="checkbox" id="mt_is_custody" ${m&&m.is_custody?'checked':''}> مادة عهدة من شركة الكهرباء (تُتابع كعهدة منفصلة ويمكن اختيارها في بنود التأريض ونحوها)</label>
+  </div>
   <button class="btn" id="mtSave" onclick="saveMaterial('${m?m.id:''}')">حفظ</button>
   ${m?`<button class="btn danger" style="margin-top:9px" onclick="delMaterial('${m.id}')">حذف المادة</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function saveMaterial(id){const name=(document.getElementById('mt_name').value||'').trim();if(!name){toast('أدخل اسم المادة');return;}
-  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0};
+  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0,is_custody:!!(document.getElementById('mt_is_custody')&&document.getElementById('mt_is_custody').checked)};
   if(!id)rec.qty=parseFloat(document.getElementById('mt_qty').value)||0;
   const btn=document.getElementById('mtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{if(id){const{error}=await sb.from('materials').update(rec).eq('id',id);if(error)throw error;}
-    else{const{data,error}=await sb.from('materials').insert(rec).select('id').single();if(error)throw error;
-      if(rec.qty)try{await sb.from('material_moves').insert({material_id:data.id,delta:rec.qty,reason:'رصيد ابتدائي',source:'manual',created_by:ME.id});}catch(_){}}
+  const _msave=async r=>{if(id)return await sb.from('materials').update(r).eq('id',id);return await sb.from('materials').insert(r).select('id').single();};
+  try{let res=await _msave(rec);
+    if(res.error&&/is_custody|column/i.test(res.error.message||'')){const{is_custody,...r2}=rec;res=await _msave(r2);toast('حُفظت — لتفعيل فصل العهدة نفّذ كود SQL');}
+    if(res.error)throw res.error;
+    if(!id&&rec.qty){const nid=res.data&&res.data.id;if(nid)try{await sb.from('material_moves').insert({material_id:nid,delta:rec.qty,reason:'رصيد ابتدائي',source:'manual',created_by:ME.id});}catch(_){}}
     closeModal();toast('تم الحفظ ✓');initInventory();
   }catch(e){toast('خطأ: '+(e&&e.message||e));btn.disabled=false;btn.textContent='حفظ';}}
 async function delMaterial(id){await softDelete('materials',id);closeModal();toast('تم حذف المادة');initInventory();}
@@ -4489,13 +4518,29 @@ function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];
   document.getElementById('f_station_no').value='';document.getElementById('f_station_type').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
   const _nn=document.getElementById('f_notice_no');if(_nn)_nn.value='';const _wo=document.getElementById('f_wo_no');if(_wo)_wo.value='';
   const sv=document.getElementById('f_save');if(sv){sv.disabled=false;sv.textContent='رفع العمل';}
-  const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();}
+  const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();
+  if(!(MATERIALS&&MATERIALS.length)){loadMaterials().then(()=>renderFieldItems());}}
+function _custodyMats(){return (MATERIALS||[]).filter(m=>m.is_custody&&!m.deleted_at);}
+function _needsCustody(itemId){return (((SETTINGS&&SETTINGS.custody_item_ids)||[])).includes(itemId);}
+function _cuMatOpts(sel){return '<option value="">— اختر مادة عهدة —</option>'+_custodyMats().map(m=>`<option value="${m.id}" ${m.id===sel?'selected':''}>${_irEsc(m.name)} (${_irEsc(m.unit||'قطعة')})</option>`).join('');}
+function fcAddRow(i){(fieldItems[i].custody=fieldItems[i].custody||[]).push({material_id:'',qty:''});renderFieldItems();}
+function fcDelRow(i,j){fieldItems[i].custody.splice(j,1);renderFieldItems();}
+function fcSetMat(i,j,v){fieldItems[i].custody[j].material_id=v;renderFieldItems();}
+function fcSetQty(i,j,v){fieldItems[i].custody[j].qty=_toEnNum(v);}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' · ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(_toEnNum(document.getElementById('f_qty').value));
   if(!it){toast('اختر بند');return;}if(!q||q<=0){toast('أدخل كمية');return;}
-  fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||''});document.getElementById('f_qty').value='';renderFieldItems();}
-function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
+  const nc=_needsCustody(it.id);
+  fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||'',needsCustody:nc,custody:nc?[{material_id:'',qty:''}]:[]});document.getElementById('f_qty').value='';renderFieldItems();}
+function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>{
+  let cust='';
+  if(it.needsCustody){
+    const rows=(it.custody||[]).map((r,j)=>{const m=_custodyMats().find(x=>x.id===r.material_id);return `<div class="custrow"><select onchange="fcSetMat(${i},${j},this.value)">${_cuMatOpts(r.material_id)}</select><input type="number" inputmode="decimal" value="${r.qty||''}" placeholder="كمية" oninput="fcSetQty(${i},${j},this.value)"><span class="cu">${m?_irEsc(m.unit||''):''}</span><button class="cx" onclick="fcDelRow(${i},${j})">✕</button></div>`;}).join('');
+    cust=`<div class="custbox"><div class="custhd">⚡ مواد العهدة المستهلكة لهذا البند (إجباري)</div>${rows}${_custodyMats().length?`<button class="custadd" onclick="fcAddRow(${i})">＋ إضافة مادة عهدة</button>`:'<small style="color:var(--bad)">لا توجد مواد عهدة — يضيفها المدير من المخزون</small>'}</div>`;
+  }
+  return `<div class="item" style="padding:9px;flex-wrap:wrap"><div class="meta"><b style="font-size:14px">${it.name} ${it.needsCustody?'<span class="custtag">عهدة</span>':''}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems()">✕</button>${cust?'<div style="width:100%">'+cust+'</div>':''}</div>`;
+}).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function readFileData(f){return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});}
 async function onFieldPhoto(input,phase){
@@ -4525,6 +4570,8 @@ async function saveFieldReport(){
   if(!stationType){toast('اختر نوع المحطة');return;}
   if(!noticeNo){toast('اكتب رقم الإشعار (إجباري)');return;}
   if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
+  for(const it of fieldItems){if(it.needsCustody){const rows=(it.custody||[]).filter(r=>r.material_id&&Number(r.qty)>0);
+    if(!rows.length){toast('البند «'+it.name+'» يتطلب إدخال مواد العهدة المستهلكة (المادة + الكمية)');return;}}}
   if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
   if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
@@ -4542,12 +4589,21 @@ async function saveFieldReport(){
     const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
     const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
-    const note=document.getElementById('f_note').value.trim();
+    let note=document.getElementById('f_note').value.trim();
+    // ملخص العهدة يُدوَّن في ملاحظة المحطة حتى لو لم يُفعّل الخصم بعد
+    const _cuSum=fieldItems.filter(it=>it.needsCustody).map(it=>{const parts=(it.custody||[]).filter(r=>r.material_id&&Number(r.qty)>0).map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};return (m.name||'')+' '+fmt(Number(r.qty))+' '+(m.unit||'');});return parts.length?(it.name+': '+parts.join(' + ')):'';}).filter(Boolean).join(' | ');
+    if(_cuSum)note=(note?note+' — ':'')+'عهدة الكهرباء: '+_cuSum;
     const entryRows=fieldItems.map(it=>({project_id:pid,item_id:it.item_id,worker_id:ME.id,worker_name:PROFILE.full_name||null,item_name:it.name,item_name_full:it.name_full||it.name,item_code:it.code||'',unit:it.unit,qty:it.qty,note,work_date:wd}));
     let{error:ee}=await sb.from('entries').insert(entryRows);
     if(ee&&/worker_name/i.test(ee.message||'')){entryRows.forEach(r=>delete r.worker_name);({error:ee}=await sb.from('entries').insert(entryRows));}
     if(ee)throw ee;
-    notifyEvent('📍 رفع محطة جديدة',`${PROFILE.full_name||'موظف'} رفع محطة رقم ${stationNo}${stationType?' — '+stationType:''}${assign&&assign.name?' ('+assign.name+')':''} بعدد ${fieldItems.length} بند.`);
+    // خصم مواد العهدة من المخزون (عبر station_materials + Trigger)
+    const custRows=[];
+    for(const it of fieldItems){if(it.needsCustody){for(const r of (it.custody||[])){if(r.material_id&&Number(r.qty)>0){const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
+      custRows.push({project_id:pid,item_id:it.item_id,item_name:it.name,material_id:r.material_id,material_name:m.name||null,qty:Number(r.qty),worker_id:ME.id,worker_name:PROFILE.full_name||null,work_date:wd});}}}}
+    if(custRows.length){const{error:ce}=await sb.from('station_materials').insert(custRows);
+      if(ce)toast('حُفظت المحطة ✓ — لكن لتفعيل خصم العهدة من المخزون نفّذ كود SQL (مسجّلة في ملاحظة المحطة)');}
+    notifyEvent('📍 رفع محطة جديدة',`${PROFILE.full_name||'موظف'} رفع محطة رقم ${stationNo}${stationType?' — '+stationType:''}${assign&&assign.name?' ('+assign.name+')':''} بعدد ${fieldItems.length} بند.${_cuSum?' | عهدة: '+_cuSum:''}`);
     btn.disabled=false;btn.textContent='رفع العمل';initField();goView(PROFILE.role==='worker'?'home':'workorders');showBigSuccess('✓ تم رفع العمل بنجاح');
   }catch(e){toast('خطأ: '+e.message);btn.disabled=false;btn.textContent='رفع العمل';}}
 
