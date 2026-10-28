@@ -628,7 +628,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='337';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='338';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2222,15 +2222,18 @@ async function photosPDF(pid,phase){
       const dim=await new Promise(res=>{const g=new Image();g.onload=()=>res({w:g.naturalWidth||4,h:g.naturalHeight||3});g.onerror=()=>res({w:4,h:3});g.src=dataUrl;});
       return{dataUrl,w:dim.w,h:dim.h};}catch(_){return null;}}))).filter(Boolean);
     if(!imgs.length){toast('تعذّر تجهيز الصور');return;}
-    // صورة واحدة لكل صفحة باتجاهها الصحيح وملء الصفحة = أبعاد سليمة
-    let pdf=null;
-    for(const im of imgs){const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
-      if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
-      const m=5,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
-      const f=/^data:image\/png/i.test(im.dataUrl)?'PNG':'JPEG';
-      try{pdf.addImage(im.dataUrl,f,(pw-iw)/2,(ph-ih)/2,iw,ih);}catch(_){}}
-    pdf.save((phase==='meas'?'ورقة قياس (تم التوقيع) '+code:code+' '+lbl)+'.pdf');
-    toast('تم تجهيز '+(phase==='meas'?'الميجر':'صور '+lbl)+' ✓ ('+imgs.length+' صفحة)');
+    if(phase==='meas'){ // الميجر: صورة كاملة لكل صفحة باتجاهها
+      let pdf=null;
+      for(const im of imgs){const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
+        if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
+        const m=4,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
+        const f=/^data:image\/png/i.test(im.dataUrl)?'PNG':'JPEG';
+        try{pdf.addImage(im.dataUrl,f,(pw-iw)/2,(ph-ih)/2,iw,ih);}catch(_){}}
+      pdf.save('ورقة قياس (تم التوقيع) '+code+'.pdf');toast('تم تجهيز الميجر ✓ ('+imgs.length+' صفحة)');return;
+    }
+    const{pdf,idx}=_grid2Pdf(imgs); // صورتان في الصفحة بأبعاد سليمة
+    if(!idx){toast('تعذّر تجهيز الصور');return;}
+    pdf.save(code+' '+lbl+'.pdf');toast('تم تجهيز صور '+lbl+' ✓ ('+idx+' صورة)');
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
 /* ===== سلة المحذوفات (حذف قابل للاسترجاع) ===== */
@@ -3888,6 +3891,14 @@ async function _sapFileToImg(file){
     const out=bake(bmp,bmp.width,bmp.height);if(bmp.close)bmp.close();return out;}
   catch(_){}
   return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>{const g=new Image();g.onload=()=>{try{res(bake(g,g.naturalWidth||4,g.naturalHeight||3));}catch(e){res({dataUrl:fr.result,w:g.naturalWidth||4,h:g.naturalHeight||3});}};g.onerror=()=>res(null);g.src=fr.result;};fr.onerror=()=>res(null);fr.readAsDataURL(file);});}
+function _grid2Pdf(imgs){const{jsPDF}=window.jspdf;const pdf=new jsPDF('l','mm','a4');
+  const pw=297,ph=210,margin=8,gap=6,cellW=(pw-margin*2-gap)/2,cellH=ph-margin*2;let idx=0;
+  for(const im of imgs){const pos=idx%2;if(pos===0&&idx>0)pdf.addPage();
+    let dw=cellW,dh=dw*im.h/im.w;if(dh>cellH){dh=cellH;dw=dh*im.w/im.h;}
+    const cellX=margin+pos*(cellW+gap),x=cellX+(cellW-dw)/2,y=margin+(cellH-dh)/2;
+    const f=/^data:image\/png/i.test(im.dataUrl)?'PNG':'JPEG';
+    try{pdf.addImage(im.dataUrl,f,x,y,dw,dh);idx++;}catch(_){}}
+  return{pdf,idx};}
 async function sapMakePdf(){const st=(document.getElementById('sapStation').value||'').trim();
   if(!st){toast('أدخل رقم المحطة');return;}
   if(!_sapImgs.length){toast('أضف صوراً أولاً');return;}
@@ -3895,13 +3906,7 @@ async function sapMakePdf(){const st=(document.getElementById('sapStation').valu
   try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;
     const imgs=(await Promise.all(_sapImgs.map(f=>_sapFileToImg(f)))).filter(Boolean);
     if(!imgs.length){toast('تعذّر تجهيز الصور');return;}
-    // صورة واحدة لكل صفحة باتجاهها الصحيح وملء الصفحة = أبعاد سليمة
-    let pdf=null,idx=0;
-    for(const im of imgs){const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
-      if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
-      const m=5,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
-      const ft=/^data:image\/png/i.test(im.dataUrl)?'PNG':'JPEG';
-      try{pdf.addImage(im.dataUrl,ft,(pw-iw)/2,(ph-ih)/2,iw,ih);idx++;}catch(_){}}
+    const{pdf,idx}=_grid2Pdf(imgs); // صورتان في الصفحة بأبعاد سليمة
     if(!idx){toast('تعذّر تجهيز الصور');return;}
     const safe=String(st).replace(/[\\/:*?"<>|]/g,'_');
     pdf.save(safe+'.pdf');toast('تم تجهيز PDF ✓ ('+idx+' صورة)');
