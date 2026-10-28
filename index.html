@@ -628,7 +628,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='335';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='336';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3885,7 +3885,16 @@ function sapRmPend(i){_sapImgs.splice(i,1);sapRenderPend();}
 function sapClear(){_sapImgs=[];const s=document.getElementById('sapStation');if(s)s.value='';sapRenderPend();}
 function sapRenderPend(){const box=document.getElementById('sapPend');if(!box)return;
   box.innerHTML=_sapImgs.length?_sapImgs.map((f,i)=>`<div class="sapchip"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">🖼 ${_irEsc(f.name||('صورة '+(i+1)))}</span><button onclick="sapRmPend(${i})">✕</button></div>`).join(''):'<div class="saphint2">لا صور بعد — اضغط «إضافة صور»</div>';}
-function _sapFileToImg(file){return new Promise(res=>{const fr=new FileReader();fr.onload=()=>{const dataUrl=fr.result;const g=new Image();g.onload=()=>res({dataUrl,w:g.naturalWidth||4,h:g.naturalHeight||3});g.onerror=()=>res({dataUrl,w:4,h:3});g.src=dataUrl;};fr.onerror=()=>res(null);fr.readAsDataURL(file);});}
+async function _sapFileToImg(file){
+  // نعيد ترميز الصورة عبر canvas لتثبيت اتجاه EXIF (وإلا تطلع مدوّرة/ممغوطة في PDF) وتصغيرها قليلاً لسرعة التحميل
+  const MAX=1800;
+  const bake=(src,w,h)=>{const sc=Math.min(1,MAX/Math.max(w,h));const cw=Math.max(1,Math.round(w*sc)),ch=Math.max(1,Math.round(h*sc));
+    const c=document.createElement('canvas');c.width=cw;c.height=ch;const cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cw,ch);
+    cx.drawImage(src,0,0,cw,ch);return{dataUrl:c.toDataURL('image/jpeg',0.9),w:cw,h:ch};};
+  try{let bmp;try{bmp=await createImageBitmap(file,{imageOrientation:'from-image'});}catch(_){bmp=await createImageBitmap(file);}
+    const out=bake(bmp,bmp.width,bmp.height);if(bmp.close)bmp.close();return out;}
+  catch(_){}
+  return await new Promise(res=>{const fr=new FileReader();fr.onload=()=>{const g=new Image();g.onload=()=>{try{res(bake(g,g.naturalWidth||4,g.naturalHeight||3));}catch(e){res({dataUrl:fr.result,w:g.naturalWidth||4,h:g.naturalHeight||3});}};g.onerror=()=>res(null);g.src=fr.result;};fr.onerror=()=>res(null);fr.readAsDataURL(file);});}
 async function sapMakePdf(){const st=(document.getElementById('sapStation').value||'').trim();
   if(!st){toast('أدخل رقم المحطة');return;}
   if(!_sapImgs.length){toast('أضف صوراً أولاً');return;}
