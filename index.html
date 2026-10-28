@@ -509,7 +509,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-home">
       <div class="card"><h3 style="font-size:15px;margin-bottom:8px">مرحباً 👋</h3><p style="color:var(--muted);font-size:14px;margin:0" id="workerHi"></p></div>
       <button class="btn wbig" onclick="goView('field')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20"/><path d="M2 12h20"/></svg>رفع محطة جديدة</button>
-      <button class="btn wbig" id="sapFilesBtn" style="display:none;background:#8a5a2b" onclick="goView('sapfiles')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>مسح محطة — رفع صور PDF (قبل/بعد)</button>
+      <button class="btn wbig" id="sapFilesBtn" style="display:none;background:#8a5a2b" onclick="goView('sapfiles')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h4"/></svg>تحويل الصور إلى PDF</button>
       <button class="btn wbig" id="deAllStationsBtn" style="display:none;background:#6a4c93" onclick="goView('workorders')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h6"/></svg>كل المحطات</button>
       <button class="btn wbig" id="myRouteBtn" style="display:none;background:#0f7a52" onclick="goView('myroute')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l19-9-9 19-2-8-8-2z"/></svg>مسار اليوم (الأقرب فالأقرب)</button>
       <button class="btn wbig" style="background:#2a6f97" onclick="goView('station-search')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>البحث عن المحطة</button>
@@ -519,23 +519,17 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="workerNotifs" style="margin-top:14px"></div>
     </div>
     <div class="view" id="v-sapfiles">
-      <h2 class="section-title">مسح المحطات — صور PDF (قبل / بعد)</h2>
-      <div class="hint">للمحطات اللي نمسحها فقط (ما اشتغلناها) ويطلب الاستشاري صورها PDF. ارفع هنا ملفات «قبل» و«بعد» مباشرة — بدون رفع عمل وهمي ولا بنود.</div>
+      <h2 class="section-title">تحويل الصور إلى PDF</h2>
+      <div class="hint">للمسح الميداني فقط: أضف صور المحطة (من كل الجهات) ثم حوّلها إلى ملف PDF واحد بضغطة زر — اسم الملف هو رقم المحطة. خدمة تحويل فقط، لا تُحفظ المحطة في النظام.</div>
       <div class="card">
-        <div class="field"><label>رقم المحطة <span style="color:var(--bad)">*</span></label><input id="sapStation" inputmode="numeric" placeholder="مثال: 47558"></div>
-        <label>ملفات «قبل» (PDF أو صور)</label>
-        <div id="sapPend_before" class="sappend"></div>
-        <input type="file" accept="image/*,application/pdf" multiple id="sapIn_before" style="display:none" onchange="sapOnPick(this,'before')">
-        <button class="btn ghost sm" style="width:100%;margin:4px 0 14px" onclick="sapPick('before')">➕ إضافة ملفات قبل</button>
-        <label>ملفات «بعد» (PDF أو صور)</label>
-        <div id="sapPend_after" class="sappend"></div>
-        <input type="file" accept="image/*,application/pdf" multiple id="sapIn_after" style="display:none" onchange="sapOnPick(this,'after')">
-        <button class="btn ghost sm" style="width:100%;margin:4px 0 14px" onclick="sapPick('after')">➕ إضافة ملفات بعد</button>
-        <div class="field"><label>ملاحظات</label><textarea id="sapNote" rows="2" placeholder="اختياري"></textarea></div>
-        <button class="btn scancta" id="sapSaveBtn" onclick="sapSave()">💾 حفظ ملفات المسح</button>
+        <div class="field"><label>رقم المحطة <span style="color:var(--bad)">*</span></label><input id="sapStation" inputmode="numeric" placeholder="مثال: 50356"></div>
+        <label>الصور (تقدر تختار عدة صور)</label>
+        <div id="sapPend" class="sappend"></div>
+        <input type="file" accept="image/*" multiple id="sapIn" style="display:none" onchange="sapOnPick(this)">
+        <button class="btn ghost sm" style="width:100%;margin:4px 0 12px" onclick="sapPick()">➕ إضافة صور</button>
+        <button class="btn scancta" id="sapPdfBtn" onclick="sapMakePdf()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>تحويل إلى PDF وتحميل</button>
+        <button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="sapClear()">مسح الكل والبدء من جديد</button>
       </div>
-      <h3 style="margin:16px 0 8px;font-size:15px">عمليات المسح المحفوظة</h3>
-      <div id="sapList"></div>
     </div>
     <div class="view" id="v-att-worker">
       <h2 class="section-title">الحضور والانصراف</h2>
@@ -634,7 +628,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='334';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='335';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -909,7 +903,7 @@ function buildNav(role){
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}${it.l}</button>`).join('');
   if(!isViewer){html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;}
-  if(isAdmin||isEntry)html+=`<button class="sb-item" data-v="sapfiles" onclick="goView('sapfiles');toggleSidebar(false)">${_svgPath('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h4')}مسح المحطات (PDF)</button>`;
+  if(isAdmin||isEntry)html+=`<button class="sb-item" data-v="sapfiles" onclick="goView('sapfiles');toggleSidebar(false)">${_svgPath('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h4')}تحويل الصور إلى PDF</button>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;
   const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
@@ -3882,45 +3876,32 @@ async function viewInvPhoto(p,title){openModal('<h3 style="margin-bottom:12px">'
       :`<img src="${url}" style="width:100%;border-radius:10px"><a href="${url}" target="_blank" rel="noopener" class="link" style="display:block;margin-top:8px">فتح الصورة في نافذة جديدة</a>`;
   }catch(e){document.getElementById('phwrap').textContent='تعذّر تحميل الملف';}}
 
-/* ===== مسح المحطات — رفع صور PDF (قبل/بعد) بدون رفع عمل ===== */
-let _sapPend={before:[],after:[]};
-function sapPick(phase){const i=document.getElementById('sapIn_'+phase);if(i){i.value='';i.click();}}
-function sapOnPick(inp,phase){for(const f of [...(inp.files||[])]){if(f&&f.size)_sapPend[phase].push(f);}inp.value='';sapRenderPend();}
-function sapRmPend(phase,i){_sapPend[phase].splice(i,1);sapRenderPend();}
-function _sapFileLbl(f){const pdf=/pdf/i.test(f.type||'')||/\.pdf$/i.test(f.name||'');return (pdf?'📄 ':'🖼 ')+_irEsc(f.name||(pdf?'ملف.pdf':'صورة.jpg'));}
-function sapRenderPend(){['before','after'].forEach(ph=>{const box=document.getElementById('sapPend_'+ph);if(!box)return;const a=_sapPend[ph];
-  box.innerHTML=a.length?a.map((f,i)=>`<div class="sapchip"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${_sapFileLbl(f)}</span><button onclick="sapRmPend('${ph}',${i})">✕</button></div>`).join(''):'<div class="saphint2">لا ملفات بعد</div>';});}
-async function _sapUpload(file,station,phase){const ext=((file.name||'').split('.').pop()||'').toLowerCase().replace(/[^a-z0-9]/g,'')||(/pdf/i.test(file.type||'')?'pdf':'jpg');
-  const safe=String(station||'station').replace(/[^0-9A-Za-z؀-ۿ_-]/g,'_');
-  const path=`sap/${safe}/${Date.now()}_${Math.round(performance.now())}_${phase}.${ext}`;
-  const{error}=await sb.storage.from('photos').upload(path,file,{contentType:file.type||(ext==='pdf'?'application/pdf':'image/jpeg'),upsert:true});if(error)throw error;return path;}
-async function sapSave(){const st=(document.getElementById('sapStation').value||'').trim();const note=(document.getElementById('sapNote').value||'').trim();
+/* ===== تحويل الصور إلى PDF — خدمة مسح ميداني (بدون حفظ) ===== */
+let _sapImgs=[];
+function loadSapFiles(){sapRenderPend();}
+function sapPick(){const i=document.getElementById('sapIn');if(i){i.value='';i.click();}}
+function sapOnPick(inp){for(const f of [...(inp.files||[])]){if(f&&f.size&&(/^image\//i.test(f.type||'')||/\.(jpe?g|png|webp|gif|bmp|heic|heif)$/i.test(f.name||'')))_sapImgs.push(f);}inp.value='';sapRenderPend();}
+function sapRmPend(i){_sapImgs.splice(i,1);sapRenderPend();}
+function sapClear(){_sapImgs=[];const s=document.getElementById('sapStation');if(s)s.value='';sapRenderPend();}
+function sapRenderPend(){const box=document.getElementById('sapPend');if(!box)return;
+  box.innerHTML=_sapImgs.length?_sapImgs.map((f,i)=>`<div class="sapchip"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">🖼 ${_irEsc(f.name||('صورة '+(i+1)))}</span><button onclick="sapRmPend(${i})">✕</button></div>`).join(''):'<div class="saphint2">لا صور بعد — اضغط «إضافة صور»</div>';}
+function _sapFileToImg(file){return new Promise(res=>{const fr=new FileReader();fr.onload=()=>{const dataUrl=fr.result;const g=new Image();g.onload=()=>res({dataUrl,w:g.naturalWidth||4,h:g.naturalHeight||3});g.onerror=()=>res({dataUrl,w:4,h:3});g.src=dataUrl;};fr.onerror=()=>res(null);fr.readAsDataURL(file);});}
+async function sapMakePdf(){const st=(document.getElementById('sapStation').value||'').trim();
   if(!st){toast('أدخل رقم المحطة');return;}
-  const total=_sapPend.before.length+_sapPend.after.length;if(!total){toast('أضف ملف «قبل» أو «بعد» على الأقل');return;}
-  const btn=document.getElementById('sapSaveBtn');btn.disabled=true;const ol=btn.textContent;btn.innerHTML='<span class="spin"></span> جارٍ الرفع…';
-  try{const rows=[];
-    for(const ph of ['before','after']){for(const f of _sapPend[ph]){const p=await _sapUpload(f,st,ph);rows.push({station_no:st,phase:ph,file_path:p,file_name:f.name||null,mime:f.type||null,note:note||null,uploaded_by:ME.id});}}
-    const{error}=await sb.from('sap_files').insert(rows);if(error)throw error;
-    _sapPend={before:[],after:[]};document.getElementById('sapStation').value='';document.getElementById('sapNote').value='';sapRenderPend();
-    toast('تم حفظ '+total+' ملف ✓');try{notifyEvent('📄 مسح محطة (PDF)',`${PROFILE.full_name||'موظف'} رفع صور PDF لمسح المحطة رقم ${st} (${total} ملف).`);}catch(_){}
-    loadSapFiles();
-  }catch(e){const m=(e&&e.message)||e;if(/sap_files/.test(String(m))||/relation/.test(String(m))||/does not exist/.test(String(m)))toast('نفّذ كود جدول مسح المحطات (SQL) أولًا');else toast('تعذّر الحفظ: '+m);}
-  finally{btn.disabled=false;btn.textContent=ol;}}
-async function loadSapFiles(){const box=document.getElementById('sapList');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';sapRenderPend();
-  let data;try{data=await _fetchAll(()=>sb.from('sap_files').select('*').is('deleted_at',null).order('created_at',{ascending:false}));}
-  catch(e){box.innerHTML='<div class="empty">نفّذ كود جدول مسح المحطات (SQL) أولًا</div>';return;}
-  const rows=(data||[]).slice().sort(_byDateDesc('created_at'));
-  if(!rows.length){box.innerHTML='<div class="empty">لا توجد عمليات مسح بعد</div>';return;}
-  const g={};for(const r of rows){(g[r.station_no]=g[r.station_no]||[]).push(r);}
-  const keys=Object.keys(g).sort((a,b)=>new Date(g[b][0].created_at)-new Date(g[a][0].created_at));
-  box.innerHTML=keys.map(st=>{const list=g[st],bf=list.filter(r=>r.phase==='before'),af=list.filter(r=>r.phase==='after');
-    const chip=(r)=>{const pdf=/pdf/i.test(r.mime||'')||/\.pdf$/i.test(r.file_path||'');const J=JSON.stringify(r.file_path),nm=JSON.stringify('مسح '+st+' — '+(r.phase==='before'?'قبل':'بعد'));
-      return `<div class="sapfile"><button class="sapfv" onclick='viewInvPhoto(${J},${nm})'>${pdf?'📄':'🖼'} ${_irEsc(r.file_name||(r.phase==='before'?'قبل':'بعد'))}</button><button class="sapx" title="حذف" onclick="sapDel('${r.id}')">🗑</button></div>`;};
-    return `<div class="card" style="padding:13px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b style="font-size:15px">المحطة ${_irEsc(st)}</b><small style="color:var(--muted)">${locDT(list[0].created_at)}</small></div>
-      <div class="saprow"><span class="saptag">قبل (${bf.length})</span>${bf.map(chip).join('')||'<span class="saphint2">—</span>'}</div>
-      <div class="saprow"><span class="saptag">بعد (${af.length})</span>${af.map(chip).join('')||'<span class="saphint2">—</span>'}</div></div>`;}).join('');}
-async function sapDel(id){if(!confirm('حذف هذا الملف؟'))return;const{error}=await sb.from('sap_files').update({deleted_at:new Date().toISOString()}).eq('id',id);
-  if(error){toast('تعذّر الحذف: '+error.message);return;}toast('تم الحذف ✓');loadSapFiles();}
+  if(!_sapImgs.length){toast('أضف صوراً أولاً');return;}
+  const btn=document.getElementById('sapPdfBtn');btn.disabled=true;const ol=btn.innerHTML;btn.innerHTML='<span class="spin"></span> جارٍ التجهيز…';
+  try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;
+    const pdf=new jsPDF('l','mm','a4');const pw=297,ph=210,margin=8,gap=6,cellW=(pw-margin*2-gap)/2,cellH=ph-margin*2;let idx=0;
+    for(const f of _sapImgs){const im=await _sapFileToImg(f);if(!im)continue;const pos=idx%2;if(pos===0&&idx>0)pdf.addPage();
+      let dw=cellW,dh=dw*im.h/im.w;if(dh>cellH){dh=cellH;dw=dh*im.w/im.h;}
+      const cellX=margin+pos*(cellW+gap),x=cellX+(cellW-dw)/2,y=margin+(cellH-dh)/2;
+      const ft=/^data:image\/png/i.test(im.dataUrl)?'PNG':'JPEG';
+      try{pdf.addImage(im.dataUrl,ft,x,y,dw,dh);idx++;}catch(_){}}
+    if(!idx){toast('تعذّر تجهيز الصور');return;}
+    const safe=String(st).replace(/[\\/:*?"<>|]/g,'_');
+    pdf.save(safe+'.pdf');toast('تم تجهيز PDF ✓ ('+idx+' صورة)');
+  }catch(e){toast('خطأ: '+((e&&e.message)||e));}
+  finally{btn.disabled=false;btn.innerHTML=ol;}}
 
 /* ===== المصروفات ===== */
 const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','مسحوبات شخصية','أخرى'];
