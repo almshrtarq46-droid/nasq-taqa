@@ -639,7 +639,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='340';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='341';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1967,7 +1967,7 @@ function _setCachedVal(xml,ref,val){
   const re=new RegExp('(<c r="'+ref+'"[^>]*>)([\\s\\S]*?)(</c>)');
   const m=xml.match(re);if(!m)return xml;
   let inner=m[2];
-  inner=/<v>[\s\S]*?<\/v>/.test(inner)?inner.replace(/<v>[\s\S]*?<\/v>/,'<v>'+_xmlEsc(val)+'</v>'):inner+'<v>'+_xmlEsc(val)+'</v>';
+  inner=/<v>[\s\S]*?<\/v>|<v\s*\/>/.test(inner)?inner.replace(/<v>[\s\S]*?<\/v>|<v\s*\/>/,'<v>'+_xmlEsc(val)+'</v>'):inner+'<v>'+_xmlEsc(val)+'</v>';
   return xml.replace(m[0],m[1]+inner+m[3]);
 }
 /* نسخ الكمية لخانة الاستشاري: لو فيها معادلة نحدّث قيمتها المخزّنة، ولو فاضية نكتب الرقم مباشرة */
@@ -2098,6 +2098,23 @@ async function _measureSheet(pid,cfg){
       }
       else dropped.push(it);
     });
+    // قائمة بنود المواد — عهدة الكهرباء المستهلكة في المحطة تُعبّأ تلقائياً من رفع المحطة (رقم المادة + الوصف + الكمية)
+    let matDropped=0,matCount=0;
+    if(cfg.mat){try{
+      const{data:sm,error:se}=await sb.from('station_materials').select('material_id,material_name,qty').eq('project_id',pid);
+      if(!se&&sm&&sm.length){
+        if(!(MATERIALS&&MATERIALS.length))await loadMaterials();
+        const secL=await _secMatLoad();
+        const ag={};sm.forEach(r=>{const k=r.material_id||('~'+(r.material_name||''));(ag[k]=ag[k]||{id:r.material_id,name:r.material_name||'',qty:0}).qty+=Number(r.qty||0);});
+        const M=cfg.mat,per=M.rows[1]-M.rows[0]+1,slots=per*M.code.length;
+        Object.values(ag).forEach((a,i)=>{if(i>=slots){matDropped++;return;}
+          const g=Math.floor(i/per),row=M.rows[0]+(i%per);const m=(MATERIALS||[]).find(x=>x.id===a.id)||{};
+          const sc=String(m.sec_code||'').trim(),hit=sc&&secL[sc];const desc=hit?secL[sc][0]:(m.name||a.name||'');
+          if(sc)S(M.code[g]+row,sc,!/^\d+$/.test(sc));
+          const nref=M.name[g]+row;
+          if(hit&&M.formulaName)xml=_setCachedVal(xml,nref,desc);else S(nref,desc,true);
+          S(M.qty[g]+row,Number(a.qty.toFixed(3)),false);matCount++;});
+      }}catch(_){}}
     // توحيد الخط والحجم والمحاذاة: كل بند مُضاف يأخذ تنسيق القائمة الأساسية (مع إبقاء حدود الخلية)
     if(sty&&cfg.likeRow&&cfg.likeMap){const done={};[...new Set(touched)].forEach(ref=>{const col=ref.replace(/\d+$/,'');const rc=cfg.likeMap[col];if(!rc)return;
       const k=ref;if(done[k])return;done[k]=1;[sty,xml]=_likeStyle(sty,xml,ref,rc+cfg.likeRow);});}
@@ -2146,6 +2163,7 @@ async function _measureSheet(pid,cfg){
       if(app===null)warn.push('تعذّر قراءة إجمالي المحطة من التطبيق — قارن المبلغ يدوياً قبل الإرسال');
       else if(Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — الفرق '+f2(app-tc)+' ر.س');}
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
+    if(matDropped)warn.push(matDropped+' مادة ما انكتبت لأن خانات «قائمة بنود المواد» امتلأت');
     window._msFile={blob:out,name:fname};
     let iss=[],tb=null;try{tb=prTbl||await _secLoad();iss=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb);_secLast=iss;}catch(_){}
     if(tc===null&&!warn.length&&!iss.length&&!autoFix.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
@@ -2161,8 +2179,8 @@ async function _measureSheet(pid,cfg){
       <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
 }
-function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
-function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
+function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',mat:{rows:[41,45],code:['D','AH'],name:['J','AN'],qty:['AA','BE']},sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
+function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
 const PDC_SERVICES=['401000027','401000013','401000019','603000018','605000006','605000007','605000008','605000011','606000011','606000013','606000014','606000018','606000023','604000002'];
 let _pdcPrices=null;
 async function _pdcLoadPrices(){if(_pdcPrices)return _pdcPrices;const r=await fetch('./pdc_prices.json?_v='+APP_VER,{cache:'reload'});_pdcPrices=await r.json();return _pdcPrices;}
@@ -2604,7 +2622,7 @@ function renderInventory(){
   const card=m=>{const qty=Number(m.qty||0),low=Number(m.min_alert||0)>0&&qty<=Number(m.min_alert);
     return `<div class="card" style="padding:13px;margin-bottom:10px${m.is_custody?';border:1px solid #e8a34a;background:#fffdf8':''}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><b style="font-size:15px">${m.name}</b> ${m.is_custody?'<span class="custtag">عهدة</span>':''}<div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}</small></div></div>
+        <div><b style="font-size:15px">${m.name}</b> ${m.is_custody?'<span class="custtag">عهدة</span>':''}<div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}${m.sec_code?' · رقم الكهرباء: '+_irEsc(m.sec_code):''}</small></div></div>
         <div style="text-align:left"><div style="font-weight:900;font-size:20px;color:${low?'var(--bad)':(m.is_custody?'#b5732f':'var(--green)')}">${fmt(qty)}</div><small style="color:var(--muted)">${m.unit||'قطعة'}</small></div>
       </div>
       ${low?'<div style="margin-top:6px"><span class="pill susp">⚠ الرصيد منخفض</span></div>':''}
@@ -2625,17 +2643,33 @@ function openMaterial(m){openModal(`<h3 style="margin-bottom:14px">${m?'تعدي
   ${m?'':'<div class="field"><label>الرصيد الابتدائي</label><input id="mt_qty" type="number" inputmode="decimal" value="0"></div>'}
   <div class="card" style="padding:12px;background:#fff8ef;box-shadow:none;border:1px solid #e8a34a;margin:2px 0 10px">
     <label class="ckrow"><input type="checkbox" id="mt_is_custody" ${m&&m.is_custody?'checked':''}> مادة عهدة من شركة الكهرباء (تُتابع كعهدة منفصلة ويمكن اختيارها في بنود التأريض ونحوها)</label>
+    <div class="field" style="margin:8px 0 0"><label>رقم المادة في شركة الكهرباء (SEC Code) — يُكتب في «قائمة بنود المواد» بالميجر</label>
+      <input id="mt_sec" value="${m?_irEsc(m.sec_code||''):''}" inputmode="search" autocomplete="off" placeholder="اكتب الرقم أو كلمة بحث: 70 CU / LUG 70 / CLAMP" oninput="_mtSecSearch(this.value)">
+      <div id="mt_sec_desc" style="font-size:12px;margin-top:5px;line-height:1.6"></div><div id="mt_sec_res"></div></div>
   </div>
   <button class="btn" id="mtSave" onclick="saveMaterial('${m?m.id:''}')">حفظ</button>
   ${m?`<button class="btn danger" style="margin-top:9px" onclick="delMaterial('${m.id}')">حذف المادة</button>`:''}
-  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);
+  _secMatLoad().then(_mtSecShow);}
+let _secMats=null;
+async function _secMatLoad(){if(_secMats)return _secMats;try{_secMats=await (await fetch('./sec_materials.json?_v='+APP_VER)).json();}catch(_){_secMats={};}return _secMats;}
+function _mtSecShow(){const i=document.getElementById('mt_sec'),d=document.getElementById('mt_sec_desc');if(!i||!d)return;const c=_toEnNum(i.value||'').trim();const r=_secMats&&_secMats[c];
+  d.innerHTML=c?(r?'<span style="color:#1b6b3a;font-weight:700">✓ '+_irEsc(r[0])+' · '+_irEsc(r[1])+'</span>':'<span style="color:var(--bad)">رقم غير موجود في قائمة مواد الكهرباء — بيُكتب اسم المادة بدون رقم</span>'):'';}
+async function _mtSecSearch(q){await _secMatLoad();_mtSecShow();const box=document.getElementById('mt_sec_res');if(!box)return;q=_toEnNum(String(q||'')).trim().toUpperCase();
+  if(q.length<2||_secMats[q]){box.innerHTML='';return;}
+  const words=q.split(/\s+/).filter(Boolean),res=[];
+  for(const k in _secMats){const d=_secMats[k][0].toUpperCase();if(words.every(w=>k.includes(w)||d.includes(w))){res.push(k);if(res.length>=8)break;}}
+  box.innerHTML=res.map(k=>`<div onclick="_mtSecPick('${k}')" style="display:flex;gap:8px;align-items:center;padding:7px 9px;margin:4px 0;border:1px solid var(--line);border-radius:9px;background:#fff;cursor:pointer;font-size:12px"><b style="flex:none;direction:ltr">${k}</b><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:ltr;text-align:left;flex:1">${_irEsc(_secMats[k][0])} · ${_irEsc(_secMats[k][1])}</span></div>`).join('')||'<div class="saphint2" style="margin-top:4px">لا نتائج — جرّب كلمة ثانية</div>';}
+function _mtSecPick(k){const i=document.getElementById('mt_sec');if(i)i.value=k;const u=document.getElementById('mt_unit');if(u&&!u.value.trim()){const uu=_secMats[k][1];u.value=uu==='M'?'متر':uu==='EA'?'قطعة':uu;}
+  const b=document.getElementById('mt_sec_res');if(b)b.innerHTML='';_mtSecShow();}
 async function saveMaterial(id){const name=(document.getElementById('mt_name').value||'').trim();if(!name){toast('أدخل اسم المادة');return;}
-  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0,is_custody:!!(document.getElementById('mt_is_custody')&&document.getElementById('mt_is_custody').checked)};
+  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0,is_custody:!!(document.getElementById('mt_is_custody')&&document.getElementById('mt_is_custody').checked),sec_code:(_toEnNum(document.getElementById('mt_sec')?document.getElementById('mt_sec').value:'')).trim()||null};
   if(!id)rec.qty=parseFloat(document.getElementById('mt_qty').value)||0;
   const btn=document.getElementById('mtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   const _msave=async r=>{if(id)return await sb.from('materials').update(r).eq('id',id);return await sb.from('materials').insert(r).select('id').single();};
   try{let res=await _msave(rec);
-    if(res.error&&/is_custody|column/i.test(res.error.message||'')){const{is_custody,...r2}=rec;res=await _msave(r2);toast('حُفظت — لتفعيل فصل العهدة نفّذ كود SQL');}
+    if(res.error&&/sec_code/i.test(res.error.message||'')){const{sec_code,...r1}=rec;res=await _msave(r1);if(!res.error)toast('حُفظت — لحفظ رقم المادة (SEC) نفّذ كود SQL الجديد');}
+    if(res.error&&/is_custody|column/i.test(res.error.message||'')){const{is_custody,sec_code,...r2}=rec;res=await _msave(r2);toast('حُفظت — لتفعيل فصل العهدة نفّذ كود SQL');}
     if(res.error)throw res.error;
     if(!id&&rec.qty){const nid=res.data&&res.data.id;if(nid)try{await sb.from('material_moves').insert({material_id:nid,delta:rec.qty,reason:'رصيد ابتدائي',source:'manual',created_by:ME.id});}catch(_){}}
     closeModal();toast('تم الحفظ ✓');initInventory();
