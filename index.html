@@ -572,7 +572,11 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <input id="f_item_search" placeholder="ابحث عن بند بالاسم أو الرقم…" oninput="loadFieldItems()" style="margin-bottom:6px">
         <select id="f_item" style="width:100%;margin-bottom:6px"></select><div class="row" style="margin-bottom:6px"><input type="text" id="f_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية (مثال: 2)" style="flex:1;min-width:0;font-size:18px;text-align:center"><button class="btn sm" style="flex:none;width:110px" onclick="addFieldItem()">+ إضافة</button></div>
         <div id="itemsAdded" style="margin-bottom:14px"></div>
-        <div class="custbox" style="margin:0 0 14px"><div class="custhd">⚡ المواد المستخدمة (عهدة الكهرباء) — تنضاف تلقائياً في الميجر</div><div id="matsAdded"></div><div id="matChips"></div></div>
+        <div class="custbox" style="margin:0 0 14px"><div class="custhd">⚡ المواد المستخدمة (عهدة الكهرباء) — تنضاف تلقائياً في الميجر</div>
+          <input id="f_mat_search" placeholder="ابحث عن مادة بالاسم أو رقم البند…" oninput="loadFieldMatOpts()" style="margin-bottom:6px;background:#fff">
+          <select id="f_mat" style="width:100%;margin-bottom:6px;background:#fff"></select>
+          <div class="row" style="margin-bottom:8px"><input type="text" id="f_mat_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية (مثال: 10)" style="flex:1;min-width:0;font-size:18px;text-align:center;background:#fff"><button class="btn sm" style="flex:none;width:110px;background:#b5732f;border-color:#b5732f" onclick="addFieldMat()">+ إضافة</button></div>
+          <div id="matsAdded"></div><div id="matChips"></div></div>
         <label>صور بعد التنفيذ</label>
         <div id="afterThumbs" class="thumbs"></div>
         <input type="file" accept="image/*" multiple id="afterInput" style="display:none" onchange="onFieldPhoto(this,'after')">
@@ -640,7 +644,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='344';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='345';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -4541,23 +4545,29 @@ function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];fieldMats=[];
   document.getElementById('f_station_no').value='';document.getElementById('f_station_type').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
   const _nn=document.getElementById('f_notice_no');if(_nn)_nn.value='';const _wo=document.getElementById('f_wo_no');if(_wo)_wo.value='';
   const sv=document.getElementById('f_save');if(sv){sv.disabled=false;sv.textContent='رفع العمل';}
-  const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();renderFieldMats();
-  if(!(MATERIALS&&MATERIALS.length)){loadMaterials().then(()=>{renderFieldItems();renderFieldMats();});}}
+  const lb=document.getElementById('f_loc');if(lb)lb.style.display='none';loadFieldItems();renderThumbs('before');renderThumbs('after');renderFieldItems();
+  {const a=document.getElementById('f_mat_search');if(a)a.value='';const b=document.getElementById('f_mat_qty');if(b)b.value='';}loadFieldMatOpts();renderFieldMats();
+  if(!(MATERIALS&&MATERIALS.length)){loadMaterials().then(()=>{loadFieldMatOpts();renderFieldItems();renderFieldMats();});}}
 function _custodyMats(){return (MATERIALS||[]).filter(m=>m.is_custody&&!m.deleted_at);}
 function _needsCustody(itemId){return (((SETTINGS&&SETTINGS.custody_item_ids)||[])).includes(itemId);}
-function fmAdd(id){let r=fieldMats.find(x=>x.material_id===id);if(!r){r={material_id:id,qty:''};fieldMats.push(r);}renderFieldMats();
-  setTimeout(()=>{const el=document.getElementById('fmq_'+id);if(el){el.focus();el.scrollIntoView({block:'center',behavior:'smooth'});}},40);}
+function _matLabel(m){return (m.sec_code?m.sec_code+' · ':'')+(m.name||'')+' ('+(m.unit||'قطعة')+')';}
+function _matFilter(q){const mats=_custodyMats();q=_arNorm(String(q||'').replace(/[\u0660-\u0669\u06F0-\u06F9]/g,d=>String(d.charCodeAt(0)&15))).toLowerCase();if(!q)return mats;
+  return mats.filter(m=>_arNorm((m.name||'')+' '+(m.name_en||'')+' '+(m.sec_code||'')).toLowerCase().includes(q));}
+function loadFieldMatOpts(){const sel=document.getElementById('f_mat');if(!sel)return;const keep=sel.value;const list=_matFilter((document.getElementById('f_mat_search')||{}).value);
+  sel.innerHTML=list.map(m=>`<option value="${m.id}">${_irEsc(_matLabel(m))}</option>`).join('')||'<option value="">لا توجد مواد — أضفها من الزر تحت</option>';
+  if(keep&&list.some(m=>m.id===keep))sel.value=keep;}
+function addFieldMat(){const id=document.getElementById('f_mat').value;const m=_custodyMats().find(x=>x.id===id);const q=parseFloat(_toEnNum(document.getElementById('f_mat_qty').value));
+  if(!m){toast('اختر مادة');return;}if(!q||q<=0){toast('أدخل كمية');return;}
+  const ex=fieldMats.find(x=>x.material_id===id);if(ex){ex.qty=Number(ex.qty||0)+q;toast('انضافت الكمية على «'+m.name+'» — المجموع '+fmt(ex.qty));}else fieldMats.push({material_id:id,qty:q});
+  document.getElementById('f_mat_qty').value='';renderFieldMats();}
 function fmDel(i){fieldMats.splice(i,1);renderFieldMats();}
-function fmQty(i,v){fieldMats[i].qty=_toEnNum(v);}
-function renderFieldMats(){const box=document.getElementById('matsAdded'),ch=document.getElementById('matChips');if(!box||!ch)return;const mats=_custodyMats();
+function renderFieldMats(){const box=document.getElementById('matsAdded'),ch=document.getElementById('matChips');if(!box||!ch)return;
   const req=fieldItems.some(it=>it.needsCustody);
-  box.innerHTML=fieldMats.map((r,i)=>{const m=mats.find(x=>x.id===r.material_id)||(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
-    return `<div class="custrow"><b style="flex:1;min-width:0;font-size:13.5px">${_irEsc(m.name||'مادة')}</b><input id="fmq_${r.material_id}" type="number" inputmode="decimal" value="${r.qty||''}" placeholder="الكمية" oninput="fmQty(${i},this.value)"><span class="cu">${_irEsc(m.unit||'')}</span><button class="cx" onclick="fmDel(${i})">✕</button></div>`;}).join('')
-    +(req&&!fieldMats.length?'<div style="color:var(--bad);font-size:12.5px;font-weight:700;margin-bottom:6px">⚠ فيه بند يتطلب مواد (مثل التأريض) — إدخال المواد إجباري</div>':'');
-  ch.innerHTML=mats.length?'<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">اضغط المادة اللي استخدمتها ثم اكتب الكمية:</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+mats.map(m=>{const on=fieldMats.some(x=>x.material_id===m.id);
-    return `<button type="button" class="custadd" style="width:auto;padding:8px 12px;${on?'background:#fff1df;border-style:solid':''}" onclick="fmAdd('${m.id}')">${on?'✓':'＋'} ${_irEsc(m.name)} <small style="color:var(--muted)">(${_irEsc(m.unit||'قطعة')})</small></button>`;}).join('')+'</div>'
-    :'<small style="color:var(--muted)">لا توجد مواد بعد — أضف أول مادة من الزر تحت.</small>';
-  ch.innerHTML+=`<button type="button" class="custadd" style="margin-top:8px" onclick="fmNewMat()">＋ مادة جديدة غير موجودة بالقائمة</button>`;}
+  box.innerHTML=(fieldMats.map((r,i)=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
+    return `<div class="item" style="padding:9px;background:#fff;border:1px solid #e8a34a"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||'مادة')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):''}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fmDel(${i})">✕</button></div>`;}).join('')||'<small style="color:var(--muted)">لم تُضف مواد بعد</small>')
+    +(req&&!fieldMats.length?'<div style="color:var(--bad);font-size:12.5px;font-weight:700;margin-top:6px">⚠ فيه بند يتطلب مواد (مثل التأريض) — إدخال المواد إجباري</div>':'');
+  ch.innerHTML=`<button type="button" class="custadd" style="margin-top:10px" onclick="fmNewMat()">＋ مادة جديدة غير موجودة بالقائمة</button>`;
+  const sel=document.getElementById('f_mat');if(sel&&!sel.options.length)loadFieldMatOpts();}
 function fmNewMat(){openModal(`<h3 style="margin-bottom:12px">مادة جديدة</h3>
   <div class="field"><label>اسم المادة المختصر (عربي)</label><input id="nm_name" placeholder="مثال: كيبل 800 / لقز 800"></div>
   <div class="field"><label>اسم المادة في الميجر (إنجليزي — اختياري)</label><input id="nm_name_en" dir="ltr" style="text-align:left" placeholder="e.g. CABLE CU 800 SQMM"></div>
@@ -4573,14 +4583,18 @@ async function fmSaveNewMat(){const name=(document.getElementById('nm_name').val
     let{data,error}=await sb.from('materials').insert(rec).select('*').single();
     if(error&&/name_en/i.test(error.message||'')){delete rec.name_en;({data,error}=await sb.from('materials').insert(rec).select('*').single());}
     if(error)throw error;
-    MATERIALS=[...(MATERIALS||[]),data];closeModal();fmAdd(data.id);toast('أُضيفت المادة ✓ — اكتب الكمية');}
+    MATERIALS=[...(MATERIALS||[]),data];closeModal();const _fs=document.getElementById('f_mat_search');if(_fs)_fs.value='';loadFieldMatOpts();const _sl=document.getElementById('f_mat');if(_sl)_sl.value=data.id;const _fq=document.getElementById('f_mat_qty');if(_fq)_fq.focus();toast('أُضيفت المادة ✓ — اكتب الكمية واضغط إضافة');}
   catch(e){toast(/row-level|policy|permission/i.test((e&&e.message)||'')?'ما عندك صلاحية إضافة مادة — نفّذ كود SQL الجديد':'خطأ: '+((e&&e.message)||e));btn.disabled=false;btn.textContent='إضافة';}}
 /* ===== مواد المحطة بعد الرفع (للمحطات المرفوعة / المرفوضة لعدم وجود المواد) ===== */
 async function openStationMats(pid){const p=(PROJECTS||[]).find(x=>x.id===pid)||{};const ro=!!(PROFILE&&PROFILE.role==='viewer');
   window._smPid=pid;window._smNew=[];window._smRo=ro;
   openModal(`<h3 style="margin-bottom:4px">⚡ المواد المستخدمة — محطة ${_irEsc(p.code||p.name||'')}</h3><small style="color:var(--muted);display:block;margin-bottom:10px">تنكتب تلقائياً في «قائمة بنود المواد» عند طباعة الميجر</small>
     <div id="smList" style="color:var(--muted)">جارٍ التحميل…</div>
-    ${ro?'':`<div class="custbox"><div class="custhd">إضافة مواد لهذه المحطة</div><div id="smNew"></div><div id="smChips"></div></div>
+    ${ro?'':`<div class="custbox"><div class="custhd">إضافة مواد لهذه المحطة</div>
+      <input id="sm_search" placeholder="ابحث عن مادة بالاسم أو رقم البند…" oninput="_smOpts()" style="margin-bottom:6px;background:#fff">
+      <select id="sm_mat" style="width:100%;margin-bottom:6px;background:#fff"></select>
+      <div class="row" style="margin-bottom:8px"><input type="text" id="sm_qty" inputmode="decimal" autocomplete="off" placeholder="الكمية" style="flex:1;min-width:0;font-size:18px;text-align:center;background:#fff"><button class="btn sm" style="flex:none;width:110px;background:#b5732f;border-color:#b5732f" onclick="_smAddSel()">+ إضافة</button></div>
+      <div id="smNew"></div></div>
     <button class="btn" id="smSave" onclick="saveStationMats()">حفظ المواد</button>`}
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
   if(!(MATERIALS&&MATERIALS.length))await loadMaterials();_smLoad();_smRenderNew();}
@@ -4590,13 +4604,15 @@ async function _smLoad(){const box=document.getElementById('smList');if(!box)ret
   box.innerHTML=(data&&data.length)?data.map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
     return `<div class="item" style="padding:8px"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||r.material_name||'مادة')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):' · <span style="color:var(--bad)">بدون رقم بند</span>'}</small></div>${window._smRo?'':`<button class="btn danger sm" style="flex:none;width:40px" onclick="delStationMat('${r.id}')">✕</button>`}</div>`;}).join('')
     :'<div class="saphint2" style="margin-bottom:8px">لا مواد مسجّلة لهذه المحطة بعد</div>';}
-function _smRenderNew(){const box=document.getElementById('smNew'),ch=document.getElementById('smChips');if(!box||!ch)return;const mats=_custodyMats();
-  box.innerHTML=window._smNew.map((r,i)=>{const m=mats.find(x=>x.id===r.material_id)||{};
-    return `<div class="custrow"><b style="flex:1;min-width:0;font-size:13.5px">${_irEsc(m.name||'')}</b><input id="smq_${r.material_id}" type="number" inputmode="decimal" value="${r.qty||''}" placeholder="الكمية" oninput="window._smNew[${i}].qty=_toEnNum(this.value)"><span class="cu">${_irEsc(m.unit||'')}</span><button class="cx" onclick="window._smNew.splice(${i},1);_smRenderNew()">✕</button></div>`;}).join('');
-  ch.innerHTML=mats.length?'<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">اضغط المادة ثم اكتب الكمية:</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+mats.map(m=>{const on=window._smNew.some(x=>x.material_id===m.id);
-    return `<button type="button" class="custadd" style="width:auto;padding:8px 12px;${on?'background:#fff1df;border-style:solid':''}" onclick="_smAdd('${m.id}')">${on?'✓':'＋'} ${_irEsc(m.name)} <small style="color:var(--muted)">(${_irEsc(m.unit||'قطعة')})</small></button>`;}).join('')+'</div>'
-    :'<small style="color:var(--muted)">لا توجد مواد بعد — أضفها من «المخزون» أو من شاشة رفع محطة.</small>';}
-function _smAdd(id){if(!window._smNew.some(x=>x.material_id===id))window._smNew.push({material_id:id,qty:''});_smRenderNew();setTimeout(()=>{const e=document.getElementById('smq_'+id);if(e)e.focus();},40);}
+function _smOpts(){const sel=document.getElementById('sm_mat');if(!sel)return;const keep=sel.value;const list=_matFilter((document.getElementById('sm_search')||{}).value);
+  sel.innerHTML=list.map(m=>`<option value="${m.id}">${_irEsc(_matLabel(m))}</option>`).join('')||'<option value="">لا توجد مواد</option>';if(keep&&list.some(m=>m.id===keep))sel.value=keep;}
+function _smAddSel(){const id=document.getElementById('sm_mat').value;const m=_custodyMats().find(x=>x.id===id);const q=parseFloat(_toEnNum(document.getElementById('sm_qty').value));
+  if(!m){toast('اختر مادة');return;}if(!q||q<=0){toast('أدخل كمية');return;}
+  const ex=window._smNew.find(x=>x.material_id===id);if(ex)ex.qty=Number(ex.qty||0)+q;else window._smNew.push({material_id:id,qty:q});
+  document.getElementById('sm_qty').value='';_smRenderNew();}
+function _smRenderNew(){const box=document.getElementById('smNew');if(!box)return;const sel=document.getElementById('sm_mat');if(sel&&!sel.options.length)_smOpts();
+  box.innerHTML=window._smNew.map((r,i)=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
+    return `<div class="item" style="padding:9px;background:#fff;border:1px solid #e8a34a"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||'')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):''}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="window._smNew.splice(${i},1);_smRenderNew()">✕</button></div>`;}).join('')||'<small style="color:var(--muted)">اختر المادة واكتب الكمية واضغط «+ إضافة» ثم «حفظ المواد»</small>';}
 async function saveStationMats(){const rows=window._smNew||[];if(!rows.length){toast('اختر مادة واكتب الكمية');return;}
   if(rows.some(r=>!(Number(r.qty)>0))){toast('اكتب الكمية لكل مادة مختارة');return;}
   const btn=document.getElementById('smSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
