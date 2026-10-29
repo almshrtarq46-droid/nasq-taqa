@@ -640,7 +640,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='343';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='344';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2109,9 +2109,9 @@ async function _measureSheet(pid,cfg){
         const M=cfg.mat,per=M.rows[1]-M.rows[0]+1,slots=per*M.code.length;
         Object.values(ag).forEach((a,i)=>{if(i>=slots){matDropped++;return;}
           const g=Math.floor(i/per),row=M.rows[0]+(i%per);const m=(MATERIALS||[]).find(x=>x.id===a.id)||{};
-          const sc=String(m.sec_code||'').trim(),desc=m.name||a.name||'';
+          const sc=String(m.sec_code||'').trim(),desc=String(m.name_en||'').trim()||m.name||a.name||'';
           if(sc)S(M.code[g]+row,sc,!/^\d+$/.test(sc));
-          S(M.name[g]+row,desc,true); // اسم المادة كما في التطبيق (يستبدل معادلة البحث في القالب)
+          S(M.name[g]+row,desc,true); // اسم المادة في الميجر (الإنجليزي إن وُجد) — يستبدل معادلة البحث في القالب
           S(M.qty[g]+row,Number(a.qty.toFixed(3)),false);matCount++;});
       }}catch(_){}}
     // توحيد الخط والحجم والمحاذاة: كل بند مُضاف يأخذ تنسيق القائمة الأساسية (مع إبقاء حدود الخلية)
@@ -2621,7 +2621,7 @@ function renderInventory(){
   const card=m=>{const qty=Number(m.qty||0),low=Number(m.min_alert||0)>0&&qty<=Number(m.min_alert);
     return `<div class="card" style="padding:13px;margin-bottom:10px${m.is_custody?';border:1px solid #e8a34a;background:#fffdf8':''}">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div><b style="font-size:15px">${m.name}</b> ${m.is_custody?'<span class="custtag">عهدة</span>':''}<div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}${m.sec_code?' · رقم البند: '+_irEsc(m.sec_code):''}</small></div></div>
+        <div><b style="font-size:15px">${m.name}</b> ${m.is_custody?'<span class="custtag">عهدة</span>':''}${m.name_en?`<div dir="ltr" style="font-size:11.5px;color:var(--muted);text-align:right">${_irEsc(m.name_en)}</div>`:''}<div><small style="color:var(--muted)">الوحدة: ${m.unit||'قطعة'}${Number(m.min_alert||0)>0?' · حد التنبيه: '+fmt(m.min_alert):''}${m.sec_code?' · رقم البند: '+_irEsc(m.sec_code):''}</small></div></div>
         <div style="text-align:left"><div style="font-weight:900;font-size:20px;color:${low?'var(--bad)':(m.is_custody?'#b5732f':'var(--green)')}">${fmt(qty)}</div><small style="color:var(--muted)">${m.unit||'قطعة'}</small></div>
       </div>
       ${low?'<div style="margin-top:6px"><span class="pill susp">⚠ الرصيد منخفض</span></div>':''}
@@ -2636,7 +2636,8 @@ function renderInventory(){
   box.innerHTML=(cust.length?sec('⚡ عهدة شركة الكهرباء',cust):'')+(own.length?sec('📦 مواد الشركة',own):'')||list.map(card).join('');
 }
 function openMaterial(m){openModal(`<h3 style="margin-bottom:14px">${m?'تعديل مادة':'مادة جديدة'}</h3>
-  <div class="field"><label>اسم المادة</label><input id="mt_name" value="${m?(m.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: مروحة شفط / كابل نحاس"></div>
+  <div class="field"><label>اسم المادة المختصر (عربي — يظهر لمسؤول الفرقة ومدخل البيانات)</label><input id="mt_name" value="${m?(m.name||'').replace(/"/g,'&quot;'):''}" placeholder="مثال: كيبل 70 / لقز 70"></div>
+  <div class="field"><label>اسم المادة في الميجر (إنجليزي)</label><input id="mt_name_en" dir="ltr" style="text-align:left" value="${m?_irEsc(m.name_en||''):''}" placeholder="e.g. CABLE CU 70 SQMM"></div>
   <div class="row"><div class="field"><label>الوحدة</label><input id="mt_unit" value="${m?(m.unit||''):''}" placeholder="قطعة / متر / لفة"></div>
     <div class="field"><label>حد التنبيه للنقص</label><input id="mt_min" type="number" inputmode="decimal" value="${m?(m.min_alert||0):0}"></div></div>
   ${m?'':'<div class="field"><label>الرصيد الابتدائي</label><input id="mt_qty" type="number" inputmode="decimal" value="0"></div>'}
@@ -2649,13 +2650,14 @@ function openMaterial(m){openModal(`<h3 style="margin-bottom:14px">${m?'تعدي
   ${m?`<button class="btn danger" style="margin-top:9px" onclick="delMaterial('${m.id}')">حذف المادة</button>`:''}
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
 async function saveMaterial(id){const name=(document.getElementById('mt_name').value||'').trim();if(!name){toast('أدخل اسم المادة');return;}
-  const rec={name,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0,is_custody:!!(document.getElementById('mt_is_custody')&&document.getElementById('mt_is_custody').checked),sec_code:(_toEnNum(document.getElementById('mt_sec')?document.getElementById('mt_sec').value:'')).trim()||null};
+  const rec={name,name_en:(document.getElementById('mt_name_en')?document.getElementById('mt_name_en').value:'').trim()||null,unit:(document.getElementById('mt_unit').value||'').trim()||'قطعة',min_alert:parseFloat(document.getElementById('mt_min').value)||0,is_custody:!!(document.getElementById('mt_is_custody')&&document.getElementById('mt_is_custody').checked),sec_code:(_toEnNum(document.getElementById('mt_sec')?document.getElementById('mt_sec').value:'')).trim()||null};
   if(!id)rec.qty=parseFloat(document.getElementById('mt_qty').value)||0;
   const btn=document.getElementById('mtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   const _msave=async r=>{if(id)return await sb.from('materials').update(r).eq('id',id);return await sb.from('materials').insert(r).select('id').single();};
   try{let res=await _msave(rec);
-    if(res.error&&/sec_code/i.test(res.error.message||'')){const{sec_code,...r1}=rec;res=await _msave(r1);if(!res.error)toast('حُفظت — لحفظ رقم بند المادة نفّذ كود SQL الجديد');}
-    if(res.error&&/is_custody|column/i.test(res.error.message||'')){const{is_custody,sec_code,...r2}=rec;res=await _msave(r2);toast('حُفظت — لتفعيل فصل العهدة نفّذ كود SQL');}
+    if(res.error&&/name_en/i.test(res.error.message||'')){const{name_en,...r0}=rec;res=await _msave(r0);if(!res.error)toast('حُفظت — لحفظ الاسم الإنجليزي نفّذ كود SQL الجديد');}
+    if(res.error&&/sec_code/i.test(res.error.message||'')){const{sec_code,name_en:_n1,...r1}=rec;res=await _msave(r1);if(!res.error)toast('حُفظت — لحفظ رقم بند المادة نفّذ كود SQL الجديد');}
+    if(res.error&&/is_custody|column/i.test(res.error.message||'')){const{is_custody,sec_code,name_en:_n2,...r2}=rec;res=await _msave(r2);toast('حُفظت — لتفعيل فصل العهدة نفّذ كود SQL');}
     if(res.error)throw res.error;
     if(!id&&rec.qty){const nid=res.data&&res.data.id;if(nid)try{await sb.from('material_moves').insert({material_id:nid,delta:rec.qty,reason:'رصيد ابتدائي',source:'manual',created_by:ME.id});}catch(_){}}
     closeModal();toast('تم الحفظ ✓');initInventory();
@@ -4557,7 +4559,8 @@ function renderFieldMats(){const box=document.getElementById('matsAdded'),ch=doc
     :'<small style="color:var(--muted)">لا توجد مواد بعد — أضف أول مادة من الزر تحت.</small>';
   ch.innerHTML+=`<button type="button" class="custadd" style="margin-top:8px" onclick="fmNewMat()">＋ مادة جديدة غير موجودة بالقائمة</button>`;}
 function fmNewMat(){openModal(`<h3 style="margin-bottom:12px">مادة جديدة</h3>
-  <div class="field"><label>اسم المادة</label><input id="nm_name" placeholder="مثال: كيبل 800 / لقز 800"></div>
+  <div class="field"><label>اسم المادة المختصر (عربي)</label><input id="nm_name" placeholder="مثال: كيبل 800 / لقز 800"></div>
+  <div class="field"><label>اسم المادة في الميجر (إنجليزي — اختياري)</label><input id="nm_name_en" dir="ltr" style="text-align:left" placeholder="e.g. CABLE CU 800 SQMM"></div>
   <div class="row"><div class="field"><label>رقم بند المادة</label><input id="nm_code" inputmode="numeric" placeholder="من جدول مواد الكهرباء"></div>
     <div class="field"><label>الوحدة</label><input id="nm_unit" placeholder="متر / قطعة"></div></div>
   <button class="btn" id="nmSave" onclick="fmSaveNewMat()">إضافة</button>
@@ -4566,7 +4569,10 @@ async function fmSaveNewMat(){const name=(document.getElementById('nm_name').val
   const code=_toEnNum(document.getElementById('nm_code').value||'').trim(),unit=(document.getElementById('nm_unit').value||'').trim()||'قطعة';
   if((MATERIALS||[]).some(m=>!m.deleted_at&&_arNorm(m.name)===_arNorm(name))){toast('المادة «'+name+'» موجودة — اختارها من القائمة');return;}
   const btn=document.getElementById('nmSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
-  try{const{data,error}=await sb.from('materials').insert({name,unit,sec_code:code||null,is_custody:true,qty:0}).select('*').single();if(error)throw error;
+  try{const en=(document.getElementById('nm_name_en').value||'').trim();const rec={name,name_en:en||null,unit,sec_code:code||null,is_custody:true,qty:0};
+    let{data,error}=await sb.from('materials').insert(rec).select('*').single();
+    if(error&&/name_en/i.test(error.message||'')){delete rec.name_en;({data,error}=await sb.from('materials').insert(rec).select('*').single());}
+    if(error)throw error;
     MATERIALS=[...(MATERIALS||[]),data];closeModal();fmAdd(data.id);toast('أُضيفت المادة ✓ — اكتب الكمية');}
   catch(e){toast(/row-level|policy|permission/i.test((e&&e.message)||'')?'ما عندك صلاحية إضافة مادة — نفّذ كود SQL الجديد':'خطأ: '+((e&&e.message)||e));btn.disabled=false;btn.textContent='إضافة';}}
 /* ===== مواد المحطة بعد الرفع (للمحطات المرفوعة / المرفوضة لعدم وجود المواد) ===== */
