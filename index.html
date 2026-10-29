@@ -644,7 +644,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='346';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='347';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2163,7 +2163,7 @@ async function _measureSheet(pid,cfg){
     if(cfg.prices&&prTbl){tc=0;ts=0;placed.forEach(it=>{const x=prTbl[it.code];if(!x){warn.push('البند '+(it.code||'بدون رقم')+' ('+(it.name||'').slice(0,35)+') غير موجود في جدول أسعار الورقة — سعره فيها بيطلع 0');return;}tc+=it.qty*(x.p||0);ts+=it.qty*(x.c||0);});
       const fin=(data||[]).filter(e=>e.amount!=null);
       app=fin.length===(data||[]).length&&fin.length?fin.reduce((s,e)=>s+e.amount,0):null;
-      if(app===null)warn.push('تعذّر قراءة إجمالي المحطة من التطبيق — قارن المبلغ يدوياً قبل الإرسال');
+      if(app===null){if(PROFILE&&PROFILE.role==='admin')warn.push('تعذّر قراءة إجمالي المحطة من التطبيق — قارن المبلغ يدوياً قبل الإرسال');}
       else if(Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — الفرق '+f2(app-tc)+' ر.س');}
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
     if(matDropped)warn.push(matDropped+' مادة ما انكتبت لأن خانات «قائمة بنود المواد» امتلأت');
@@ -2174,8 +2174,8 @@ async function _measureSheet(pid,cfg){
     const ok=!warn.length&&!iss.length;
     const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
     openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
-      ${tc!==null?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${row('إجمالي المحطة في التطبيق',app===null?'غير متاح':f2(app)+' ر.س',(app!==null&&Math.abs(app-tc)>0.01)?'#c0392b':'#7a4a12')}</table>`:''}
-      <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
+      ${tc!==null&&PROFILE&&PROFILE.role==='admin'?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${row('إجمالي المحطة في التطبيق',app===null?'غير متاح':f2(app)+' ر.س',(app!==null&&Math.abs(app-tc)>0.01)?'#c0392b':'#7a4a12')}</table>`:''}
+      <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?(PROFILE&&PROFILE.role==='admin'?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'✓ أرقام البنود مطابقة لجدول الشركة — الملف جاهز'):'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
       ${autoFix.length?`<div style="padding:9px;border-radius:9px;background:#eef4ff;color:#1f4e8c;font-size:13px;line-height:1.7;margin-bottom:8px"><b>صُحّح رقم البند تلقائياً وانكتب في الورقة برقمه الصحيح:</b><br>${autoFix.map(f=>'• «'+_xmlEsc(f.name.slice(0,45))+'»: '+(f.from||'بدون رقم')+' ← <b>'+f.to+'</b>'+(fixSaved.includes(f)?' (وتصحّح في التطبيق)':'')).join('<br>')}</div>`:''}
       ${iss.length?`<div style="font-weight:800;margin:4px 0">أرقام بنود لا تطابق جدول الشركة:</div>${_secIssuesHtml(iss,tb)}`:''}
       <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
