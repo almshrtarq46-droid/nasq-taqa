@@ -640,7 +640,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='342';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='343';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2946,6 +2946,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
       <button class="actile" onclick="openStationEntries('${pid}')"><b>✏️</b><span>الأعمال</span></button>
       <button class="actile" onclick="printMeasurementSheet('${pid}')"><b>🖨</b><span>ميجر</span></button>
       <button class="actile" onclick="printMeasurementSheetPDC('${pid}')"><b>🖨</b><span>ميجر pdc</span></button>
+      <button class="actile" onclick="openStationMats('${pid}')"><b>⚡</b><span>المواد</span></button>
       ${!_vwr?`<button class="actile" onclick="openScanner('${pid}')"><b>📄</b><span>مسح الميجر</span></button>`:''}
       ${_canSign?`<button class="actile" onclick="confirmToggleSigned('${pid}',event)"><b>${_sg?'✅':'☐'}</b><span>${_sg?'إلغاء التوقيع':'تحديد موقّع'}</span></button>`:''}
       ${_canDel?`<button class="actile" onclick="openWoTrack('${pid}')"><b>📋</b><span>المتابعة</span></button>`:''}
@@ -4348,7 +4349,7 @@ function renderMyWorks(){
   let keys=Object.keys(byP);
   if(term)keys=keys.filter(pid=>String((pm[pid]||{}).code||'').includes(term));
   const ed=canEditStation();
-  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}${ed?`<div class="row" style="margin-top:9px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 تعديل الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ تعديل البنود</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ تعديل المحطة</button></div>`:''}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
+  box.innerHTML=keys.length?keys.map(pid=>{const es=byP[pid],p=pm[pid]||{};return `<div class="card"><b style="font-size:14px">${p.name||'محطة'}${p.code?' · '+p.code:''}${p.station_type?' · '+p.station_type:''}</b><small style="color:var(--muted);display:block;margin:2px 0 8px">${es[0].work_date} · ${es.length} بند</small>${es.map(e=>`<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0;border-bottom:1px solid var(--line)"><span>${e.item_name}</span><span style="color:var(--muted)">${fmt(e.qty)} ${e.unit}</span></div>`).join('')}${ed?`<div class="row" style="margin-top:9px;flex-wrap:wrap"><button class="link" onclick="viewStationPhotos('${pid}')">📷 تعديل الصور</button><button class="link" onclick="openStationEntries('${pid}')">✏️ تعديل البنود</button><button class="link" onclick="openStationMats('${pid}')">⚡ المواد</button><button class="link" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'>⚙ تعديل المحطة</button></div>`:''}</div>`;}).join(''):'<div class="empty">'+(term?'لا توجد محطة بهذا الرقم':'لا توجد أعمال في هذه الفترة')+'</div>';
 }
 async function loadMyInfo(){
   const box=document.getElementById('myInfoBox');if(!box)return;box.innerHTML='<div class="empty">جارٍ التحميل…</div>';
@@ -4568,6 +4569,38 @@ async function fmSaveNewMat(){const name=(document.getElementById('nm_name').val
   try{const{data,error}=await sb.from('materials').insert({name,unit,sec_code:code||null,is_custody:true,qty:0}).select('*').single();if(error)throw error;
     MATERIALS=[...(MATERIALS||[]),data];closeModal();fmAdd(data.id);toast('أُضيفت المادة ✓ — اكتب الكمية');}
   catch(e){toast(/row-level|policy|permission/i.test((e&&e.message)||'')?'ما عندك صلاحية إضافة مادة — نفّذ كود SQL الجديد':'خطأ: '+((e&&e.message)||e));btn.disabled=false;btn.textContent='إضافة';}}
+/* ===== مواد المحطة بعد الرفع (للمحطات المرفوعة / المرفوضة لعدم وجود المواد) ===== */
+async function openStationMats(pid){const p=(PROJECTS||[]).find(x=>x.id===pid)||{};const ro=!!(PROFILE&&PROFILE.role==='viewer');
+  window._smPid=pid;window._smNew=[];window._smRo=ro;
+  openModal(`<h3 style="margin-bottom:4px">⚡ المواد المستخدمة — محطة ${_irEsc(p.code||p.name||'')}</h3><small style="color:var(--muted);display:block;margin-bottom:10px">تنكتب تلقائياً في «قائمة بنود المواد» عند طباعة الميجر</small>
+    <div id="smList" style="color:var(--muted)">جارٍ التحميل…</div>
+    ${ro?'':`<div class="custbox"><div class="custhd">إضافة مواد لهذه المحطة</div><div id="smNew"></div><div id="smChips"></div></div>
+    <button class="btn" id="smSave" onclick="saveStationMats()">حفظ المواد</button>`}
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
+  if(!(MATERIALS&&MATERIALS.length))await loadMaterials();_smLoad();_smRenderNew();}
+async function _smLoad(){const box=document.getElementById('smList');if(!box)return;
+  const{data,error}=await sb.from('station_materials').select('*').eq('project_id',window._smPid).order('created_at');
+  if(error){box.innerHTML='<div class="empty">نفّذ كود SQL للمواد أولاً</div>';return;}
+  box.innerHTML=(data&&data.length)?data.map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
+    return `<div class="item" style="padding:8px"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||r.material_name||'مادة')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):' · <span style="color:var(--bad)">بدون رقم بند</span>'}</small></div>${window._smRo?'':`<button class="btn danger sm" style="flex:none;width:40px" onclick="delStationMat('${r.id}')">✕</button>`}</div>`;}).join('')
+    :'<div class="saphint2" style="margin-bottom:8px">لا مواد مسجّلة لهذه المحطة بعد</div>';}
+function _smRenderNew(){const box=document.getElementById('smNew'),ch=document.getElementById('smChips');if(!box||!ch)return;const mats=_custodyMats();
+  box.innerHTML=window._smNew.map((r,i)=>{const m=mats.find(x=>x.id===r.material_id)||{};
+    return `<div class="custrow"><b style="flex:1;min-width:0;font-size:13.5px">${_irEsc(m.name||'')}</b><input id="smq_${r.material_id}" type="number" inputmode="decimal" value="${r.qty||''}" placeholder="الكمية" oninput="window._smNew[${i}].qty=_toEnNum(this.value)"><span class="cu">${_irEsc(m.unit||'')}</span><button class="cx" onclick="window._smNew.splice(${i},1);_smRenderNew()">✕</button></div>`;}).join('');
+  ch.innerHTML=mats.length?'<div style="font-size:12px;color:var(--muted);margin:2px 0 6px">اضغط المادة ثم اكتب الكمية:</div><div style="display:flex;flex-wrap:wrap;gap:6px">'+mats.map(m=>{const on=window._smNew.some(x=>x.material_id===m.id);
+    return `<button type="button" class="custadd" style="width:auto;padding:8px 12px;${on?'background:#fff1df;border-style:solid':''}" onclick="_smAdd('${m.id}')">${on?'✓':'＋'} ${_irEsc(m.name)} <small style="color:var(--muted)">(${_irEsc(m.unit||'قطعة')})</small></button>`;}).join('')+'</div>'
+    :'<small style="color:var(--muted)">لا توجد مواد بعد — أضفها من «المخزون» أو من شاشة رفع محطة.</small>';}
+function _smAdd(id){if(!window._smNew.some(x=>x.material_id===id))window._smNew.push({material_id:id,qty:''});_smRenderNew();setTimeout(()=>{const e=document.getElementById('smq_'+id);if(e)e.focus();},40);}
+async function saveStationMats(){const rows=window._smNew||[];if(!rows.length){toast('اختر مادة واكتب الكمية');return;}
+  if(rows.some(r=>!(Number(r.qty)>0))){toast('اكتب الكمية لكل مادة مختارة');return;}
+  const btn=document.getElementById('smSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{const recs=rows.map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};return{project_id:window._smPid,material_id:r.material_id,material_name:m.name||null,qty:Number(r.qty),worker_id:ME.id,worker_name:PROFILE.full_name||null,work_date:todayKey()};});
+    const{error}=await sb.from('station_materials').insert(recs);if(error)throw error;
+    window._smNew=[];_smRenderNew();await _smLoad();toast('حُفظت المواد ✓ — اطبع الميجر الآن');loadMaterials();}
+  catch(e){toast('خطأ: '+((e&&e.message)||e));}finally{btn.disabled=false;btn.textContent='حفظ المواد';}}
+async function delStationMat(id){if(!confirm('حذف هذه المادة من المحطة؟ ترجع كميتها للمخزون.'))return;
+  const{error,count}=await sb.from('station_materials').delete({count:'exact'}).eq('id',id);
+  if(error||!count){toast('تعذّر الحذف — نفّذ كود SQL الجديد');return;}toast('تم الحذف ✓ ورجعت الكمية للمخزون');_smLoad();loadMaterials();}
 function loadFieldItems(){const q=(document.getElementById('f_item_search').value||'').trim();const list=q?CATALOG.filter(i=>(i.name||'').includes(q)||(i.code||'').includes(q)):CATALOG;
   document.getElementById('f_item').innerHTML=list.slice(0,300).map(i=>`<option value="${i.id}">${i.code?i.code+' · ':''}${i.name} (${i.unit})</option>`).join('')||'<option value="">لا توجد بنود</option>';}
 function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById('f_item').value);const q=parseFloat(_toEnNum(document.getElementById('f_qty').value));
