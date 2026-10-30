@@ -644,7 +644,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='348';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='349';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2779,7 +2779,7 @@ async function loadWorkOrders(){
   const valByP={};rows.forEach(e=>{valByP[e.project_id]=(valByP[e.project_id]||0)+e.amount;});
   const stageCount={};let vMain=0,vInv=0,vUs=0,vPending=0;
   PROJECTS.forEach(p=>{const v=valByP[p.id]||0;if(v<=0)return;const st=_normStage(p.wo_stage)||'تم التنفيذ';stageCount[st]=(stageCount[st]||0)+1;const share=v*0.75;
-    if(p.paid_to_us)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main)vMain+=share;else vPending+=share;});
+    if(p.paid_to_us||st===ARCHIVE_STAGE)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main||st==='نزل المبلغ إلى المقاول')vMain+=share;else vPending+=share;});
   const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
   const _adm=PROFILE.role==='admin';
   const _vwr=PROFILE.role==='viewer';const _money=_adm||_vwr;
@@ -3090,15 +3090,19 @@ async function waStPhoto(path,name){
 }
 function openWoTrack(pid){const p=PROJECTS.find(x=>x.id===pid);if(!p)return;const val=(window._woRows||[]).filter(e=>e.project_id===pid).reduce((s,e)=>s+e.amount,0);
   openModal(`<h3 style="margin-bottom:4px">متابعة أمر العمل</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${p.name} · رقم ${p.code||'—'}</small>
-    <div class="field"><label>المرحلة الحالية</label><select id="wt_stage">${WO_STAGES.map(s=>`<option ${((_normStage(p.wo_stage)||'تم التنفيذ')===s)?'selected':''}>${s}</option>`).join('')}</select></div>
+    <div class="field"><label>المرحلة الحالية</label><select id="wt_stage" onchange="_wtSyncStage()">${WO_STAGES.map(s=>`<option ${((_normStage(p.wo_stage)||'تم التنفيذ')===s)?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="card" style="background:#f6f8f7;box-shadow:none;margin-bottom:12px"><div style="display:flex;justify-content:space-between"><span>قيمة الأعمال</span><b>${fmt(val)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--green)"><span>نصيبنا 75%</span><b>${fmt(val*0.75)} ﷼</b></div><div style="display:flex;justify-content:space-between;color:var(--muted)"><span>المقاول 25%</span><b>${fmt(val*0.25)} ﷼</b></div></div>
     <label>حالة الدفع</label>
-    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_main" ${p.paid_to_main?'checked':''} style="width:auto"> نزل المبلغ للمقاول الرئيسي</label>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_main" ${(p.paid_to_main||_isArchived(p)||_normStage(p.wo_stage)==='نزل المبلغ إلى المقاول')?'checked':''} style="width:auto"> نزل المبلغ للمقاول الرئيسي</label>
     <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_inv" ${p.invoice_issued?'checked':''} style="width:auto"> أصدرنا فاتورة ضريبية للمقاول</label>
-    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_us" ${p.paid_to_us?'checked':''} style="width:auto"> وصل نصيبنا لحسابنا ✅</label>
+    <label style="display:flex;gap:10px;align-items:center;font-weight:600;margin:8px 2px"><input type="checkbox" id="wt_us" ${(p.paid_to_us||_isArchived(p))?'checked':''} onchange="_wtSyncUs()" style="width:auto"> وصل نصيبنا لحسابنا ✅</label>
     <div class="field" style="margin-top:10px"><label>ملاحظات المتابعة</label><textarea id="wt_note" rows="2">${p.wo_note||''}</textarea></div>
     <button class="btn" id="wtSave" onclick="saveWoTrack('${pid}')">حفظ المتابعة</button>
     <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إلغاء</button>`);}
+function _wtSyncStage(){const st=document.getElementById('wt_stage').value;const m=document.getElementById('wt_main'),i=document.getElementById('wt_inv'),u=document.getElementById('wt_us');
+  if(st===ARCHIVE_STAGE){m.checked=true;i.checked=true;u.checked=true;}else{u.checked=false;if(st==='نزل المبلغ إلى المقاول')m.checked=true;}}
+function _wtSyncUs(){const u=document.getElementById('wt_us'),s=document.getElementById('wt_stage');if(u.checked){s.value=ARCHIVE_STAGE;document.getElementById('wt_main').checked=true;document.getElementById('wt_inv').checked=true;}
+  else if(s.value===ARCHIVE_STAGE)s.value='نزل المبلغ إلى المقاول';}
 async function saveWoTrack(pid){const rec={wo_stage:document.getElementById('wt_stage').value,paid_to_main:document.getElementById('wt_main').checked,invoice_issued:document.getElementById('wt_inv').checked,paid_to_us:document.getElementById('wt_us').checked,wo_note:document.getElementById('wt_note').value.trim()};
   const btn=document.getElementById('wtSave');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{const{error,count}=await sb.from('projects').update(rec,{count:'exact'}).eq('id',pid);if(error)throw error;
