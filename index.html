@@ -644,7 +644,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='347';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='348';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2793,7 +2793,8 @@ async function loadWorkOrders(){
   const _plabel={all:'الكل',today:'اليوم','7':'آخر 7 أيام','30':'آخر 30 يوم'}[period]||'الكل';
   const typeCard=_stTypeSummary(listIds);
   const signedN=(PROJECTS||[]).filter(p=>p.consultant_signed&&!_isArchived(p)).length;
-  document.getElementById('woSummary').innerHTML=_adm?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi" style="background:#eaf7ef"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
+  const _sgIds=new Set((PROJECTS||[]).filter(p=>p.consultant_signed&&!_isArchived(p)).map(p=>p.id));const signedVal=rows.reduce((s,e)=>s+(_sgIds.has(e.project_id)?Number(e.amount||0):0),0);
+  document.getElementById('woSummary').innerHTML=_adm?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
     <table class="tbl"><tbody>
     <tr><td>نصيبنا بانتظار النزول للمقاول</td><td style="text-align:left">${fmt(vPending)} ﷼</td></tr>
@@ -2806,7 +2807,7 @@ async function loadWorkOrders(){
   ${srHidden()?'':`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>`}
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>
-  <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:_vwr?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi" style="background:#eaf7ef"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
+  <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:_vwr?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>إجمالي المحطات</span></div></div>
   ${_de?`<button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
     <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
@@ -2814,6 +2815,7 @@ async function loadWorkOrders(){
     </tbody></table></div>`;
   renderWOList();
 }
+function _woShowSigned(){const f=document.getElementById('wo_filter');if(!f)return;f.value='signed';try{f.dispatchEvent(new Event('change'));}catch(_){}renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function renderWOList(){
   const rows=window._woRows||[];const box=document.getElementById('woList');if(!box)return;
   const term=(document.getElementById('wo_search')?.value||'').trim().replace(/[٠-٩۰-۹]/g,d=>String(d.charCodeAt(0)&15));
@@ -2826,7 +2828,8 @@ function renderWOList(){
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
   let keys=(PROJECTS||[]).filter(p=>{if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='archive'?'لا توجد محطات في الأرشيف (لم يصل مبلغ أي محطة بعد)':filt==='signed'?'لا توجد محطات موقّعة':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':filt==='none'?'كل المحطات فيها بنود ✓':'لا توجد محطات')+'</div>';return;}
-  const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px">عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة</div>';
+  const _mny=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='viewer');let _fv=0;if(_mny)keys.forEach(pid=>(byP[pid]||[]).forEach(e=>{_fv+=Number(e.amount||0);}));
+  const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة</span>'+(_mny?'<span style="background:#eaf7ef;color:#1b6b3a;border-radius:20px;padding:4px 11px;font-weight:800;font-size:13px">القيمة الإجمالية: '+fmt(_fv)+' ﷼</span>':'')+'</div>';
   box.innerHTML=cnt+keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
 function confirmToggleSigned(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const nv=!p.consultant_signed;
