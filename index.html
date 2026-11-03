@@ -645,7 +645,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='353';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='354';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2872,7 +2872,8 @@ function renderWOList(){
   const hasItems=p=>!!(byP[p.id]&&byP[p.id].length);
   const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
-  const _wt=_woTypeGet();document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));
+  const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display=_canT?'':'none';
+  const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));
   const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
   let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   window._woKeys=keys.slice();
