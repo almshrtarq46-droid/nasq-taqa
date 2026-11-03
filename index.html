@@ -645,7 +645,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='356';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='357';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2059,9 +2059,12 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
       (data||[]).forEach(e=>{const c=e.item_id&&byId[e.item_id];if(!c)return;const code=String(c.code||'').trim(),nf=c.name_full||c.name||'';
         if(code!==String(e.item_code||'').trim()||nf!==(e.item_name_full||'')||(c.name||'')!==(e.item_name||'')){e.item_code=code;e.item_name=c.name;e.item_name_full=nf;stale.push(e);}});
       if(stale.length&&PROFILE&&PROFILE.role==='admin'){for(const e of stale){try{await sb.from('entries').update({item_code:e.item_code,item_name:e.item_name,item_name_full:e.item_name_full}).eq('id',e.id);}catch(_){}}}}
-    // منع الطباعة: محطة فيها تأريض/كيابل بدون مواد مسجّلة (عشان ما يرفضها الاستشاري)
-    {const ne=(data||[]).find(e=>_needsMatsItem(e));if(ne){let cnt=null;try{const r=await sb.from('station_materials').select('id',{count:'exact',head:true}).eq('project_id',pid);if(!r.error)cnt=r.count;}catch(_){}
-      if(cnt===0){const nm=ne.item_name||ne.item_name_full||'';if(_sil)throw new Error('لا يمكن طباعة الميجر إلا بعد إضافة المواد — «'+nm.slice(0,40)+'»');_matsBlock('print',nm,pid);return;}}}
+    // منع الطباعة: محطة فيها تأريض/كيابل بدون مواد مسجّلة، أو كيبل/لقز 800 كمياتها ما تطابق العمل (عشان ما يرفضها الاستشاري)
+    {const ne=(data||[]).find(e=>_needsMatsItem(e)||_isCable800Work(e)||_isLug800Work(e));if(ne){let smr=null;try{const r=await sb.from('station_materials').select('material_id,qty').eq('project_id',pid);if(!r.error)smr=r.data||[];}catch(_){}
+      if(smr){const nm=ne.item_name||ne.item_name_full||'';
+        if(!smr.length){if(_sil)throw new Error('لا يمكن طباعة الميجر إلا بعد إضافة المواد — «'+nm.slice(0,40)+'»');_matsBlock('print',nm,pid);return;}
+        if(!(MATERIALS&&MATERIALS.length)){try{await loadMaterials();}catch(_){}}
+        const mm=_matQtyCheck(data,smr);if(mm.length){if(_sil)throw new Error('كمية المواد لا تطابق العمل: '+mm.map(x=>x.k+' (عمل '+fmt(x.w)+' / مواد '+fmt(x.m)+')').join('، '));_matsMismatch('print',mm,pid);return;}}}}
     // تصحيح تلقائي: أي بند رقمه لا يطابق اسمه في جدول الشركة يُكتب في الورقة برقمه الصحيح (بالاسم) مثل باقي البنود
     const autoFix=[];let tbA=null;try{tbA=await _secLoad();}catch(_){}
     if(tbA){const seenF={};(data||[]).forEach(e=>{const code=String(e.item_code||'').trim(),nm=e.item_name_full||e.item_name||'';const s=code?tbA[code]:null;
@@ -4634,13 +4637,40 @@ function _custodyMats(){return (MATERIALS||[]).filter(m=>m.is_custody&&!m.delete
 function _needsCustody(itemId){return (((SETTINGS&&SETTINGS.custody_item_ids)||[])).includes(itemId);}
 /* بنود تحتاج مواد عهدة: التأريض (كيبل 70 / لجز 70) وتمديد/نهايات كيابل ج.منخفض (مثل كيبل 800 / لجز 800) */
 const _MAT_CODES=new Set(['207000001','207000002','207000003','207000004','207000005','207000006','207000007','207000008','207000009','309010001','309010002','309010003','309020001','309020002','309020003','309020004','309020005','309020006','402000001','402000002','402000003','402000004','403000010','507000001','507000002','507000003','507000004','603000018','304010101','304010102','304010103','304010104','305010301','305010302','305010303']);
-function _matsRx(n){n=String(n||'');return /ت[أا]ريض/.test(n)||/(كابل|كيبل|كيابل)[^0-9]{0,14}(70|800)(?!\d)/.test(n)||/(لجز|لقز|لكس|لجزات|لقزات)[^0-9]{0,8}(70|800)(?!\d)/.test(n);}
+function _matsRx(n){n=String(n||'');return /ت[أا]ريض/.test(n)||/(كابل|كيبل|كيابل)[^0-9]{0,14}(70|800)(?!\d)/.test(n)||/(لجز|لقز|لكس|لقس|لجزات|لقزات)[^0-9]{0,8}(70|800)(?!\d)/.test(n);}
 function _needsMatsItem(o){if(!o)return false;const iid=o.item_id||o.id;if(iid&&_needsCustody(iid))return true;
   const c=String(o.code||o.item_code||'').trim();if(c&&_MAT_CODES.has(c))return true;
   return _matsRx((o.name||o.item_name||'')+' '+(o.name_full||o.item_name_full||''));}
+/* كيبل 800 ولقز 800: كمية العمل (تمديد بالمتر / تركيب نهاية بالحبة) لازم تساوي كمية المواد. التأريض بند واحد بالحبة فما له مطابقة */
+function _mTxt(m){return ((m&&m.name)||'')+' '+((m&&m.name_en)||'');}
+function _isCable800Mat(m){return String((m&&m.sec_code)||'').trim()==='908111014'||/(كيبل|كابل|كيابل|cable)[^0-9]{0,30}800(?!\d)/i.test(_mTxt(m));}
+function _isLug800Mat(m){return String((m&&m.sec_code)||'').trim()==='908122054'||/(لقز|لجز|لكس|لقس|لجزات|لقزات)[^0-9]{0,12}800(?!\d)/.test(_mTxt(m))||/(conn|term|lug)[\s\S]{0,40}800/i.test(_mTxt(m));}
+function _wTxt(o){return ((o&&(o.name||o.item_name))||'')+' '+((o&&(o.name_full||o.item_name_full))||'');}
+function _wCode(o){return String((o&&(o.code||o.item_code))||'').trim();}
+function _isLug800Work(o){return _wCode(o)==='305010303'||(/(لقز|لجز|لكس|لقس|نهاية|نهايات|ترمينال)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
+function _isCable800Work(o){if(_isLug800Work(o))return false;return _wCode(o)==='304010104'||(/(كابل|كيبل|كيابل)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
+function _mat800Sums(work,mats){let wC=0,wL=0,mC=0,mL=0;
+  (work||[]).forEach(o=>{if(_isCable800Work(o))wC+=Number(o.qty||0);else if(_isLug800Work(o))wL+=Number(o.qty||0);});
+  (mats||[]).forEach(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};if(_isCable800Mat(m))mC+=Number(r.qty||0);else if(_isLug800Mat(m))mL+=Number(r.qty||0);});
+  return{wC,wL,mC,mL};}
+function _matQtyCheck(work,mats){const t=_mat800Sums(work,mats),out=[],eq=(a,b)=>Math.abs(a-b)<0.001;
+  if((t.wC||t.mC)&&!eq(t.wC,t.mC))out.push({k:'كيبل 800',u:'متر',w:t.wC,m:t.mC});
+  if((t.wL||t.mL)&&!eq(t.wL,t.mL))out.push({k:'لقز 800',u:'حبة',w:t.wL,m:t.mL});return out;}
+function _mat800Hint(work,mats){const t=_mat800Sums(work,mats);if(!t.wC&&!t.wL&&!t.mC&&!t.mL)return'';const ok=(a,b)=>Math.abs(a-b)<0.001;
+  const row=(k,u,w,m)=>(w||m)?`<div style="display:flex;justify-content:space-between;gap:8px;font-size:12.5px;padding:3px 0"><span>${k}: العمل <b>${fmt(w)}</b> ${u}</span><span style="font-weight:800;color:${ok(w,m)?'#1b6b3a':'var(--bad)'}">المواد ${fmt(m)} ${u} ${ok(w,m)?'✓':'✗'}</span></div>`:'';
+  return `<div style="background:#fff;border:1px dashed #e8a34a;border-radius:9px;padding:6px 10px;margin:0 0 8px"><div style="font-size:12px;font-weight:800;color:#b5732f;margin-bottom:2px">لازم كمية المواد تطابق العمل (800):</div>${row('كيبل 800','متر',t.wC,t.mC)}${row('لقز 800','حبة',t.wL,t.mL)}</div>`;}
+function _matsMismatch(kind,mm,pid){{const t=document.getElementById('toast');if(t){clearTimeout(t._t);t.style.opacity='0';}}
+  openModal(`<div style="text-align:center;font-size:42px;line-height:1">⚠️</div>
+  <h3 style="text-align:center;color:var(--bad);margin:8px 0 10px">${kind==='print'?'لا يمكن طباعة الميجر':'لا يمكن رفع المحطة'} — كمية المواد لا تطابق العمل</h3>
+  <table class="tbl" style="margin-bottom:10px"><thead><tr><th>المادة</th><th style="text-align:center">في العمل</th><th style="text-align:center">في المواد</th></tr></thead><tbody>
+  ${mm.map(x=>`<tr><td><b>${x.k}</b></td><td style="text-align:center">${fmt(x.w)} ${x.u}</td><td style="text-align:center;color:var(--bad);font-weight:800">${fmt(x.m)} ${x.u}</td></tr>`).join('')}</tbody></table>
+  <p style="font-size:13.5px;line-height:1.8;text-align:center;margin:0 0 12px">مثال: تمديد 10 متر كيبل 800 = لازم 10 متر كيبل 800 في المواد، وتركيب 10 لقز 800 = لازم 10 حبات لقز 800 في المواد.</p>
+  ${kind==='print'&&pid?`<button class="btn" style="background:#b5732f;border-color:#b5732f;margin-bottom:8px" onclick="closeModal();openStationMats('${pid}')">⚡ تعديل المواد</button><button class="btn ghost" onclick="closeModal();openStationEntries('${pid}')">✏️ تعديل الأعمال</button>`
+    :`<button class="btn" style="background:#b5732f;border-color:#b5732f" onclick="closeModal();const b=document.getElementById('f_mat_search');if(b){b.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>b.focus(),400);}">⚡ تعديل المواد</button>`}
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function _matsBlock(kind,itemName,pid){{const t=document.getElementById('toast');if(t){clearTimeout(t._t);t.style.opacity='0';}}openModal(`<div style="text-align:center;font-size:42px;line-height:1">⚠️</div>
   <h3 style="text-align:center;color:var(--bad);margin:8px 0 10px">${kind==='print'?'لا يمكن طباعة الميجر إلا بعد إضافة المواد':'لا يمكن رفع المحطة إلا بعد إضافة المواد'}</h3>
-  <p style="font-size:14px;line-height:1.9;text-align:center;margin:0 0 14px">البند «${_irEsc(String(itemName||'').slice(0,70))}» يحتاج مواد.<br>يجب إضافة المواد المستخدمة <b>بالكميات</b> (مثل: كيبل 70، لجز 70).</p>
+  <p style="font-size:14px;line-height:1.9;text-align:center;margin:0 0 14px">البند «${_irEsc(String(itemName||'').slice(0,70))}» يحتاج مواد.<br>يجب إضافة المواد المستخدمة <b>بالكميات</b> (مثل: كيبل 70، لجز 70، كيبل 800، لقز 800).</p>
   <button class="btn" style="background:#b5732f;border-color:#b5732f" onclick="${kind==='print'&&pid?`closeModal();openStationMats('${pid}')`:`closeModal();const b=document.getElementById('f_mat_search');if(b){b.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>b.focus(),400);}`}">⚡ إضافة المواد الآن</button>
   <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
 function _matLabel(m){return (m.sec_code?m.sec_code+' · ':'')+(m.name||'')+' ('+(m.unit||'قطعة')+')';}
@@ -4658,7 +4688,8 @@ function renderFieldMats(){const box=document.getElementById('matsAdded'),ch=doc
   const req=fieldItems.some(it=>it.needsCustody);
   box.innerHTML=(fieldMats.map((r,i)=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
     return `<div class="item" style="padding:9px;background:#fff;border:1px solid #e8a34a"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||'مادة')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):''}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fmDel(${i})">✕</button></div>`;}).join('')||'<small style="color:var(--muted)">لم تُضف مواد بعد</small>')
-    +(req&&!fieldMats.length?'<div style="color:var(--bad);font-size:12.5px;font-weight:700;margin-top:6px">⚠ فيه بند يتطلب مواد (مثل التأريض) — إدخال المواد إجباري</div>':'');
+    +(req&&!fieldMats.length?'<div style="color:var(--bad);font-size:12.5px;font-weight:700;margin-top:6px">⚠ فيه بند يتطلب مواد (مثل التأريض) — إدخال المواد إجباري</div>':'')
+    +_mat800Hint(fieldItems,fieldMats);
   ch.innerHTML=_canInv()?`<button type="button" class="custadd" style="margin-top:10px" onclick="fmNewMat()">＋ مادة جديدة غير موجودة بالقائمة</button>`:(_custodyMats().length?'':'<small style="color:var(--muted);display:block;margin-top:8px">لا توجد مواد — يضيفها مدخل البيانات أو المدير من المخزون</small>');
   const sel=document.getElementById('f_mat');if(sel&&!sel.options.length)loadFieldMatOpts();}
 function fmNewMat(){if(!_canInv()){toast('إضافة المواد للمدير ومدخل البيانات فقط');return;}openModal(`<h3 style="margin-bottom:12px">مادة جديدة</h3>
@@ -4694,9 +4725,10 @@ async function openStationMats(pid){const p=(PROJECTS||[]).find(x=>x.id===pid)||
 async function _smLoad(){const box=document.getElementById('smList');if(!box)return;
   const{data,error}=await sb.from('station_materials').select('*').eq('project_id',window._smPid).order('created_at');
   if(error){box.innerHTML='<div class="empty">نفّذ كود SQL للمواد أولاً</div>';return;}
-  box.innerHTML=(data&&data.length)?data.map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
+  let _hint='';try{const er=await sb.from('entries').select('item_code,item_name,item_name_full,qty').eq('project_id',window._smPid);if(!er.error)_hint=_mat800Hint(er.data||[],data||[]);}catch(_){}
+  box.innerHTML=_hint+((data&&data.length)?data.map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};
     return `<div class="item" style="padding:8px"><div class="meta"><b style="font-size:14px">${_irEsc(m.name||r.material_name||'مادة')}</b><small>${fmt(r.qty)} ${_irEsc(m.unit||'')}${m.sec_code?' · رقم البند '+_irEsc(m.sec_code):' · <span style="color:var(--bad)">بدون رقم بند</span>'}</small></div>${window._smRo?'':`<button class="btn danger sm" style="flex:none;width:40px" onclick="delStationMat('${r.id}')">✕</button>`}</div>`;}).join('')
-    :'<div class="saphint2" style="margin-bottom:8px">لا مواد مسجّلة لهذه المحطة بعد</div>';}
+    :'<div class="saphint2" style="margin-bottom:8px">لا مواد مسجّلة لهذه المحطة بعد</div>');}
 function _smOpts(){const sel=document.getElementById('sm_mat');if(!sel)return;const keep=sel.value;const list=_matFilter((document.getElementById('sm_search')||{}).value);
   sel.innerHTML=list.map(m=>`<option value="${m.id}">${_irEsc(_matLabel(m))}</option>`).join('')||'<option value="">لا توجد مواد</option>';if(keep&&list.some(m=>m.id===keep))sel.value=keep;}
 function _smAddSel(){const id=document.getElementById('sm_mat').value;const m=_custodyMats().find(x=>x.id===id);const q=parseFloat(_toEnNum(document.getElementById('sm_qty').value));
@@ -4754,7 +4786,8 @@ async function saveFieldReport(){
   if(!noticeNo){toast('اكتب رقم الإشعار (إجباري)');return;}
   if(!fieldItems.length){toast('أضف بند واحد على الأقل');return;}
   {const _bad=fieldMats.find(r=>!(Number(r.qty)>0));if(_bad){const m=(MATERIALS||[]).find(x=>x.id===_bad.material_id)||{};toast('اكتب كمية «'+(m.name||'المادة')+'» أو احذفها');return;}
-   const _ni=fieldItems.find(it=>it.needsCustody||_needsMatsItem(it));if(_ni&&!fieldMats.length){_matsBlock('upload',_ni.name);return;}}
+   const _ni=fieldItems.find(it=>it.needsCustody||_needsMatsItem(it));if(_ni&&!fieldMats.length){_matsBlock('upload',_ni.name);return;}
+   const _mm=_matQtyCheck(fieldItems,fieldMats);if(_mm.length){_matsMismatch('upload',_mm);return;}}
   if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
   if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
