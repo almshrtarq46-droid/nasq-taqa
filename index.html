@@ -340,6 +340,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
       <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
+      <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">كل المحطات</button><button data-t="other" onclick="woType('other')">المحطات (غرفة / بكج)</button><button data-t="mini" onclick="woType('mini')">ميني بيلر</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div>
       <div id="woList"></div>
@@ -644,7 +645,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='352';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='353';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2041,9 +2042,9 @@ function _likeStyle(sty,xml,target,ref){
   xml=xml.replace(new RegExp('(<c r="'+target+'"[^>]*?\\ss=")\\d+(")'),'$1'+idx+'$2');
   return[sty,xml];
 }
-async function _measureSheet(pid,cfg){
+async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;const _preWarn=[];
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
-  toast('جارٍ تجهيز '+cfg.title+'…');
+  if(!_sil)toast('جارٍ تجهيز '+cfg.title+'…');
   try{
     await ensureLib('jszip');
     let{data,error}=await sb.from('entries').select('*, entry_finance(rate,amount)').eq('project_id',pid);
@@ -2052,7 +2053,7 @@ async function _measureSheet(pid,cfg){
     // السعر والمبلغ في جدول entry_finance (مثل بطاقة المحطة)
     data=(data||[]).map(e=>{const f=Array.isArray(e.entry_finance)?e.entry_finance[0]:e.entry_finance;return{...e,rate:f&&f.rate!=null?Number(f.rate):null,amount:f&&f.amount!=null?Number(f.amount):null};});
     // أحدث رقم واسم لكل بند من الكتالوج (لو تعدّل البند بعد رفع المحطة) + مزامنة الإدخالات القديمة
-    try{await loadCatalog();}catch(_){}
+    if(!opt.skipCatalog){try{await loadCatalog();}catch(_){}}
     {const byId={};(CATALOG||[]).forEach(c=>{byId[c.id]=c;});const stale=[];
       (data||[]).forEach(e=>{const c=e.item_id&&byId[e.item_id];if(!c)return;const code=String(c.code||'').trim(),nf=c.name_full||c.name||'';
         if(code!==String(e.item_code||'').trim()||nf!==(e.item_name_full||'')||(c.name||'')!==(e.item_name||'')){e.item_code=code;e.item_name=c.name;e.item_name_full=nf;stale.push(e);}});
@@ -2069,15 +2070,15 @@ async function _measureSheet(pid,cfg){
       (agg[k]=agg[k]||{code,name,qty:0}).qty+=Number(e.qty||0);if(code){(names[code]=names[code]||{})[name]=(names[code][name]||0)+Number(e.qty||0);}});
     const bad=Object.keys(names).filter(c=>Object.keys(names[c]).length>1);
     if(bad.length){const msg=bad.map(c=>'• البند '+c+' مسجّل بأكثر من اسم:\n'+Object.entries(names[c]).map(([n,q])=>'   - '+n.slice(0,45)+' (الكمية '+q+')').join('\n')).join('\n');
-      if(!confirm('⚠️ تنبيه قبل الطباعة\n\n'+msg+'\n\nيعني فيه إدخال برقم بند غلط، والكميات بتنجمع تحت نفس الرقم في ورقة القياس.\nالأفضل تصحّح الإدخال أولاً.\n\nتبي تكمل الطباعة كذا؟')){toast('تم الإلغاء — صحّح رقم البند أولاً');return;}}
+      if(_sil)_preWarn.push('بند مسجّل بأكثر من اسم: '+bad.join('، '));else if(!confirm('⚠️ تنبيه قبل الطباعة\n\n'+msg+'\n\nيعني فيه إدخال برقم بند غلط، والكميات بتنجمع تحت نفس الرقم في ورقة القياس.\nالأفضل تصحّح الإدخال أولاً.\n\nتبي تكمل الطباعة كذا؟')){toast('تم الإلغاء — صحّح رقم البند أولاً');return;}}
     const items=Object.values(agg);
-    const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});
-    if(!resp.ok)throw new Error('تعذّر تحميل القالب');
-    const zip=await JSZip.loadAsync(await resp.arrayBuffer());
+    let _tbuf=opt.cache&&opt.cache[cfg.tpl];
+    if(!_tbuf){const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});if(!resp.ok)throw new Error('تعذّر تحميل القالب');_tbuf=await resp.arrayBuffer();if(opt.cache)opt.cache[cfg.tpl]=_tbuf;}
+    const zip=await JSZip.loadAsync(_tbuf);
     const path=cfg.sheetFile||'xl/worksheets/sheet1.xml';
     let xml=await zip.file(path).async('string');
     let sty=null;try{sty=await zip.file('xl/styles.xml').async('string');}catch(_){}
-    let prTbl=null;if(cfg.prices){try{prTbl=await (await fetch('./'+cfg.prices+'?_v='+APP_VER,{cache:'reload'})).json();}catch(_){}}
+    let prTbl=null;if(cfg.prices){const _pk='~'+cfg.prices;prTbl=opt.cache&&opt.cache[_pk]||null;if(!prTbl){try{prTbl=await (await fetch('./'+cfg.prices+'?_v='+APP_VER,{cache:'reload'})).json();if(opt.cache)opt.cache[_pk]=prTbl;}catch(_){}}}
     const S=(ref,val,isText)=>{if(ref!=null&&val!=null&&val!=='')xml=_setCellXml(xml,ref,val,isText);};
     const touched=[];const T=(...r)=>r.forEach(x=>{if(x)touched.push(x);});T(...(cfg.alwaysLike||[]));const isTxt=c=>!/^\d+$/.test(String(c||''));
     S(cfg.date,todayKey(),true);
@@ -2167,6 +2168,8 @@ async function _measureSheet(pid,cfg){
       else if(Math.abs(app-tc)>0.01)warn.push('إجمالي الورقة ('+f2(tc)+') لا يساوي إجمالي التطبيق ('+f2(app)+') — الفرق '+f2(app-tc)+' ر.س');}
     if(dropped.length)warn.push(dropped.length+' بند ما انكتب لأن صفوف البنود الإضافية امتلأت: '+dropped.map(d=>d.code).join('، '));
     if(matDropped)warn.push(matDropped+' مادة ما انكتبت لأن خانات «قائمة بنود المواد» امتلأت');
+    warn.push(..._preWarn);
+    if(_sil){let iss2=[];try{const tb2=prTbl||await _secLoad();iss2=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb2);}catch(_){}return{blob:out,name:fname,warn,iss:iss2,code:p.code||'',notice:p.notice_no||''};}
     window._msFile={blob:out,name:fname};
     let iss=[],tb=null;try{tb=prTbl||await _secLoad();iss=_secIssues((data||[]).map(e=>({code:e.item_code,name:e.item_name_full||e.item_name,rate:e.rate})),tb);_secLast=iss;}catch(_){}
     if(tc===null&&!warn.length&&!iss.length&&!autoFix.length){_msDownload();toast('تم تجهيز '+cfg.title+' ✓');return;}
@@ -2180,10 +2183,10 @@ async function _measureSheet(pid,cfg){
       ${iss.length?`<div style="font-weight:800;margin:4px 0">أرقام بنود لا تطابق جدول الشركة:</div>${_secIssuesHtml(iss,tb)}`:''}
       <button class="btn" onclick="_msDownload()">⬇️ تنزيل الملف</button>
       <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);
-  }catch(e){toast('خطأ: '+(e&&e.message||e));}
+  }catch(e){if(_sil)throw e;toast('خطأ: '+(e&&e.message||e));}
 }
-function printMeasurementSheet(pid){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',mat:{rows:[41,45],code:['D','AH'],name:['J','AN'],qty:['AA','BE']},sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}});}
-function printMeasurementSheetPDC(pid){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}});}
+function printMeasurementSheet(pid,opt){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',mat:{rows:[41,45],code:['D','AH'],name:['J','AN'],qty:['AA','BE']},sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}},opt);}
+function printMeasurementSheetPDC(pid,opt){return _measureSheet(pid,{title:'ميجر pdc',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}},opt);}
 const PDC_SERVICES=['401000027','401000013','401000019','603000018','605000006','605000007','605000008','605000011','606000011','606000013','606000014','606000018','606000023','604000002'];
 let _pdcPrices=null;
 async function _pdcLoadPrices(){if(_pdcPrices)return _pdcPrices;const r=await fetch('./pdc_prices.json?_v='+APP_VER,{cache:'reload'});_pdcPrices=await r.json();return _pdcPrices;}
@@ -2816,6 +2819,48 @@ async function loadWorkOrders(){
     </tbody></table></div>`;
   renderWOList();
 }
+function _woTypeGet(){if(window._woType)return window._woType;let t='all';try{t=sessionStorage.getItem('nasqWoType')||'all';}catch(_){}window._woType=t;return t;}
+function woType(t){window._woType=t;try{sessionStorage.setItem('nasqWoType',t);}catch(_){}renderWOList();}
+/* ===== ميجرات دفعة واحدة (ZIP) للقائمة الظاهرة — نفس ملف الميجر الفردي بالضبط ===== */
+const _BULK_PART=50;
+function openBulkMeas(){const ids=(window._woKeys||[]).slice();if(!ids.length){toast('القائمة فاضية');return;}
+  const wt=_woTypeGet(),fs=document.getElementById('wo_filter');const fl=fs&&fs.selectedIndex>=0?fs.options[fs.selectedIndex].text:'';
+  const label=(wt==='mini'?'ميني بيلر':wt==='other'?'غرفة وبكج':'كل المحطات')+(fl&&fs.value!=='all'?' - '+fl:'');
+  window._bulk={ids,label,tpl:(window._bulk&&window._bulk.tpl)||'pdc',done:{},busy:false};_bulkRender();}
+function _bulkSetTpl(t){if(!window._bulk||window._bulk.busy)return;window._bulk.tpl=t;window._bulk.done={};_bulkRender();}
+function _bulkRender(){const B=window._bulk;const n=B.ids.length,parts=Math.ceil(n/_BULK_PART);
+  const btns=Array.from({length:parts},(_,k)=>{const a=k*_BULK_PART+1,b=Math.min(n,(k+1)*_BULK_PART);const d=B.done[k];
+    return `<button class="btn" id="bulkBtn${k}" style="margin-bottom:8px;${d?'background:#1b6b3a':''}" onclick="bulkMeasPart(${k})">${d?'✓ ':'⬇️ '}${parts>1?'الجزء '+(k+1)+' (محطات '+a+'–'+b+')':'تجهيز وتحميل الميجرات ('+n+')'}</button>`;}).join('');
+  openModal(`<h3 style="margin-bottom:4px">🖨 ميجرات دفعة واحدة</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${n} محطة — ${_xmlEsc(B.label)} · ملف ZIP فيه ميجر لكل محطة</small>
+    <div class="seg" style="margin-bottom:12px"><button class="${B.tpl==='pdc'?'on':''}" onclick="_bulkSetTpl('pdc')">ميجر pdc</button><button class="${B.tpl==='old'?'on':''}" onclick="_bulkSetTpl('old')">ميجر</button></div>
+    ${parts>1?'<div class="hint" style="margin-bottom:10px">القائمة كبيرة، فقسّمتها أجزاء كل جزء '+_BULK_PART+' محطة عشان الملف ما يثقل على الجوال. حمّل كل جزء لحاله.</div>':''}
+    ${btns}<div id="bulkProg" style="font-size:13px;color:var(--copper);font-weight:700;text-align:center;margin:6px 0"></div><div id="bulkRes"></div>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="if(!window._bulk.busy)closeModal()">إغلاق</button>`);}
+async function bulkMeasPart(k){const B=window._bulk;if(!B||B.busy)return;B.busy=true;
+  const ids=B.ids.slice(k*_BULK_PART,(k+1)*_BULK_PART);const prog=document.getElementById('bulkProg'),resBox=document.getElementById('bulkRes');
+  const btn=document.getElementById('bulkBtn'+k);if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
+  const setP=t=>{const e=document.getElementById('bulkProg');if(e)e.textContent=t;};
+  try{await ensureLib('jszip');setP('جارٍ التحضير…');try{await loadCatalog();}catch(_){}if(!(MATERIALS&&MATERIALS.length)){try{await loadMaterials();}catch(_){}}
+    const fn=B.tpl==='pdc'?printMeasurementSheetPDC:printMeasurementSheet;const cache={};const res=new Array(ids.length);let i=0,dn=0;
+    const worker=async()=>{while(i<ids.length){const my=i++;const pp=(PROJECTS||[]).find(x=>x.id===ids[my])||{};
+      try{res[my]=await fn(ids[my],{silent:true,skipCatalog:true,cache});}catch(e){res[my]={err:(e&&e.message)||String(e),code:pp.code||''};}
+      dn++;setP('جارٍ تجهيز '+dn+' من '+ids.length+'…');}};
+    await Promise.all([worker(),worker(),worker()]);
+    setP('جارٍ ضغط الملف…');const zip=new JSZip();const used={};let ok=0;
+    res.forEach(r=>{if(!r||r.err||!r.blob)return;let nm=r.name;if(used[nm]){nm=nm.replace(/\.xlsx$/,'')+'_'+(r.notice||(used[r.name]+1))+'.xlsx';}used[r.name]=(used[r.name]||0)+1;zip.file(nm,r.blob);ok++;});
+    if(!ok)throw new Error('ما انجهز أي ميجر');
+    const out=await zip.generateAsync({type:'blob',compression:'STORE'});
+    const parts=Math.ceil(B.ids.length/_BULK_PART);
+    const zname=(B.tpl==='pdc'?'ميجرات pdc':'ميجرات')+' - '+B.label.replace(/[\\/:*?"<>|]/g,'_')+(parts>1?' - جزء '+(k+1):'')+' ('+ok+').zip';
+    const url=URL.createObjectURL(out);const a=document.createElement('a');a.href=url;a.download=zname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
+    B.done[k]=true;
+    const errs=res.filter(r=>r&&r.err),warns=res.filter(r=>r&&!r.err&&((r.warn&&r.warn.length)||(r.iss&&r.iss.length)));
+    _bulkRender();setTimeout(()=>{const box=document.getElementById('bulkRes');if(!box)return;
+      box.innerHTML=`<div style="margin-top:8px;padding:10px;border-radius:10px;background:#e8f6ee;color:#1b6b3a;font-weight:700">✓ تم تحميل ${ok} ميجر${parts>1?' (الجزء '+(k+1)+')':''}</div>`
+      +(warns.length?`<div style="margin-top:8px;padding:10px;border-radius:10px;background:#fff4e5;color:#8a4b00;font-size:12.5px;line-height:1.7"><b>⚠️ راجع هذي المحطات قبل الإرسال (${warns.length}):</b><br>${warns.map(r=>'• محطة '+_xmlEsc(r.code||'')+': '+_xmlEsc([...(r.warn||[]),...((r.iss||[]).length?['أرقام بنود لا تطابق جدول الشركة ('+r.iss.length+')']:[])].join(' | ').slice(0,180))).join('<br>')}</div>`:'')
+      +(errs.length?`<div style="margin-top:8px;padding:10px;border-radius:10px;background:#fdecea;color:#a33;font-size:12.5px;line-height:1.7"><b>ما انجهز (${errs.length}):</b><br>${errs.map(r=>'• محطة '+_xmlEsc(r.code||'')+': '+_xmlEsc(String(r.err).slice(0,120))).join('<br>')}</div>`:'');},30);
+  }catch(e){toast('خطأ: '+((e&&e.message)||e));if(btn){btn.disabled=false;btn.textContent='⬇️ إعادة المحاولة';}setP('');}
+  finally{B.busy=false;}}
 function _woShowSigned(){const f=document.getElementById('wo_filter');if(!f)return;f.value='signed';try{f.dispatchEvent(new Event('change'));}catch(_){}renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function renderWOList(){
   const rows=window._woRows||[];const box=document.getElementById('woList');if(!box)return;
@@ -2827,10 +2872,16 @@ function renderWOList(){
   const hasItems=p=>!!(byP[p.id]&&byP[p.id].length);
   const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
-  let keys=(PROJECTS||[]).filter(p=>{if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
+  const _wt=_woTypeGet();document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));
+  const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
+  let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
+  window._woKeys=keys.slice();
   if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='archive'?'لا توجد محطات في الأرشيف (لم يصل مبلغ أي محطة بعد)':filt==='signed'?'لا توجد محطات موقّعة':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':filt==='none'?'كل المحطات فيها بنود ✓':'لا توجد محطات')+'</div>';return;}
   const _mny=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='viewer');let _fv=0;if(_mny)keys.forEach(pid=>(byP[pid]||[]).forEach(e=>{_fv+=Number(e.amount||0);}));
-  const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة</span>'+(_mny?'<span style="background:#eaf7ef;color:#1b6b3a;border-radius:20px;padding:4px 11px;font-weight:800;font-size:13px">القيمة الإجمالية: '+fmt(_fv)+' ﷼</span>':'')+'</div>';
+  const _wtl=_wt==='mini'?' · ميني بيلر':_wt==='other'?' · غرفة / بكج':'';
+  const _canBulk=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');
+  const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة'+_wtl+'</span>'+(_mny?'<span style="background:#eaf7ef;color:#1b6b3a;border-radius:20px;padding:4px 11px;font-weight:800;font-size:13px">القيمة الإجمالية: '+fmt(_fv)+' ﷼</span>':'')+'</div>'
+    +(_canBulk?'<button class="btn sm" style="width:100%;margin:0 0 10px;background:#12343B;border-color:#12343B" onclick="openBulkMeas()">🖨 ميجرات هذي القائمة دفعة واحدة ('+keys.length+')</button>':'');
   box.innerHTML=cnt+keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
 function confirmToggleSigned(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const nv=!p.consultant_signed;
