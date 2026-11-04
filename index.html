@@ -645,7 +645,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='359';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='360';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -4647,9 +4647,12 @@ function _matsRx(n){n=String(n||'');return /ت[أا]ريض/.test(n)||/(كابل|
 /* مواد التأريض (كيبل 70 / لجز 70) إجبارية — رجّعها المدير V359 (false = إيقاف مؤقت) */
 const GROUND_MATS_REQUIRED=true;
 const _CABLE_WORK_CODES=new Set(['304010101','304010102','304010103','304010104','305010301','305010302','305010303']);
-function _isGroundItem(o){if(!o)return false;const c=String(o.code||o.item_code||'').trim();if(c&&_MAT_CODES.has(c)&&!_CABLE_WORK_CODES.has(c))return true;
+/* قياس التأريض / قياس مقاومة الأرضي (402000005): فحص فقط — ما يحتاج مواد ولا ينكتب له شيء في قائمة المواد (V360) */
+function _isMeasureItem(o){if(!o)return false;const c=String(o.code||o.item_code||'').trim();if(c==='402000005')return true;
+  const n=(o.name||o.item_name||'')+' '+(o.name_full||o.item_name_full||'');return /(قياس|فحص|اختبار)/.test(n)&&/(ت[أا]ريض|[أا]رضي|مقاوم)/.test(n);}
+function _isGroundItem(o){if(!o||_isMeasureItem(o))return false;const c=String(o.code||o.item_code||'').trim();if(c&&_MAT_CODES.has(c)&&!_CABLE_WORK_CODES.has(c))return true;
   const n=(o.name||o.item_name||'')+' '+(o.name_full||o.item_name_full||'');return /ت[أا]ريض/.test(n)||/(كابل|كيبل|كيابل|لجز|لقز|لكس|لقس|لجزات|لقزات)[^0-9]{0,14}70(?!\d)/.test(n);}
-function _needsMatsItem(o){if(!o)return false;
+function _needsMatsItem(o){if(!o||_isMeasureItem(o))return false;
   const c=String(o.code||o.item_code||'').trim();const n=(o.name||o.item_name||'')+' '+(o.name_full||o.item_name_full||'');
   if((c&&_CABLE_WORK_CODES.has(c))||/800(?!\d)/.test(n)&&_matsRx(n))return true; // كيابل/لقز 800: إجباري دائماً
   if(_isGroundItem(o))return GROUND_MATS_REQUIRED;                                 // التأريض: حسب الإيقاف المؤقت
