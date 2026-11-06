@@ -189,6 +189,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .station{transition:box-shadow .22s ease,transform .13s ease}
 .station.signed{background:#eaf7ef;border-color:#8fc9a8;box-shadow:0 0 0 1.5px #bfe3cd inset}
 .station.signed>.h:hover{background:#ddf0e4}
+.po-badge{display:inline-flex;flex:none;vertical-align:middle;margin-inline-start:6px;filter:drop-shadow(0 1px 1.5px rgba(29,155,240,.35));animation:poPop .35s ease-out}
+@keyframes poPop{0%{transform:scale(.4);opacity:0}70%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}
+.station.po{border-color:#7fc0ec;box-shadow:0 0 0 1.5px #bfe0f6 inset}
 @media(hover:hover){.station:hover{box-shadow:0 0 0 2px rgba(15,107,79,.5),0 6px 18px rgba(11,77,56,.18)}}
 .station>.h{padding:13px 15px;display:flex;flex-direction:column;align-items:stretch;cursor:pointer;transition:background .2s ease}
 @media(hover:hover){.station>.h:hover{background:#f6faf8}}
@@ -339,7 +342,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-workorders">
       <h2 class="section-title">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
-      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
+      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع</option><option value="signed_nopo">موقّعة — بانتظار PO</option><option value="po">تم إصدار PO</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
       <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">الإجمالي (كل الأعمال)</button><button data-t="other" onclick="woType('other')">قسم المحطات (غرفة / بكج)</button><button data-t="mini" onclick="woType('mini')">قسم الميني بيلر</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div>
@@ -645,7 +648,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='360';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='361';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -856,6 +859,9 @@ const DEF_SETTINGS={work_start:'06:00',late_t1_min:15,late_t1_hours:1,late_t2_mi
 const WO_STAGES=['تم التنفيذ','تم الرفع في الساب','تم إصدار PO','نزل المبلغ إلى المقاول','وصل المبلغ لنا'];
 const _STAGE_ALIAS={'قيد التنفيذ':'تم التنفيذ','رفع على نظام الكهرباء':'تم الرفع في الساب','توقيع المشرف':'تم التنفيذ','توقيع الاستشاري':'تم التنفيذ','توقيع المالية':'تم الرفع في الساب','صدور أمر العمل':'تم إصدار PO','نزل المبلغ للمقاول':'نزل المبلغ إلى المقاول','إصدار فاتورة ضريبية':'نزل المبلغ إلى المقاول','وصل نصيبنا':'وصل المبلغ لنا'};
 function _normStage(v){return _STAGE_ALIAS[v]||v;}
+/* PO: المحطة صدر لها PO إذا مرحلتها «تم إصدار PO» أو بعدها (V361) */
+function _isPO(p){const i=WO_STAGES.indexOf(_normStage(p&&p.wo_stage)||'');return i>=WO_STAGES.indexOf('تم إصدار PO');}
+function _poBadge(sz){sz=sz||26;return `<span class="po-badge" title="تم إصدار PO" style="width:${sz}px;height:${sz}px"><svg viewBox="0 0 24 24" width="${sz}" height="${sz}" aria-hidden="true"><path fill="#1d9bf0" d="M12 1.6l2.35 1.7 2.88-.2 1.04 2.7 2.47 1.5-.45 2.86L21.9 12l-1.6 2.35.45 2.86-2.47 1.5-1.04 2.7-2.88-.2L12 22.4l-2.35-1.7-2.88.2-1.04-2.7-2.47-1.5.45-2.86L2.1 12l1.6-2.35-.45-2.86 2.47-1.5 1.04-2.7 2.88.2z"/><text x="12" y="15.4" text-anchor="middle" font-size="8.6" font-weight="900" fill="#fff" font-family="Arial,Helvetica,sans-serif" letter-spacing=".2">PO</text></svg></span>`;}
 const ARCHIVE_STAGE='وصل المبلغ لنا';function _isArchived(p){return _normStage(p&&p.wo_stage)===ARCHIVE_STAGE;}
 const DOC_TYPES=[
   {t:'safety',l:'الأمن الصناعي',cat:'كروت شركة الكهرباء'},
@@ -2893,14 +2899,14 @@ function renderWOList(){
   const _de=PROFILE&&PROFILE.role==='data_entry';
   // الفلترة + البحث (بالمحطة أو الإشعار أو أمر العمل). الترتيب حسب وقت الرفع (الأحدث أولاً)
   const hasItems=p=>!!(byP[p.id]&&byP[p.id].length);
-  const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='none'?!hasItems(p):true;
+  const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='po'?_isPO(p):filt==='signed_nopo'?(!!p.consultant_signed&&!_isPO(p)):filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
   const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display=_canT?'':'none';
   const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));
   const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
   let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   window._woKeys=keys.slice();
-  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='archive'?'لا توجد محطات في الأرشيف (لم يصل مبلغ أي محطة بعد)':filt==='signed'?'لا توجد محطات موقّعة':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':filt==='none'?'كل المحطات فيها بنود ✓':'لا توجد محطات')+'</div>';return;}
+  if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='archive'?'لا توجد محطات في الأرشيف (لم يصل مبلغ أي محطة بعد)':filt==='signed'?'لا توجد محطات موقّعة':filt==='po'?'لا توجد محطات صدر لها PO':filt==='signed_nopo'?'كل المحطات الموقّعة صدر لها PO ✓':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':filt==='none'?'كل المحطات فيها بنود ✓':'لا توجد محطات')+'</div>';return;}
   const _mny=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='viewer');let _fv=0;if(_mny)keys.forEach(pid=>(byP[pid]||[]).forEach(e=>{_fv+=Number(e.amount||0);}));
   const _wtl=_wt==='mini'?' · ميني بيلر':_wt==='other'?' · غرفة / بكج':'';
   const _canBulk=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');
@@ -2938,6 +2944,19 @@ function openSignReconcile(){
    <button class="link" style="display:block;margin:12px auto 2px;color:var(--bad);font-weight:700" onclick="srConfirmRemove()">🗑 انتهيت — احذف هذه الأداة نهائياً</button>
    <button class="link" style="display:block;margin:8px auto 0" onclick="closeModal()">إغلاق</button>`);
   srRenderList();srRenderSummary();}
+function confirmTogglePO(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const on=_isPO(p);const st=_normStage(p.wo_stage)||'';
+  if(on&&st!=='تم إصدار PO'){toast('المحطة في مرحلة «'+st+'» — غيّرها من «المتابعة»');return;}
+  if(!on&&!p.consultant_signed){toast('حدد المحطة «موقّعة» أولاً');return;}
+  const label=p.code?'المحطة رقم <b>'+p.code+'</b>':('<b>'+(p.name||'هذه المحطة')+'</b>');
+  openModal(`<div style="text-align:center">${_poBadge(48)}</div><h3 style="margin:8px 0;text-align:center;color:#1d9bf0">${on?'إلغاء PO':'تأكيد إصدار PO'}</h3>
+    <p style="font-size:14.5px;line-height:1.8;margin-bottom:12px;text-align:center">${on?('هل تريد إلغاء PO عن '+label+'؟ ترجع المرحلة إلى «تم الرفع في الساب».'):('هل تم إصدار PO لـ'+label+' فعلاً؟ بعدها ننتظر نزول المبلغ فقط.')}</p>
+    <button class="btn" style="background:${on?'var(--bad)':'#1d9bf0'}" onclick="togglePO('${pid}')">${on?'نعم، ألغِ PO':'نعم، تم إصدار PO'}</button>
+    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">تراجع</button>`);}
+async function togglePO(pid){closeModal();const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const on=_isPO(p);const nv=on?'تم الرفع في الساب':'تم إصدار PO';
+  try{const{error,count}=await sb.from('projects').update({wo_stage:nv},{count:'exact'}).eq('id',pid);
+    if(error)throw error;if(count===0){toast('ما عندك صلاحية تعديل هذي المحطة');return;}
+    p.wo_stage=nv;renderWOList();toast(on?'أُلغي PO':'تم إصدار PO 🔵');
+  }catch(e){toast('تعذّر الحفظ: '+(e.message||e));}}
 function srClearAll(){const signed=(PROJECTS||[]).filter(p=>p.consultant_signed);
   if(!signed.length){toast('لا توجد محطات موقّعة أصلاً');return;}
   openModal(`<h3 style="margin-bottom:8px;color:var(--bad)">تصفير كل التواقيع</h3>
@@ -3017,15 +3036,15 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const p=PROJECTS.find(x=>x.id===pid)||{name:'محطة',code:''};const tot=es.reduce((s,e)=>s+e.amount,0);
   const byItem={};es.forEach(e=>{const k=(e.item_code||'')+'|'+(e.item_name_full||e.item_name)+'|'+e.unit;byItem[k]=byItem[k]||{qty:0,amount:0,rate:e.rate};byItem[k].qty+=Number(e.qty);byItem[k].amount+=e.amount;});
   const stage=_normStage(p.wo_stage)||'تم التنفيذ';const _canSign=_adm||(PROFILE&&PROFILE.role==='data_entry');const _canDel=_canSign;const _sg=!!p.consultant_signed;
-  const dispStage=stage;const _stDone=/تم التنفيذ|رفع|PO|نزل المبلغ|وصل المبلغ/.test(dispStage);
-  return `<div class="station${_sg?' signed':''}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
+  const dispStage=stage;const _stDone=/تم التنفيذ|رفع|PO|نزل المبلغ|وصل المبلغ/.test(dispStage);const _po=_isPO(p);
+  return `<div class="station${_sg?' signed':''}${_po?' po':''}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <b style="font-size:16px;line-height:1.3">${p.name}</b>
+      <b style="font-size:16px;line-height:1.3;display:inline-flex;align-items:center;flex-wrap:wrap">${p.name}${_po?_poBadge(24):''}</b>
       ${_money?`<span class="pill role" style="flex:none">${fmt(tot)} ﷼</span>`:''}
     </div>
     <div style="margin-top:3px"><small style="color:var(--muted)">${p.station_type?p.station_type+' · ':''}${es.length} بند${p.assignment?' · '+p.assignment:''}</small></div>
     ${(p.notice_no||p.wo_number)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">${p.notice_no?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--copper);background:rgba(176,115,58,.10);border:1px solid rgba(176,115,58,.28);border-radius:7px;padding:3px 9px">إشعار: ${p.notice_no}</span>`:''}${p.wo_number?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#2a6f97;background:rgba(42,111,151,.08);border:1px solid rgba(42,111,151,.24);border-radius:7px;padding:3px 9px">📋 أمر عمل: ${p.wo_number}</span>`:''}</div>`:''}
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center"><span class="pill ${_stDone?'':'pend'}" ${_stDone?'style="background:#e7eef5;color:#2a5f8a;border:1px solid #b9cfe3"':''}>${dispStage}</span>${_sg?'<span class="pill" style="background:#d6f0e0;color:#1b6b3a;border:1px solid #9ccdb3">✅ تم التوقيع</span>':''}<span style="font-size:11px;color:var(--muted);margin-inline-start:auto">اضغط للتفاصيل ›</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center"><span class="pill ${_stDone?'':'pend'}" ${_po?'style="background:#e3f2fd;color:#0b6bcb;border:1px solid #9fd0f5;font-weight:800"':_stDone?'style="background:#e7eef5;color:#2a5f8a;border:1px solid #b9cfe3"':''}>${dispStage}</span>${_sg?'<span class="pill" style="background:#d6f0e0;color:#1b6b3a;border:1px solid #9ccdb3">✅ تم التوقيع</span>':''}<span style="font-size:11px;color:var(--muted);margin-inline-start:auto">اضغط للتفاصيل ›</span></div>
     </div>
     <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_money?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_money?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
@@ -3039,6 +3058,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
       <button class="actile" onclick="openStationMats('${pid}')"><b>⚡</b><span>المواد</span></button>
       ${!_vwr?`<button class="actile" onclick="openScanner('${pid}')"><b>📄</b><span>مسح الميجر</span></button>`:''}
       ${_canSign?`<button class="actile" onclick="confirmToggleSigned('${pid}',event)"><b>${_sg?'✅':'☐'}</b><span>${_sg?'إلغاء التوقيع':'تحديد موقّع'}</span></button>`:''}
+      ${_canSign&&(_sg||_po)?`<button class="actile" onclick="confirmTogglePO('${pid}',event)"><b>${_po?_poBadge(22):'<span style="font-weight:900;color:#1d9bf0;font-size:13px">PO</span>'}</b><span>${_po?'إلغاء PO':'تم إصدار PO'}</span></button>`:''}
       ${_adm?`<button class="actile" onclick="openWoTrack('${pid}')"><b>📋</b><span>المتابعة</span></button>`:''}
       ${!_vwr?`<button class="actile" onclick='openProject(${JSON.stringify(p).replace(/'/g,"&#39;")})'><b>⚙️</b><span>المحطة</span></button>`:''}
       ${_canDel?`<button class="actile danger" onclick="confirmDelStation('${pid}')"><b>🗑</b><span>حذف نهائي</span></button>`:''}
