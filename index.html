@@ -349,9 +349,9 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title" id="woTitle">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
       <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع (كل الموقّعة)</option><option value="signed_nopo">موقّعة بدون PO</option><option value="signed_all">موقّعة + PO (الكل)</option><option value="po">PO فقط</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
-      <div id="woSecCards"></div><div class="seg" id="woTypeSeg" style="margin-bottom:10px;display:none"><button data-t="all" class="on" onclick="woType('all')">الإجمالي (كل الأعمال)</button><button data-t="other" onclick="woType('other')">قسم المحطات (غرفة / بكج)</button><button data-t="mini" onclick="woType('mini')">قسم الميني بيلر</button></div>
+      <div class="seg" id="woTypeSeg" style="margin-bottom:10px;display:none"><button data-t="all" class="on" onclick="woType('all')">الإجمالي (كل الأعمال)</button><button data-t="other" onclick="woType('other')">قسم المحطات (غرفة / بكج)</button><button data-t="mini" onclick="woType('mini')">قسم الميني بيلر</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
-      <div id="woSummary"></div>
+      <div id="woSummary"></div><div id="woSecCards"></div>
       <div id="woList"></div>
     </div>
 
@@ -654,7 +654,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='363';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='364';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2819,6 +2819,16 @@ async function loadWorkOrders(useCache){
   const _adm=PROFILE.role==='admin';
   const _vwr=PROFILE.role==='viewer';const _money=_adm||_vwr;
   const _de=PROFILE.role==='data_entry';
+  const _staffAll=(_adm||_de)&&_secCur()==='all';_woAllMode(_staffAll);
+  if(_staffAll){ // V364: صفحة الإجمالي = معلومة الرقم الكلي فقط، والتفاصيل داخل كل قسم
+    const si={other:{n:0,v:0},mini:{n:0,v:0}};const vP={};rows.forEach(e=>{vP[e.project_id]=(vP[e.project_id]||0)+e.amount;});
+    (PROJECTS||[]).forEach(p=>{if(_isArchived(p))return;const k=_secOfP(p);si[k].n++;si[k].v+=vP[p.id]||0;});
+    window._secInfo=si;const tn=si.other.n+si.mini.n,tv=si.other.v+si.mini.v;const _pl={all:'كل الفترات',today:'اليوم','7':'آخر 7 أيام','30':'آخر 30 يوم'}[period]||'';
+    document.getElementById('woSummary').innerHTML=`<div class="card" style="text-align:center;padding:18px 14px;margin-bottom:12px;background:linear-gradient(135deg,#0f5c43,#14785a);color:#fff;border:none">
+      <div style="font-size:13px;opacity:.85;font-weight:700">${_adm?'إجمالي قيمة كل الأعمال (محطات + ميني بيلر)':'إجمالي عدد كل الأعمال (محطات + ميني بيلر)'}</div>
+      <div style="font-size:${_adm?'32':'38'}px;font-weight:900;margin:6px 0 2px;letter-spacing:.3px">${_adm?fmt(tv)+' <span style="font-size:16px">﷼</span>':tn.toLocaleString('en-US')}</div>
+      <div style="font-size:12.5px;opacity:.85">${_adm?tn.toLocaleString('en-US')+' محطة · ':''}${_pl} · للمعلومة فقط — التفاصيل داخل كل قسم</div></div>`;
+    _woSecHeader('all',true);document.getElementById('woList').innerHTML='';window._woKeys=[];return;}
   const listIds=_PJ.filter(p=>!_isArchived(p)).map(p=>p.id);
   const stationsN=listIds.length;
   const _today=todayKey();
@@ -2861,10 +2871,13 @@ function _sgCards(PJ,valByP,showMoney){const live=PJ.filter(p=>!_isArchived(p));
     return `<div class="kpi" style="background:${bg};cursor:pointer" onclick="_woShowCat('${k}')"><b style="color:${fg}">${ps.length}</b><span style="font-size:11.5px">${l}</span>${showMoney?`<small style="display:block;font-weight:800;color:${fg};margin-top:4px;font-size:12px">${fmt(v)} ﷼</small>`:''}</div>`;}).join('')+`</div>`;}
 function _secCounts(){const c={other:0,mini:0};(PROJECTS||[]).forEach(p=>{if(_isArchived(p))return;c[_secOfP(p)]++;});return c;}
 function _updSecBadges(){const c=_secCounts();document.querySelectorAll('.sb-cnt').forEach(e=>{const n=c[e.dataset.cnt]||0;e.textContent=n.toLocaleString('en-US');e.style.display=(PROJECTS&&PROJECTS.length)?'':'none';});}
-function _woSecHeader(t,canT){const ti=document.getElementById('woTitle');if(ti)ti.textContent=!canT||t==='all'?'جميع المحطات':t==='mini'?'🔌 قسم الميني بيلر':'🏢 قسم المحطات (غرفة / بكج)';
+function _woAllMode(on){const f=document.getElementById('wo_filter'),q=document.getElementById('wo_search'),l=document.getElementById('woList');
+  const ff=f&&(f.closest('.field')||f.parentElement);if(ff)ff.style.display=on?'none':'';if(q)q.style.display=on?'none':'';if(l)l.style.display=on?'none':'';}
+function _woSecHeader(t,canT){const ti=document.getElementById('woTitle');if(ti)ti.textContent=!canT?'جميع المحطات':t==='all'?'جميع المحطات (الإجمالي)':t==='mini'?'🔌 قسم الميني بيلر':'🏢 قسم المحطات (غرفة / بكج)';
   const box=document.getElementById('woSecCards');_updSecBadges();if(!box)return;
   if(!canT||t!=='all'){box.innerHTML='';return;}const c=_secCounts();
-  box.innerHTML=`<div class="seccards"><button class="seccard" onclick="goView('wo-other')"><span>🏢 المحطات (غرفة / بكج)</span><b>${c.other.toLocaleString('en-US')}</b><small>اضغط لفتح القسم ›</small></button><button class="seccard mini" onclick="goView('wo-mini')"><span>🔌 الميني بيلر</span><b>${c.mini.toLocaleString('en-US')}</b><small>اضغط لفتح القسم ›</small></button></div>`;}
+  const si=window._secInfo,_adm=PROFILE.role==='admin',vv=k=>(_adm&&si&&si[k])?`<small style="font-weight:800;color:inherit;font-size:13px">${fmt(si[k].v)} ﷼</small>`:'';
+  box.innerHTML=`<div class="seccards"><button class="seccard" onclick="goView('wo-other')"><span>🏢 قسم المحطات (غرفة / بكج)</span><b>${c.other.toLocaleString('en-US')}</b>${vv('other')}<small>اضغط لفتح القسم ›</small></button><button class="seccard mini" onclick="goView('wo-mini')"><span>🔌 قسم الميني بيلر</span><b>${c.mini.toLocaleString('en-US')}</b>${vv('mini')}<small>اضغط لفتح القسم ›</small></button></div>`;}
 function _secCur(){return (PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'))?_woTypeGet():'all';}
 function _secOfP(p){return String((p&&p.station_type)||'').trim()==='ميني بيلر'?'mini':'other';}
 function _secSet(){const t=_secCur();if(t==='all')return null;return new Set((PROJECTS||[]).filter(p=>_secOfP(p)===t).map(p=>p.id));}
@@ -2924,7 +2937,7 @@ function renderWOList(){
   const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='po'?_isPO(p):filt==='signed_nopo'?(!!p.consultant_signed&&!_isPO(p)):filt==='signed_all'?_sgCat(p,'all'):filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
   const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display='none';
-  const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);
+  const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);if(_canT&&_wt==='all'){_woAllMode(true);box.innerHTML='';return;}_woAllMode(false);
   const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
   let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   window._woKeys=keys.slice();
