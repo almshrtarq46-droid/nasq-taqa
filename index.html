@@ -349,7 +349,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title" id="woTitle">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
       <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع (كل الموقّعة)</option><option value="signed_nopo">موقّعة بدون PO</option><option value="signed_all">موقّعة + PO (الكل)</option><option value="po">PO فقط</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
-      <div class="seg" id="woTypeSeg" style="margin-bottom:10px;display:none"><button data-t="all" class="on" onclick="woType('all')">الإجمالي (كل الأعمال)</button><button data-t="other" onclick="woType('other')">قسم المحطات (غرفة / بكج)</button><button data-t="mini" onclick="woType('mini')">قسم الميني بيلر</button></div>
+      <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">الكل</button><button data-t="other" onclick="woType('other')">المحطات</button><button data-t="mini" onclick="woType('mini')">الميني بيلر</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div><div id="woSecCards"></div>
       <div id="woList"></div>
@@ -654,7 +654,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='364';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='365';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -893,9 +893,7 @@ function _svgPath(p){return `<svg viewBox="0 0 24 24" fill="none" stroke="curren
 const NAV_MAIN=[
   {v:'overview',l:'الرئيسية',i:'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'},
   {g:'العمليات'},
-  {v:'workorders',l:'جميع المحطات (الإجمالي)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
-  {v:'wo-other',l:'قسم المحطات (غرفة / بكج)',i:'M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6',cnt:'other'},
-  {v:'wo-mini',l:'قسم الميني بيلر',i:'M7 3h10v18H7z M10 7h4 M10 11h4 M12 15v3',cnt:'mini'},
+  {v:'workorders',l:'جميع المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'},
   {v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},
   {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
@@ -929,7 +927,7 @@ function buildNav(role){
   hamb.style.display='grid';nav.style.display='none';
   const isAdmin=role==='admin',isEntry=PROFILE&&PROFILE.role==='data_entry',isViewer=PROFILE&&PROFILE.role==='viewer';
   let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET; let first=isAdmin?'overview':'home';
-  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (الإجمالي)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'wo-other',l:'قسم المحطات (غرفة / بكج)',i:'M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6',cnt:'other'},{v:'wo-mini',l:'قسم الميني بيلر',i:'M7 3h10v18H7z M10 7h4 M10 11h4 M12 15v3',cnt:'mini'},{v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
+  if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
   if(isViewer){main=[{v:'workorders',l:'المحطات والقيم',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'}];first='workorders';}
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}<span style="flex:1;text-align:right">${it.l}</span>${it.cnt?`<span class="sb-cnt" data-cnt="${it.cnt}"></span>`:''}</button>`).join('');
   if(!isViewer){html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
@@ -937,7 +935,7 @@ function buildNav(role){
   if(isAdmin||isEntry)html+=`<button class="sb-item" data-v="sapfiles" onclick="goView('sapfiles');toggleSidebar(false)">${_svgPath('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h4')}تحويل الصور إلى PDF</button>`;
   if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;try{_updSecBadges();}catch(_){}
-  const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','wo-other','wo-mini','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','wo-other','wo-mini','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
+  const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -2819,7 +2817,7 @@ async function loadWorkOrders(useCache){
   const _adm=PROFILE.role==='admin';
   const _vwr=PROFILE.role==='viewer';const _money=_adm||_vwr;
   const _de=PROFILE.role==='data_entry';
-  const _staffAll=(_adm||_de)&&_secCur()==='all';_woAllMode(_staffAll);
+  const _staffAll=false;_woAllMode(false);
   if(_staffAll){ // V364: صفحة الإجمالي = معلومة الرقم الكلي فقط، والتفاصيل داخل كل قسم
     const si={other:{n:0,v:0},mini:{n:0,v:0}};const vP={};rows.forEach(e=>{vP[e.project_id]=(vP[e.project_id]||0)+e.amount;});
     (PROJECTS||[]).forEach(p=>{if(_isArchived(p))return;const k=_secOfP(p);si[k].n++;si[k].v+=vP[p.id]||0;});
@@ -2839,7 +2837,7 @@ async function loadWorkOrders(useCache){
   const typeCard=_stTypeSummary(listIds);
   const signedN=_PJ.filter(p=>p.consultant_signed&&!_isArchived(p)).length;
   const _sgIds=new Set(_PJ.filter(p=>p.consultant_signed&&!_isArchived(p)).map(p=>p.id));const signedVal=srows.reduce((s,e)=>s+(_sgIds.has(e.project_id)?Number(e.amount||0):0),0);
-  const _secHd=_SS?`<div class="card" style="padding:12px 14px;margin-bottom:10px;background:#fffaf2;border:1.5px solid #e8a34a"><b style="font-size:15.5px;color:#7a4a12">📂 قسم ${_secName()}</b><small style="display:block;color:var(--muted);margin-top:3px">كل الأرقام والتقارير هنا تخص ${_secName()} فقط — الإجمالي لكل الأعمال في «جميع المحطات (الإجمالي)» بالقائمة الجانبية.</small></div>`:'';
+  const _secHd=_SS?`<div class="card" style="padding:12px 14px;margin-bottom:10px;background:#fffaf2;border:1.5px solid #e8a34a"><b style="font-size:15.5px;color:#7a4a12">📂 قسم ${_secName()}</b><small style="display:block;color:var(--muted);margin-top:3px">كل الأرقام والتقارير هنا تخص ${_secName()} فقط — الإجمالي لكل الأعمال في تبويب «الكل».</small></div>`:'';
   const _stLbl=_SS?('إجمالي '+_secName()):'إجمالي المحطات';
   document.getElementById('woSummary').innerHTML=_secHd+(_adm?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>${_sgCards(_PJ,valByP,true)}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
@@ -2873,9 +2871,9 @@ function _secCounts(){const c={other:0,mini:0};(PROJECTS||[]).forEach(p=>{if(_is
 function _updSecBadges(){const c=_secCounts();document.querySelectorAll('.sb-cnt').forEach(e=>{const n=c[e.dataset.cnt]||0;e.textContent=n.toLocaleString('en-US');e.style.display=(PROJECTS&&PROJECTS.length)?'':'none';});}
 function _woAllMode(on){const f=document.getElementById('wo_filter'),q=document.getElementById('wo_search'),l=document.getElementById('woList');
   const ff=f&&(f.closest('.field')||f.parentElement);if(ff)ff.style.display=on?'none':'';if(q)q.style.display=on?'none':'';if(l)l.style.display=on?'none':'';}
-function _woSecHeader(t,canT){const ti=document.getElementById('woTitle');if(ti)ti.textContent=!canT?'جميع المحطات':t==='all'?'جميع المحطات (الإجمالي)':t==='mini'?'🔌 قسم الميني بيلر':'🏢 قسم المحطات (غرفة / بكج)';
+function _woSecHeader(t,canT){const ti=document.getElementById('woTitle');if(ti)ti.textContent='جميع المحطات';
   const box=document.getElementById('woSecCards');_updSecBadges();if(!box)return;
-  if(!canT||t!=='all'){box.innerHTML='';return;}const c=_secCounts();
+  box.innerHTML='';return;const c=_secCounts();
   const si=window._secInfo,_adm=PROFILE.role==='admin',vv=k=>(_adm&&si&&si[k])?`<small style="font-weight:800;color:inherit;font-size:13px">${fmt(si[k].v)} ﷼</small>`:'';
   box.innerHTML=`<div class="seccards"><button class="seccard" onclick="goView('wo-other')"><span>🏢 قسم المحطات (غرفة / بكج)</span><b>${c.other.toLocaleString('en-US')}</b>${vv('other')}<small>اضغط لفتح القسم ›</small></button><button class="seccard mini" onclick="goView('wo-mini')"><span>🔌 قسم الميني بيلر</span><b>${c.mini.toLocaleString('en-US')}</b>${vv('mini')}<small>اضغط لفتح القسم ›</small></button></div>`;}
 function _secCur(){return (PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'))?_woTypeGet():'all';}
@@ -2936,8 +2934,8 @@ function renderWOList(){
   const hasItems=p=>!!(byP[p.id]&&byP[p.id].length);
   const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='po'?_isPO(p):filt==='signed_nopo'?(!!p.consultant_signed&&!_isPO(p)):filt==='signed_all'?_sgCat(p,'all'):filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
-  const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display='none';
-  const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);if(_canT&&_wt==='all'){_woAllMode(true);box.innerHTML='';return;}_woAllMode(false);
+  const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display=_canT?'':'none';
+  const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);_woAllMode(false);
   const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
   let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   window._woKeys=keys.slice();
