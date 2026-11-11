@@ -349,7 +349,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
     <div class="view" id="v-workorders">
       <h2 class="section-title" id="woTitle">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
-      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="signed">تم التوقيع (كل الموقّعة)</option><option value="signed_nopo">موقّعة بدون PO</option><option value="signed_all">موقّعة + PO (الكل)</option><option value="po">PO فقط</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
+      <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="unsigned">تم التنفيذ — غير موقّعة</option><option value="signed">تم التوقيع (كل الموقّعة)</option><option value="signed_nopo">موقّعة بدون PO</option><option value="signed_all">موقّعة + PO (الكل)</option><option value="po">PO فقط</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
       <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">الكل</button><button data-t="other" onclick="woType('other')">المحطات</button><button data-t="mini" onclick="woType('mini')">الميني بيلر</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div><div id="woSecCards"></div>
@@ -656,7 +656,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='367';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='368';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2881,7 +2881,19 @@ async function loadWorkOrders(useCache){
   const stageCount={};let vMain=0,vInv=0,vUs=0,vPending=0;
   _PJ.forEach(p=>{const v=valByP[p.id]||0;if(v<=0)return;const st=_normStage(p.wo_stage)||'تم التنفيذ';stageCount[st]=(stageCount[st]||0)+1;const share=v*0.75;
     if(p.paid_to_us||st===ARCHIVE_STAGE)vUs+=share;else if(p.invoice_issued)vInv+=share;else if(p.paid_to_main||st==='نزل المبلغ إلى المقاول')vMain+=share;else vPending+=share;});
-  const stageChips=WO_STAGES.filter(s=>stageCount[s]).map(s=>`<span class="pill pend" style="margin:0 0 6px 6px">${s}: ${stageCount[s]}</span>`).join('')||'<small style="color:var(--muted)">لا محطات فيها أعمال بعد</small>';
+  // V368: خانات المراحل — تم التنفيذ (غير موقّعة) · تم التوقيع (بانتظار PO) · تم إصدار PO — مجموعها = إجمالي المحطات
+  const _stp={exec:{n:0,v:0},sign:{n:0,v:0,sap:0},po:{n:0,v:0,main:0}};
+  _PJ.forEach(p=>{if(_isArchived(p))return;const v=valByP[p.id]||0;const st=_normStage(p.wo_stage)||'تم التنفيذ';
+    if(_isPO(p)){_stp.po.n++;_stp.po.v+=v;if(st==='نزل المبلغ إلى المقاول')_stp.po.main++;}
+    else if(p.consultant_signed){_stp.sign.n++;_stp.sign.v+=v;if(st==='تم الرفع في الساب')_stp.sign.sap++;}
+    else{_stp.exec.n++;_stp.exec.v+=v;}});
+  const _arcN=_PJ.filter(p=>_isArchived(p)).length;
+  const _stTile=(k,lbl,o,bg,fg,sub)=>`<div class="kpi" style="background:${bg};cursor:pointer;padding:10px 8px" onclick="_woShowStep('${k}')"><b style="color:${fg}">${o.n}</b><span style="font-weight:800">${lbl}</span>${PROFILE.role==='admin'?`<small style="display:block;font-weight:800;color:${fg};margin-top:4px;font-size:12px">${fmt(o.v)} ﷼</small>`:''}${sub?`<small style="display:block;color:var(--muted);margin-top:3px;font-size:11.5px">${sub}</small>`:''}</div>`;
+  const stageChips=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+    ${_stTile('exec','🔧 تم التنفيذ',_stp.exec,'#f6f1ea','#8a5a1c','غير موقّعة')}
+    ${_stTile('sign','✅ تم التوقيع',_stp.sign,'#eaf7ef','#1b6b3a','بانتظار PO'+(_stp.sign.sap?' · منها '+_stp.sign.sap+' في الساب':''))}
+    ${_stTile('po','🔵 تم إصدار PO',_stp.po,'#e8f1fb','#1d5fa8',_stp.po.main?'منها '+_stp.po.main+' نزل للمقاول':'')}
+  </div>${_arcN?`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);cursor:pointer" onclick="_woShowStep('arch')">📦 الأرشيف (وصل المبلغ): <b>${_arcN}</b> ←</div>`:''}`;
   const _adm=PROFILE.role==='admin';
   const _vwr=PROFILE.role==='viewer';const _money=_adm||_vwr;
   const _de=PROFILE.role==='data_entry';
@@ -2931,6 +2943,7 @@ async function loadWorkOrders(useCache){
 /* V362: الميني بيلر والمحطات أقسام منفصلة في القائمة الجانبية + عدد كل قسم */
 /* V363: تقسيم التوقيع/PO — بدون PO · الكل (موقّعة أو PO) · PO فقط */
 function _sgCat(p,k){const sg=!!p.consultant_signed,po=_isPO(p);return k==='nopo'?(sg&&!po):k==='all'?(sg||po):k==='po'?po:false;}
+function _woShowStep(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={exec:'unsigned',sign:'signed_nopo',po:'po',arch:'archive'}[k]||'all';renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function _woShowCat(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={nopo:'signed_nopo',all:'signed_all',po:'po'}[k];renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function _sgCards(PJ,valByP,showMoney){const live=PJ.filter(p=>!_isArchived(p));const C=[['nopo','✅ موقّعة بدون PO','#eaf7ef','#1b6b3a'],['all','📋 موقّعة + PO (الكل)','#eef4fb','#12507a'],['po','🔵 PO فقط','#e3f2fd','#0b6bcb']];
   return `<div style="font-weight:800;font-size:13.5px;margin:2px 2px 7px;color:var(--muted)">التوقيع والـ PO</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px">`+C.map(([k,l,bg,fg])=>{const ps=live.filter(p=>_sgCat(p,k));const v=ps.reduce((s,p)=>s+(valByP[p.id]||0),0);
@@ -3000,7 +3013,7 @@ function renderWOList(){
   const _de=PROFILE&&PROFILE.role==='data_entry';
   // الفلترة + البحث (بالمحطة أو الإشعار أو أمر العمل). الترتيب حسب وقت الرفع (الأحدث أولاً)
   const hasItems=p=>!!(byP[p.id]&&byP[p.id].length);
-  const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='po'?_isPO(p):filt==='signed_nopo'?(!!p.consultant_signed&&!_isPO(p)):filt==='signed_all'?_sgCat(p,'all'):filt==='none'?!hasItems(p):true;
+  const matchF=p=>filt==='wo'?!!String(p.wo_number||'').trim():filt==='notice'?!!String(p.notice_no||'').trim():filt==='signed'?!!p.consultant_signed:filt==='po'?_isPO(p):filt==='signed_nopo'?(!!p.consultant_signed&&!_isPO(p)):filt==='signed_all'?_sgCat(p,'all'):filt==='unsigned'?(!p.consultant_signed&&!_isPO(p)):filt==='none'?!hasItems(p):true;
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
   const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display=_canT?'':'none';
   const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);_woAllMode(false);
