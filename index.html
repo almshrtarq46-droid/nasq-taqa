@@ -335,6 +335,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <div id="ovDate" style="color:var(--muted);font-size:13px;margin:-8px 2px 12px"></div>
       <button class="btn" id="ovPushBtn" style="display:none;margin-bottom:12px;background:#2a6f97" onclick="enablePush()">🔔 فعّل إشعارات الجوال (لتصلك تنبيهات رفع المحطات وأنت خارج التطبيق)</button>
       <div class="grid2" id="ovKpis" style="margin-bottom:13px"></div>
+      <div id="ovDisp"></div>
       <div id="ovProd"></div>
       <div id="ovFin"></div>
       <div id="ovAtt"></div>
@@ -379,6 +380,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <button class="btn" id="dpSaveBtn" onclick="saveDispatch()">📍 إسناد المسار للفرقة</button>
       </div>
       <h3 class="section-title" style="font-size:16px;margin:20px 0 8px">مسارات اليوم</h3>
+      <button class="btn ghost sm" type="button" onclick="openDispOverview()" style="width:100%;margin-bottom:10px">📅 عرض المسند حسب اليوم (السابق / التالي)</button>
       <div id="dpList"></div>
     </div>
 
@@ -654,7 +656,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='366';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='367';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1104,7 +1106,7 @@ async function saveDispatch(){
     let ins=await sb.from('dispatches').insert(rec);
     if(ins.error&&/notices|column/i.test(ins.error.message||'')){const r2={...rec};delete r2.notices;ins=await sb.from('dispatches').insert(r2);}
     if(ins.error)throw ins.error;
-    toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');_dpReset();document.getElementById('dp_title').value='';renderDispatchList();
+    toast('تم إسناد المسار ✓ ('+nums.length+' محطة)');try{const _an=((window._dispPeople||[]).find(p=>p.id===assignee)||{}).full_name||'';notifyEvent('📍 إسناد جديد',(PROFILE.full_name||'')+' أسند '+nums.length+' محطة'+(_an?' إلى '+_an:'')+': '+nums.slice(0,12).join('، ')+(nums.length>12?'…':''));}catch(_){}_dpReset();document.getElementById('dp_title').value='';renderDispatchList();
     try{await sb.from('notifications').insert({employee_id:assignee,title:'🚗 مسار جديد',body:'أُسند لك '+nums.length+' محطة اليوم. افتح «مسار اليوم» لتترتّب الأقرب فالأقرب.',kind:'info'});}catch(_){}
   }catch(e){toast('خطأ: '+(e&&e.message||e)+' — تأكد من تنفيذ كود SQL');}
   btn.disabled=false;btn.textContent='📍 إسناد المسار للفرقة';
@@ -1243,6 +1245,7 @@ async function loadOverview(){
   const box=document.getElementById('ovKpis');box.innerHTML='<div class="kpi"><b>…</b><span>جارٍ التحميل</span></div>';
   const today=todayKey();
   document.getElementById('ovDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  loadOvDispatch();
   try{
     const[wRes,aRes,eToday,eWeek,invRes,pendRes,exRes]=await Promise.all([
       sb.from('profiles').select('id,full_name').eq('role','worker').eq('status','active'),
@@ -1290,6 +1293,71 @@ async function loadOverview(){
     document.getElementById('ovActions').innerHTML=pendN?`<div class="card" style="background:#f6ecdf;border-color:#eeddc4"><div style="display:flex;justify-content:space-between;align-items:center"><b>${pendN} حساب بانتظار الاعتماد</b><button class="btn copper sm" onclick="goView('approvals')">اعتماد</button></div></div>`:'';
   }catch(e){box.innerHTML='<div class="empty">تعذّر تحميل المتابعة: '+e.message+'</div>';}
   mountLiveMap('ovLiveMap','ovLiveList');startLiveLoop();
+}
+
+/* ===== المسند (التوزيع) — شاشة المدير ===== */
+function _dpDayShift(iso,n){const d=new Date(iso+'T00:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);}
+async function _dpNames(ids){const out={};const u=[...new Set(ids.filter(Boolean))];if(!u.length)return out;
+  (window._dispPeople||[]).forEach(p=>{out[p.id]=p.full_name;});
+  const miss=u.filter(id=>!out[id]);if(miss.length){try{const{data}=await sb.from('profiles').select('id,full_name').in('id',miss);(data||[]).forEach(p=>out[p.id]=p.full_name);}catch(_){}}
+  return out;}
+function _dpUploaded(num){try{const d=String(num||'').replace(/\D/g,'');if(!d||!Array.isArray(PROJECTS))return false;return PROJECTS.some(p=>!p.deleted_at&&String(p.name||'').replace(/\D/g,'')===d);}catch(_){return false;}}
+async function _dpFetch(date){
+  const{data,error}=await sb.from('dispatches').select('*').eq('dispatch_date',date).is('deleted_at',null).order('created_at',{ascending:false});
+  if(error)throw error;return data||[];}
+async function _dpFetchCarry(date){
+  const{data,error}=await sb.from('dispatches').select('*').lt('dispatch_date',date).gte('dispatch_date',_dpDayShift(date,-14)).is('deleted_at',null).order('dispatch_date',{ascending:false});
+  if(error)return [];return (data||[]).filter(d=>(d.station_nos||[]).some(n=>!(d.done_nos||[]).map(String).includes(String(n))));}
+function _dpStats(rows){let st=0,dn=0;const teams=new Set();rows.forEach(d=>{const t=(d.station_nos||[]).length;st+=t;dn+=(d.done_nos||[]).filter(n=>(d.station_nos||[]).map(String).includes(String(n))).length;teams.add(d.assignee_id);});return{st,dn,teams:teams.size};}
+async function loadOvDispatch(){
+  const box=document.getElementById('ovDisp');if(!box)return;
+  box.innerHTML='<div class="card"><div class="empty">جارٍ تحميل المسند اليوم…</div></div>';
+  const today=todayKey();let rows,carry;
+  try{[rows,carry]=await Promise.all([_dpFetch(today),_dpFetchCarry(today)]);}
+  catch(e){box.innerHTML='<div class="card"><b>📍 المسند اليوم</b><div class="empty">تعذّر تحميل الإسنادات — نفّذ كود SQL</div></div>';return;}
+  const nm=await _dpNames(rows.map(d=>d.assignee_id));
+  const s=_dpStats(rows);const c=_dpStats(carry);const cPend=c.st-c.dn;
+  const byT={};rows.forEach(d=>{const k=d.assignee_id||'-';const o=byT[k]=byT[k]||{n:0,d:0};const nos=(d.station_nos||[]).map(String);o.n+=nos.length;o.d+=(d.done_nos||[]).map(String).filter(x=>nos.includes(x)).length;});
+  const teamRows=Object.keys(byT).map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-top:1px solid var(--line)"><b style="font-size:14px">👷 ${_stEsc(nm[k]||'—')}</b><span style="font-size:13px;color:var(--muted)">${byT[k].n} محطة · أُنجز <b style="color:var(--green)">${byT[k].d}</b></span></div>`).join('');
+  box.innerHTML=`<div class="card" style="border:2px solid #2a6f97;cursor:pointer" onclick="openDispOverview('${today}')">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><h3 style="font-size:16px">📍 المسند اليوم</h3><span class="link" style="font-weight:800">التفاصيل ←</span></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;margin-bottom:6px">
+      <div><b style="font-size:22px;color:#2a6f97">${s.st}</b><div style="font-size:12px;color:var(--muted)">محطة مسندة</div></div>
+      <div><b style="font-size:22px">${s.teams}</b><div style="font-size:12px;color:var(--muted)">فرقة</div></div>
+      <div><b style="font-size:22px;color:var(--green)">${s.dn}/${s.st}</b><div style="font-size:12px;color:var(--muted)">أُنجز</div></div>
+    </div>
+    ${rows.length?teamRows:'<div class="empty" style="padding:6px">لا يوجد إسناد اليوم</div>'}
+    ${cPend>0?`<div style="margin-top:8px;background:#fdf3e6;border:1px solid #eeddc4;border-radius:10px;padding:7px 10px;font-size:13px;color:var(--copper);font-weight:700">⏳ متبقٍ من أيام سابقة: ${cPend} محطة لم تُنجز</div>`:''}
+  </div>`;
+}
+async function openDispOverview(date){
+  date=date||todayKey();
+  openModal(`<h3 style="margin-bottom:10px">📍 المسند للفرق</h3><div class="empty">جارٍ التحميل…</div>`);
+  let rows,carry;
+  try{[rows,carry]=await Promise.all([_dpFetch(date),_dpFetchCarry(date)]);}
+  catch(e){openModal(`<h3>📍 المسند للفرق</h3><div class="empty">تعذّر التحميل — نفّذ كود SQL<br><small>${_stEsc(e&&e.message||e)}</small></div><button class="btn ghost" onclick="closeModal()">إغلاق</button>`);return;}
+  const nm=await _dpNames([...rows,...carry].flatMap(d=>[d.assignee_id,d.created_by]));
+  const s=_dpStats(rows);
+  const tm=iso=>{try{return new Date(iso).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});}catch(_){return '';}};
+  const card=(d,showDate)=>{const nos=d.station_nos||[];const dn=(d.done_nos||[]).map(String);const wk=d.works||{};const nt=d.notices||{};const done=nos.filter(n=>dn.includes(String(n))).length;
+    const trs=nos.map((n,i)=>{const isd=dn.includes(String(n));const up=_dpUploaded(n);return `<tr><td>${i+1}</td><td style="font-weight:800">${_stEsc(n)}</td><td>${nt[n]?_stEsc(nt[n]):'—'}</td><td>${wk[n]?_stEsc(wk[n]):'—'}</td><td style="white-space:nowrap">${isd?'<span style="color:var(--green);font-weight:800">✅ تم</span>':'<span style="color:var(--copper);font-weight:700">⏳ لم يتم</span>'}${up?'<div style="font-size:11px;color:#2a6f97;font-weight:700">📤 مرفوعة</div>':''}</td></tr>`;}).join('');
+    return `<div class="card" style="padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:start;gap:8px;margin-bottom:6px"><div><b style="font-size:15px">👷 ${_stEsc(nm[d.assignee_id]||'—')}</b>${d.title?`<div style="font-size:13px;color:var(--muted)">${_stEsc(d.title)}</div>`:''}
+      <div style="font-size:12px;color:var(--muted)">أسنده: ${_stEsc(nm[d.created_by]||'—')}${d.created_at?' · '+tm(d.created_at):''}${showDate?' · '+_stEsc(d.dispatch_date):''}</div></div>
+      <span class="pill ${done===nos.length&&nos.length?'ok':'pend'}" style="white-space:nowrap">${done}/${nos.length}</span></div>
+      <div style="overflow-x:auto"><table class="tbl" style="font-size:13px"><thead><tr><th>#</th><th>رقم المحطة</th><th>الإشعار</th><th>العمل</th><th>الحالة</th></tr></thead><tbody>${trs||'<tr><td colspan="5">لا محطات</td></tr>'}</tbody></table></div></div>`;};
+  const isToday=date===todayKey();
+  const nav=`<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px">
+    <button class="btn ghost sm" onclick="openDispOverview('${_dpDayShift(date,-1)}')">‹ السابق</button>
+    <input type="date" value="${date}" onchange="openDispOverview(this.value)" style="flex:1;text-align:center">
+    <button class="btn ghost sm" onclick="openDispOverview('${_dpDayShift(date,1)}')">التالي ›</button></div>
+    ${isToday?'':`<button class="link" style="margin-bottom:8px" onclick="openDispOverview('${todayKey()}')">↩ اليوم</button>`}`;
+  const sum=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px"><span class="pill" style="background:#e6f0f6;color:#2a6f97">${s.st} محطة</span><span class="pill" style="background:#eef2f5">${s.teams} فرقة</span><span class="pill ok">أُنجز ${s.dn}</span><span class="pill pend">متبقٍ ${s.st-s.dn}</span></div>`;
+  const carryHtml=carry.length?`<h3 style="font-size:15px;margin:14px 0 8px;color:var(--copper)">⏳ متبقٍ من أيام سابقة (آخر 14 يوم)</h3>`+carry.map(d=>card(d,true)).join(''):'';
+  openModal(`<h3 style="margin-bottom:10px">📍 المسند للفرق — ${_stEsc(date)}</h3>${nav}${sum}
+    ${rows.length?rows.map(d=>card(d,false)).join(''):'<div class="card"><div class="empty">لا يوجد إسناد في هذا اليوم</div></div>'}
+    ${carryHtml}
+    <button class="btn ghost" style="margin-top:6px" onclick="closeModal()">إغلاق</button>`);
 }
 
 /* ===== approvals ===== */
