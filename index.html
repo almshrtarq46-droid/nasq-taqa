@@ -375,6 +375,21 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .scB span{font-size:10px!important;white-space:nowrap}
 .scB b{font-size:11.5px!important}
 .scMore{font-size:10px!important;margin-top:0!important;white-space:nowrap}
+
+/* V376: العقد الموحد */
+.ucC{background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 11px;margin-bottom:7px;cursor:pointer;box-shadow:var(--shadow)}
+.ucR{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ucCode{font-weight:900;font-size:14px;color:#12343B;background:#eef3f2;border:1px solid #d5e2df;border-radius:7px;padding:2px 8px;letter-spacing:.5px;direction:ltr}
+.ucP{font-weight:900;font-size:14px;color:#1b6b3a;white-space:nowrap;display:flex;align-items:baseline;gap:6px}
+.ucP small{font-size:10px}.ucP i{font-style:normal;font-size:10.5px;color:var(--muted);font-weight:700}
+.ucN{font-weight:800;font-size:13.5px;margin-top:6px;line-height:1.5}
+.ucS{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5}
+.ucD{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.ucL{white-space:pre-wrap;unicode-bidi:plaintext;text-align:start;font-size:12.5px;line-height:1.7;color:#2b3a34;background:#f7f9f8;border-radius:8px;padding:8px 10px;margin-bottom:7px}
+.ucG{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}
+.ucG div{background:#f3f7f5;border:1px solid #e1e8e4;border-radius:7px;padding:4px 8px;display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:11.5px}
+.ucG span{color:var(--muted);font-weight:700}.ucG b{font-weight:900;white-space:nowrap}
+.ucH{margin-top:5px;font-size:12px}.ucH summary{cursor:pointer;font-weight:800;color:#7a4a12;padding:5px 2px}
 </style>
 </head>
 <body>
@@ -449,6 +464,14 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <input id="ss_q" placeholder="اكتب رقم المحطة…" inputmode="numeric" autocomplete="off" oninput="ssSearch()" style="margin-bottom:10px;font-size:17px;font-weight:700;letter-spacing:.5px">
       <div id="ssInfo" style="color:var(--muted);font-size:13px;margin:0 2px 10px"></div>
       <div id="ssList"></div>
+    </div>
+
+    <div class="view" id="v-contract">
+      <h2 class="section-title">العقد الموحد</h2>
+      <div class="hint">أسعار العقد الموحد لشركة الكهرباء (RFX 4000083780). اكتب <b>رقم البند</b> أو <b>أي كلمة</b> (عربي أو إنجليزي)، واضغط على البند يطلع لك الوصف الكامل وشروط القسم.</div>
+      <input id="uc_q" placeholder="رقم البند أو كلمة… مثال: 305010303 أو نهاية طرفية" autocomplete="off" oninput="ucSearch()" style="margin-bottom:10px;font-size:16px;font-weight:700">
+      <div id="ucInfo" style="color:var(--muted);font-size:13px;margin:0 2px 10px"></div>
+      <div id="ucList"></div>
     </div>
 
     <div class="view" id="v-dispatch">
@@ -743,7 +766,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='375';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='376';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -984,6 +1007,7 @@ const NAV_MAIN=[
   {g:'العمليات'},
   {v:'workorders',l:'جميع المحطات',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},
   {v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'},
+  {v:'contract',l:'العقد الموحد',i:'M4 19.5A2.5 2.5 0 0 1 6.5 17H20 M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z M9 7h7 M9 11h5'},
   {v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},
   {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
   {v:'finance',l:'المشتريات',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
@@ -1025,7 +1049,7 @@ function buildNav(role){
   if(!isViewer){html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;}
   document.getElementById('sbMenu').innerHTML=html;try{_updSecBadges();}catch(_){}
-  const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
+  const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','station-search','contract','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
   if(!_want)_want=(location.hash||'').replace(/^#/,'');
   goView(_valid.indexOf(_want)>=0?_want:first);
@@ -1040,13 +1064,59 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===_nv));
   window.scrollTo(0,0);
-  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,sapfiles:loadSapFiles,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
+  ({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,contract:initContract,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,sapfiles:loadSapFiles,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}))();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
 }
 function projOptions(){return PROJECTS.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')||'<option value="">لا توجد محطات</option>';}
 
 /* ===== البحث عن المحطة (فهرس مواقع محلي، بحث فوري + بدون إنترنت) ===== */
 const STATIONS_VER=1;               /* ارفعه فقط عند تحديث ملف المواقع */
+/* ===== V376: العقد الموحد — بحث برقم البند أو بأي كلمة (الملف مشفّر، والمفتاح عند المدير فقط في Supabase) ===== */
+const UC_VER=1;let _ucData=null,_ucP=null,_ucTimer=null;
+async function _ucLoad(){if(_ucData)return _ucData;if(_ucP)return _ucP;
+  _ucP=(async()=>{const{data,error}=await sb.from('app_keys').select('key').eq('name','contract').maybeSingle();
+    if(error||!data||!data.key)throw new Error('nokey');
+    const r=await fetch('contract.enc?v='+UC_VER);if(!r.ok)throw new Error('تعذّر تحميل ملف العقد');
+    const b64=(await r.text()).trim();const bin=Uint8Array.from(atob(b64),c=>c.charCodeAt(0));const kb=Uint8Array.from(atob(data.key),c=>c.charCodeAt(0));
+    const k=await crypto.subtle.importKey('raw',kb,'AES-GCM',false,['decrypt']);
+    const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:bin.slice(0,12)},k,bin.slice(12));
+    const d=JSON.parse(new TextDecoder().decode(pt));
+    d.it.forEach(x=>{x._c=x[0];x._sh=_srchNorm(x[1]);x._all=_srchNorm(x[1]+' '+x[2]+' '+x[3]+' '+x[5].map(c=>(d.h[c]||[''])[0]).join(' '));});
+    _ucData=d;return d;})();
+  try{return await _ucP;}catch(e){_ucP=null;throw e;}}
+async function initContract(){const info=document.getElementById('ucInfo');info.innerHTML='<span class="spin"></span> جارٍ فتح ملف العقد…';
+  try{const d=await _ucLoad();info.textContent=d.it.length.toLocaleString('en-US')+' بند جاهز للبحث — اكتب رقم البند أو أي كلمة.';_ucRun();}
+  catch(e){info.innerHTML=e.message==='nokey'?'<span style="color:var(--bad);font-weight:700">ما قدرت أفتح ملف العقد — لازم كود SQL (مرة واحدة) أو الحساب ما عنده صلاحية المدير.</span>':'<span style="color:var(--bad)">خطأ: '+_stEsc(e.message||e)+'</span>';}}
+// كلمات الميدان → كلمات العقد
+const _UC_SYN=(()=>{const m={};const add=(ks,vs)=>ks.forEach(k=>m[_srchNorm(k)]=[...new Set([_srchNorm(k),...vs.map(_srchNorm)])]);
+  add(['لقز','لجز','لقس','لكس','لق','lug'],['نهاية طرفية','مربط']);add(['كيبل','كيابل','كابلات'],['كابل']);add(['كوع','كوعية','الكوع'],['كوعية']);
+  add(['ميني','منيبلر','ميني بيلر'],['لوحة توزيع فرعية','ميني']);add(['باكج','بكج','معلبة'],['مدمجة','معلبة']);add(['تاريض','ارضي','أرضي'],['تاريض','ارضي']);
+  add(['اسفلت','سفلته','سفلتة'],['سفلت','اسفلت']);add(['مفتاح','RMU'],['مفتاح','حلقي']);add(['طوارئ','طارئ','طارئه'],['طوار','طاري','طارئ']);return m;})();
+function ucSearch(){if(_ucTimer)clearTimeout(_ucTimer);_ucTimer=setTimeout(_ucRun,140);}
+const _ucUnit={EA:'حبة',M:'متر طولي',M2:'متر مربع',M3:'متر مكعب',KM:'كيلومتر',KIT:'طقم',ST:'مجموعة',ASM:'تجميعة','%':'نسبة',H:'ساعة',MON:'شهر',BTU:'BTU'};
+function _ucPrice(x){return x[3]==='%'?'+'+(Math.round(x[4]*10000)/100)+'%':fmt(x[4])+' <small>﷼</small>';}
+function _ucRun(){const d=_ucData;const list=document.getElementById('ucList'),info=document.getElementById('ucInfo');if(!d||!list)return;
+  const raw=document.getElementById('uc_q').value.trim();
+  if(!raw){list.innerHTML='';info.textContent=d.it.length.toLocaleString('en-US')+' بند جاهز للبحث — اكتب رقم البند أو أي كلمة.';return;}
+  const dig=raw.replace(/[٠-٩]/g,c=>'٠١٢٣٤٥٦٧٨٩'.indexOf(c)).replace(/\D/g,'');const onlyNum=/^[\d٠-٩\s\-]+$/.test(raw);
+  let res=[];
+  if(onlyNum&&dig){d.it.forEach(x=>{const c=x[0];const r=c===dig?0:c.startsWith(dig)?1:c.includes(dig)?2:-1;if(r>=0)res.push([r,x]);});}
+  else{const q=_srchNorm(raw);const words=q.split(' ').filter(Boolean).map(w=>_UC_SYN[w]||[w]);
+    const has=(t,alts)=>alts.some(a=>t.includes(a));
+    d.it.forEach(x=>{if(words.every(al=>has(x._all,al)))res.push([words.every(al=>has(x._sh,al))?0:1,x]);});
+    if(res.length<5){const seen=new Set(res.map(r=>r[1][0]));d.it.forEach(x=>{if(!seen.has(x[0])&&_srchMatch(x[1]+' '+x[5].map(c=>(d.h[c]||[''])[0]).join(' '),raw))res.push([2,x]);});}}
+  res.sort((a,b)=>a[0]-b[0]||a[1][0].localeCompare(b[1][0]));
+  const CAP=80;info.textContent=res.length?('النتائج: '+res.length+(res.length>CAP?' (أول '+CAP+')':'')):'ما لقيت بند مطابق';
+  list.innerHTML=res.slice(0,CAP).map(([_,x])=>{const sec=x[5].slice(-2).map(c=>(d.h[c]||[''])[0]).filter(Boolean);
+    return `<div class="ucC" onclick="ucOpen(this,'${x[0]}')"><div class="ucR"><span class="ucCode">${x[0]}</span><span class="ucP">${_ucPrice(x)}<i>${_stEsc(_ucUnit[x[3]]||x[3]||'')}${x[3]&&x[3]!=='%'?' · '+_stEsc(x[3]):''}</i></span></div>
+      <div class="ucN">${_stEsc(x[1])}</div>${sec.length?`<div class="ucS">${sec.map(_stEsc).join(' ‹ ')}</div>`:''}<div class="ucD" style="display:none"></div></div>`;}).join('');}
+function ucOpen(el,code){const box=el.querySelector('.ucD');if(box.style.display!=='none'){box.style.display='none';return;}
+  const d=_ucData;const x=d.it.find(i=>i[0]===code);if(!x)return;
+  box.innerHTML=`<div class="ucL">${_stEsc(x[2]||'—')}</div>
+    <div class="ucG"><div><span>رقم البند</span><b>${x[0]}</b></div><div><span>السعر</span><b>${_ucPrice(x)}</b></div><div><span>وحدة القياس</span><b>${_stEsc(x[3]||'—')} ${_ucUnit[x[3]]?'· '+_ucUnit[x[3]]:''}</b></div><div><span>العقد</span><b>${d.rfx}</b></div></div>
+    ${x[5].map(c=>{const h=d.h[c];if(!h)return'';return `<details class="ucH" onclick="event.stopPropagation()"><summary>📂 ${c} — ${_stEsc(h[0])}</summary>${h[1]?`<div class="ucL">${_stEsc(h[1])}</div>`:''}</details>`;}).join('')}
+    <button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="event.stopPropagation();try{navigator.clipboard.writeText('${x[0]}');toast('تم نسخ رقم البند ✓');}catch(_){}">📋 نسخ رقم البند</button>`;
+  box.style.display='';}
 let _stIdx=null,_stLoad=null,_stTimer=null;
 const _stInt=n=>(Number(n)||0).toLocaleString('en-US');
 const _stEsc=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
