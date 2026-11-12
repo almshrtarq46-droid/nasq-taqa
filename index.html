@@ -288,6 +288,55 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .ivvzs img{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform;max-width:none;-webkit-user-drag:none;pointer-events:none}.ivvzs img.anim{transition:transform .22s ease}
 .expinv{display:flex;align-items:center;gap:10px;justify-content:space-between;background:#f3faf6;border:1px solid #bfe0cf;border-radius:13px;padding:10px 12px;margin:2px 0 12px}
 .expinv b{display:block;font-size:13.5px;color:var(--green)}.expinv small{font-size:11.5px;color:var(--muted)}.expinv .btn{flex:none;width:auto;padding:9px 14px}
+
+/* V372: واجهة جميع المحطات (المدير) */
+.lxHero{background:linear-gradient(135deg,#0d4d38 0%,#15724f 60%,#1d8a5f 100%);color:#fff;border-radius:20px;padding:18px 18px 16px;margin-bottom:13px;box-shadow:0 10px 26px rgba(13,77,56,.22)}
+.lxHL{font-size:13px;font-weight:700;opacity:.85}
+.lxHV{font-size:34px;font-weight:900;letter-spacing:.3px;margin:4px 0 12px;line-height:1.1}
+.lxHV small{font-size:16px;opacity:.85}
+.lxHR{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.lxHN{background:#fff;color:#0d4d38;border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700}
+.lxHN b{font-size:16px;font-weight:900}
+.lxChip{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.25);border-radius:20px;padding:5px 11px;font-size:12.5px;font-weight:700}
+.lxChip b{font-weight:900}
+.lxCard{padding:15px 14px 12px;margin-bottom:13px}
+.lxH{font-size:15.5px;font-weight:800;margin-bottom:11px;display:flex;align-items:baseline;gap:8px}
+.lxH small{font-size:12px;color:var(--muted);font-weight:700}
+.lxBar{display:flex;height:8px;border-radius:8px;overflow:hidden;background:#eef1ef;margin-bottom:11px}
+.lxBar i{display:block;height:100%}
+.lxTiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lxTile{background:var(--bg);border:1px solid rgba(0,0,0,.05);border-radius:14px;padding:11px 6px 10px;text-align:center;cursor:pointer;transition:transform .12s}
+.lxTile:active{transform:scale(.97)}
+.lxTL{font-size:12.5px;font-weight:800;color:var(--fg);white-space:nowrap}
+.lxTN{font-size:27px;font-weight:900;color:var(--fg);line-height:1.15;margin:4px 0 2px}
+.lxTV{font-size:12.5px;font-weight:800;color:var(--fg);white-space:nowrap}
+.lxTV small{font-size:10.5px}
+.lxTS{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
+.lxFoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:10px;padding:10px 12px;border-radius:12px;background:#f4f7f5;cursor:pointer;font-size:13px;font-weight:700}
+.lxFoot b{color:#1b6b3a;font-weight:900;white-space:nowrap}
+.lxLink{margin-top:9px;font-size:12.5px;color:var(--muted);cursor:pointer}
+.lxStep{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid #eef1ef;font-size:13.5px}
+.lxStep i{width:9px;height:9px;border-radius:50%;flex:none}
+.lxStep span{flex:1}
+.lxStep b{font-weight:800;white-space:nowrap}
+.lxStep b small{font-size:11px}
+.lxStep.last{border-bottom:none;background:#eefaf3;border-radius:12px;padding:11px 10px;margin-top:6px;font-weight:800}
+
+/* V372: بطاقة المحطة — مربعات متساوية ومتناسقة */
+.scVal{flex:none;background:#eef6f1;color:#1b6b3a;border:1px solid #cfe5d8;border-radius:9px;padding:6px 10px;font-weight:800;font-size:13.5px;white-space:nowrap}
+.scVal small{font-size:10.5px}
+.scG{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.scB{display:flex;flex-direction:column;justify-content:center;gap:2px;min-height:46px;padding:6px 10px;border-radius:9px;border:1px solid;min-width:0}
+.scB span{font-size:10.5px;font-weight:700;opacity:.75}
+.scB b{font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.2px}
+.scB.sN{color:#9a5d22;background:rgba(176,115,58,.08);border-color:rgba(176,115,58,.28)}
+.scB.sW{color:#2a6f97;background:rgba(42,111,151,.07);border-color:rgba(42,111,151,.24)}
+.scB.sP{color:#0b6bcb;background:#e8f3fd;border-color:#a9d3f5}
+.scB.sD{color:#2a5f8a;background:#eef3f8;border-color:#c3d5e6}
+.scB.sE{color:#8a5a1c;background:#fbf5ec;border-color:#ead6b8}
+.scB.sS{color:#1b6b3a;background:#e4f4ea;border-color:#a9d6bb}
+.scB.sX{color:#8b9691;background:#f6f8f7;border-color:#e2e7e4}
+.scMore{font-size:11px;color:var(--muted);text-align:left;margin-top:8px}
 </style>
 </head>
 <body>
@@ -656,7 +705,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='371';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='372';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2888,12 +2937,14 @@ async function loadWorkOrders(useCache){
     else if(p.consultant_signed){_stp.sign.n++;_stp.sign.v+=v;if(st==='تم الرفع في الساب')_stp.sign.sap++;}
     else{_stp.exec.n++;_stp.exec.v+=v;}});
   const _arcN=_PJ.filter(p=>_isArchived(p)).length;
-  const _stTile=(k,lbl,o,bg,fg,sub)=>`<div class="kpi" style="background:${bg};cursor:pointer;padding:10px 8px" onclick="_woShowStep('${k}')"><b style="color:${fg}">${o.n}</b><span style="font-weight:800">${lbl}</span>${PROFILE.role==='admin'?`<small style="display:block;font-weight:800;color:${fg};margin-top:4px;font-size:12px">${fmt(o.v)} ﷼</small>`:''}${sub?`<small style="display:block;color:var(--muted);margin-top:3px;font-size:11.5px">${sub}</small>`:''}</div>`;
-  const stageChips=`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
-    ${_stTile('exec','🔧 تم التنفيذ',_stp.exec,'#f6f1ea','#8a5a1c','غير موقّعة')}
-    ${_stTile('sign','✅ تم التوقيع',_stp.sign,'#eaf7ef','#1b6b3a','بانتظار PO'+(_stp.sign.sap?' · منها '+_stp.sign.sap+' في الساب':''))}
-    ${_stTile('po','🔵 تم إصدار PO',_stp.po,'#e8f1fb','#1d5fa8',_stp.po.main?'منها '+_stp.po.main+' نزل للمقاول':'')}
-  </div>${_arcN?`<div style="margin-top:8px;font-size:12.5px;color:var(--muted);cursor:pointer" onclick="_woShowStep('arch')">📦 الأرشيف (وصل المبلغ): <b>${_arcN}</b> ←</div>`:''}`;
+  const _stTile=(k,lbl,o,bg,fg,sub)=>`<div class="lxTile" style="--bg:${bg};--fg:${fg}" onclick="_woShowStep('${k}')"><div class="lxTL">${lbl}</div><div class="lxTN">${o.n}</div>${PROFILE.role==='admin'?`<div class="lxTV">${fmt(o.v)} <small>﷼</small></div>`:''}${sub?`<div class="lxTS">${sub}</div>`:''}</div>`;
+  const _stT=_stp.exec.n+_stp.sign.n+_stp.po.n||1;
+  const stageChips=`<div class="lxBar"><i style="width:${_stp.exec.n/_stT*100}%;background:#c58b3e"></i><i style="width:${_stp.sign.n/_stT*100}%;background:#2e8b57"></i><i style="width:${_stp.po.n/_stT*100}%;background:#2f74c0"></i></div>
+  <div class="lxTiles">
+    ${_stTile('exec','🔧 تم التنفيذ',_stp.exec,'#fbf5ec','#8a5a1c','غير موقّعة')}
+    ${_stTile('sign','✅ تم التوقيع',_stp.sign,'#edf8f1','#1b6b3a','بانتظار PO'+(_stp.sign.sap?' · منها '+_stp.sign.sap+' في الساب':''))}
+    ${_stTile('po','🔵 تم إصدار PO',_stp.po,'#edf3fc','#1d5fa8',_stp.po.main?'منها '+_stp.po.main+' نزل للمقاول':'')}
+  </div>${_arcN?`<div class="lxLink" onclick="_woShowStep('arch')">📦 الأرشيف (وصل المبلغ): <b>${_arcN}</b> ←</div>`:''}`;
   const _adm=PROFILE.role==='admin';
   const _vwr=PROFILE.role==='viewer';const _money=_adm||_vwr;
   const _de=PROFILE.role==='data_entry';
@@ -2919,22 +2970,30 @@ async function loadWorkOrders(useCache){
   const _sgIds=new Set(_PJ.filter(p=>p.consultant_signed&&!_isArchived(p)).map(p=>p.id));const signedVal=srows.reduce((s,e)=>s+(_sgIds.has(e.project_id)?Number(e.amount||0):0),0);
   const _secHd=_SS?`<div class="card" style="padding:12px 14px;margin-bottom:10px;background:#fffaf2;border:1.5px solid #e8a34a"><b style="font-size:15.5px;color:#7a4a12">📂 قسم ${_secName()}</b><small style="display:block;color:var(--muted);margin-top:3px">كل الأرقام والتقارير هنا تخص ${_secName()} فقط — الإجمالي لكل الأعمال في تبويب «الكل».</small></div>`:'';
   const _stLbl=_SS?('إجمالي '+_secName()):'إجمالي المحطات';
-  document.getElementById('woSummary').innerHTML=_secHd+(_adm?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div>${_sgCards(_PJ,valByP,true)}
-  <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📋 متابعة أوامر العمل</h3><div style="margin-bottom:10px">${stageChips}</div>
-    <table class="tbl"><tbody>
-    <tr><td>نصيبنا بانتظار النزول للمقاول</td><td style="text-align:left">${fmt(vPending)} ﷼</td></tr>
-    <tr><td>نزل للمقاول — بانتظار إصدار فاتورتنا</td><td style="text-align:left;color:var(--copper)">${fmt(vMain)} ﷼</td></tr>
-    <tr><td>صدرت الفاتورة — بانتظار وصوله لنا</td><td style="text-align:left">${fmt(vInv)} ﷼</td></tr>
-    <tr><td style="font-weight:800">وصل نصيبنا فعلياً ✅</td><td style="text-align:left;font-weight:800;color:var(--ok)">${fmt(vUs)} ﷼</td></tr>
-    </tbody></table></div>
-  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
+  const _tc={'غرفة':0,'بكج':0,'ميني بيلر':0,'غير محدد':0};listIds.forEach(pid=>{const p=(PROJECTS||[]).find(x=>x.id===pid)||{};let t=(p.station_type||'').trim();if(!_tc.hasOwnProperty(t))t='غير محدد';_tc[t]++;});
+  const _live=_PJ.filter(p=>!_isArchived(p));const _allPs=_live.filter(p=>_sgCat(p,'all'));const _allV=_allPs.reduce((a,p)=>a+(valByP[p.id]||0),0);
+  const _sgLine=(signedN===_allPs.length&&Math.abs(signedVal-_allV)<0.01)
+    ?`<div class="lxFoot" onclick="_woShowCat('all')"><span>✍️ إجمالي الموقّع (يشمل PO)</span><b>${signedN} محطة · ${fmt(signedVal)} ﷼</b></div>`
+    :`<div class="lxFoot" onclick="_woShowSigned()"><span>✍️ إجمالي الموقّع</span><b>${signedN} محطة · ${fmt(signedVal)} ﷼</b></div><div class="lxFoot" onclick="_woShowCat('all')"><span>📋 موقّعة + PO (الكل)</span><b>${_allPs.length} محطة · ${fmt(_allV)} ﷼</b></div>`;
+  const _pipe=[['نصيبنا بانتظار النزول للمقاول',vPending,'#9aa7a1'],['نزل للمقاول — بانتظار إصدار فاتورتنا',vMain,'#c58b3e'],['صدرت الفاتورة — بانتظار وصوله لنا',vInv,'#2f74c0'],['وصل نصيبنا فعلياً ✅',vUs,'#1f8a52']];
+  document.getElementById('woSummary').innerHTML=_secHd+(_adm?`
+  <div class="lxHero">
+    <div class="lxHL">إجمالي القيمة</div>
+    <div class="lxHV">${fmt(grand)} <small>﷼</small></div>
+    <div class="lxHR"><span class="lxHN"><b>${stationsN}</b> ${_stLbl.replace('إجمالي ','')}</span>${Object.entries(_tc).filter(([t,n])=>n||t!=='غير محدد').map(([t,n])=>`<span class="lxChip">${t} <b>${n}</b></span>`).join('')}</div>
+  </div>
+  <div class="card lxCard"><div class="lxH">📋 مراحل المحطات</div>${stageChips}${_sgLine}</div>
+  <div class="card lxCard"><div class="lxH">💰 حركة المبالغ <small>نصيبنا 75%</small></div>
+    ${_pipe.map(([l,v,c],ix)=>`<div class="lxStep${ix===3?' last':''}"><i style="background:${c}"></i><span>${l}</span><b style="color:${ix===3?'#1f8a52':ix===1?'#a8691f':'inherit'}">${fmt(v)} <small>﷼</small></b></div>`).join('')}
+  </div>
+  ${_toolsBox(`  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a4a12" onclick="auditValues(event)">🔎 تدقيق القيمة الإجمالية</button>
-  ${srHidden()?'':`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>`}
+  ${srHidden()?'':'<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>'}
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a3e12" onclick="openSignedTable('meas')">📄 الميجرات الموقّعة المختومة (PDF واحد)</button>
-  <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:_vwr?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div></div>
-  ${_de?`${_sgCards(_PJ,valByP,false)}<button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة / PO (مختصر)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a3e12" onclick="openSignedTable('meas')">📄 الميجرات الموقّعة المختومة (PDF واحد)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
+  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#12343B;border-color:#12343B" onclick="openBulkMeas()">🖨 ميجرات القائمة الحالية دفعة واحدة (<span class="bulkCnt">…</span>)</button>`)}`:_vwr?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div></div>
+  ${_de?`${_sgCards(_PJ,valByP,false)}${_toolsBox(`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة / PO (مختصر)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a3e12" onclick="openSignedTable('meas')">📄 الميجرات الموقّعة المختومة (PDF واحد)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#12343B;border-color:#12343B" onclick="openBulkMeas()">🖨 ميجرات القائمة الحالية دفعة واحدة (<span class="bulkCnt">…</span>)</button>`)}`:''}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
     <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
     ${prodRows.map(([nm,v])=>`<tr><td>${nm}</td><td style="text-align:center">${v.st.size}</td><td style="text-align:center">${v.items}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">لا إنتاج في هذه الفترة</td></tr>'}
@@ -2946,6 +3005,9 @@ async function loadWorkOrders(useCache){
 function _sgCat(p,k){const sg=!!p.consultant_signed,po=_isPO(p);return k==='nopo'?(sg&&!po):k==='all'?(sg||po):k==='po'?po:false;}
 function _woShowStep(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={exec:'unsigned',sign:'signed_nopo',po:'po',arch:'archive'}[k]||'all';renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function _woShowCat(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={nopo:'signed_nopo',all:'signed_all',po:'po'}[k];renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
+function _toolsBox(inner){const op=!!window._toolsOpen;const n=(inner.match(/<button /g)||[]).length;
+  return `<div class="card" style="padding:0;margin-bottom:13px;overflow:hidden;border:1.5px solid #c9d8cf"><button type="button" onclick="_toolsToggle(this)" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:#f3f8f5;border:none;padding:14px 16px;font-family:inherit;font-size:16px;font-weight:800;color:var(--green);cursor:pointer"><span>📂 التقارير والملفات <small style="color:var(--muted);font-weight:700">(${n})</small></span><span class="tbArr" style="transition:.2s;display:inline-block;${op?'transform:rotate(180deg)':''}">▾</span></button><div class="tbBody" style="padding:12px 12px 4px;${op?'':'display:none'}">${inner}</div></div>`;}
+function _toolsToggle(b){const body=b.nextElementSibling;const op=body.style.display==='none';body.style.display=op?'':'none';window._toolsOpen=op;const ar=b.querySelector('.tbArr');if(ar)ar.style.transform=op?'rotate(180deg)':'';}
 function _sgCards(PJ,valByP,showMoney){const live=PJ.filter(p=>!_isArchived(p));const C=[['nopo','✅ موقّعة بدون PO','#eaf7ef','#1b6b3a'],['all','📋 موقّعة + PO (الكل)','#eef4fb','#12507a'],['po','🔵 PO فقط','#e3f2fd','#0b6bcb']];
   return `<div style="font-weight:800;font-size:13.5px;margin:2px 2px 7px;color:var(--muted)">التوقيع والـ PO</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px">`+C.map(([k,l,bg,fg])=>{const ps=live.filter(p=>_sgCat(p,k));const v=ps.reduce((s,p)=>s+(valByP[p.id]||0),0);
     return `<div class="kpi" style="background:${bg};cursor:pointer" onclick="_woShowCat('${k}')"><b style="color:${fg}">${ps.length}</b><span style="font-size:11.5px">${l}</span>${showMoney?`<small style="display:block;font-weight:800;color:${fg};margin-top:4px;font-size:12px">${fmt(v)} ﷼</small>`:''}</div>`;}).join('')+`</div>`;}
@@ -3028,7 +3090,7 @@ function renderWOList(){
   const _wtl=_wt==='mini'?' · ميني بيلر':_wt==='other'?' · غرفة / بكج':'';
   const _canBulk=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');
   const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة'+_wtl+'</span>'+(_mny?'<span style="background:#eaf7ef;color:#1b6b3a;border-radius:20px;padding:4px 11px;font-weight:800;font-size:13px">القيمة الإجمالية: '+fmt(_fv)+' ﷼</span>':'')+'</div>'
-    +(_canBulk?'<button class="btn sm" style="width:100%;margin:0 0 10px;background:#12343B;border-color:#12343B" onclick="openBulkMeas()">🖨 ميجرات هذي القائمة دفعة واحدة ('+keys.length+')</button>':'');
+    ;document.querySelectorAll('.bulkCnt').forEach(e=>e.textContent=keys.length);
   box.innerHTML=cnt+keys.map(pid=>stationCard(pid,byP[pid]||[])).join('');
 }
 function confirmToggleSigned(pid,ev){if(ev){ev.stopPropagation();}const p=(PROJECTS||[]).find(x=>x.id===pid);if(!p)return;const nv=!p.consultant_signed;
@@ -3157,11 +3219,16 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   return `<div class="station${_sg?' signed':''}${_po?' po':''}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <b style="font-size:16px;line-height:1.3;display:inline-flex;align-items:center;flex-wrap:wrap">${p.name}${_po?_poBadge(24):''}</b>
-      ${_money?`<span class="pill role" style="flex:none">${fmt(tot)} ﷼</span>`:''}
+      ${_money?`<span class="scVal">${fmt(tot)} <small>﷼</small></span>`:''}
     </div>
     <div style="margin-top:3px"><small style="color:var(--muted)">${p.station_type?p.station_type+' · ':''}${es.length} بند${p.assignment?' · '+p.assignment:''}</small></div>
-    ${(p.notice_no||p.wo_number)?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px">${p.notice_no?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--copper);background:rgba(176,115,58,.10);border:1px solid rgba(176,115,58,.28);border-radius:7px;padding:3px 9px">إشعار: ${p.notice_no}</span>`:''}${p.wo_number?`<span style="display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:#2a6f97;background:rgba(42,111,151,.08);border:1px solid rgba(42,111,151,.24);border-radius:7px;padding:3px 9px">📋 أمر عمل: ${p.wo_number}</span>`:''}</div>`:''}
-    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;align-items:center"><span class="pill ${_stDone?'':'pend'}" ${_po?'style="background:#e3f2fd;color:#0b6bcb;border:1px solid #9fd0f5;font-weight:800"':_stDone?'style="background:#e7eef5;color:#2a5f8a;border:1px solid #b9cfe3"':''}>${dispStage}</span>${_sg?'<span class="pill" style="background:#d6f0e0;color:#1b6b3a;border:1px solid #9ccdb3">✅ تم التوقيع</span>':''}<span style="font-size:11px;color:var(--muted);margin-inline-start:auto">اضغط للتفاصيل ›</span></div>
+    <div class="scG">
+      <div class="scB ${p.notice_no?'sN':'sX'}"><span>إشعار</span><b>${p.notice_no||'—'}</b></div>
+      <div class="scB ${p.wo_number?'sW':'sX'}"><span>📋 أمر عمل</span><b>${p.wo_number||'—'}</b></div>
+      <div class="scB ${_po?'sP':_stDone?'sD':'sE'}"><span>المرحلة</span><b>${dispStage}</b></div>
+      <div class="scB ${_sg?'sS':'sX'}"><span>التوقيع</span><b>${_sg?'✅ تم التوقيع':'لم يوقّع'}</b></div>
+    </div>
+    <div class="scMore">اضغط للتفاصيل ›</div>
     </div>
     <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_money?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_money?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
