@@ -656,7 +656,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='368';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='369';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2932,8 +2932,9 @@ async function loadWorkOrders(useCache){
   ${srHidden()?'':`<button class="btn sm" style="width:100%;margin-bottom:8px;background:#5b3a7a" onclick="openSignReconcile()">🔖 مطابقة التواقيع (مرة واحدة)</button>`}
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button>
   <button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>
+  <button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a3e12" onclick="openSignedTable('meas')">📄 الميجرات الموقّعة المختومة (PDF واحد)</button>
   <button class="btn sm" style="width:100%;margin-bottom:13px;background:#12343B" onclick="openProductivityReport()">🖨 طباعة تقرير الإنتاجية (PDF)</button>`:_vwr?typeCard+`<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div><div class="kpi" style="background:#eaf7ef;cursor:pointer" onclick="_woShowSigned()"><b style="color:#1b6b3a">${signedN}</b><span>إجمالي الموقّع</span><small style="display:block;font-weight:800;color:#1b6b3a;margin-top:4px;font-size:12.5px">${fmt(signedVal)} ﷼</small></div><div class="kpi"><b>${fmt(grand)}</b><span>إجمالي القيمة ﷼</span></div></div><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#1f6f4a" onclick="openWorksLog()">📑 سجل الأعمال (اكسل)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة (مختصر)</button>`:typeCard+`<div class="grid2" style="margin-bottom:13px"><div class="kpi"><b>${new Set(todayRows.map(e=>e.project_id)).size}</b><span>محطات اليوم</span></div><div class="kpi"><b>${stationsN}</b><span>${_stLbl}</span></div></div>
-  ${_de?`${_sgCards(_PJ,valByP,false)}<button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة / PO (مختصر)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
+  ${_de?`${_sgCards(_PJ,valByP,false)}<button class="btn sm" style="width:100%;margin-bottom:8px;background:#2a6f6a" onclick="openSignedTable()">📋 جدول المحطات الموقّعة / PO (مختصر)</button><button class="btn sm" style="width:100%;margin-bottom:8px;background:#7a3e12" onclick="openSignedTable('meas')">📄 الميجرات الموقّعة المختومة (PDF واحد)</button><button class="btn sm" style="width:100%;margin-bottom:13px;background:#1f6f4a" onclick="openDailyReport()">📊 تقرير المقاول (اكسل)</button>`:''}
   <div class="card"><h3 style="font-size:15px;margin-bottom:10px">📊 إنتاجية كل مسؤول فرقة (${_plabel})</h3>
     <table class="tbl"><thead><tr><th>المسؤول</th><th style="text-align:center">المحطات</th><th style="text-align:center">البنود</th></tr></thead><tbody>
     ${prodRows.map(([nm,v])=>`<tr><td>${nm}</td><td style="text-align:center">${v.st.size}</td><td style="text-align:center">${v.items}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center;color:var(--muted)">لا إنتاج في هذه الفترة</td></tr>'}
@@ -3675,8 +3676,8 @@ async function exportWorksLog(){
 /* ===== WORKSLOG END ===== */
 
 /* ===== SIGNED TABLE — جدول مختصر للمحطات الموقّعة: م + رقم المحطة + رقم الإشعار + رقم أمر العمل + القيمة ===== */
-function openSignedTable(){window._sttMode='all';window._sttSel=[];window._sttPick=null;
-  openModal(`<h3 style="margin:0 0 10px">📋 جدول المحطات الموقّعة (مختصر)${_secTag()} <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
+function openSignedTable(kind){window._sttKind=kind==='meas'?'meas':'xlsx';const _isM=window._sttKind==='meas';window._sttMode='all';window._sttSel=[];window._sttPick=null;
+  openModal(`<h3 style="margin:0 0 10px">${_isM?'📄 الميجرات الموقّعة المختومة (PDF)':'📋 جدول المحطات الموقّعة (مختصر)'}${_secTag()} <span style="font-size:11px;color:var(--muted);font-weight:700">V${APP_VER}</span></h3>
    <div class="seg" style="margin-bottom:10px;flex-wrap:wrap"><button id="sttTab_nopo" onclick="sttMode('nopo')">موقّعة بدون PO</button><button class="on" id="sttTab_all" onclick="sttMode('all')">موقّعة + PO (الكل)</button><button id="sttTab_po" onclick="sttMode('po')">PO فقط</button><button id="sttTab_manual" onclick="sttMode('manual')">تحديد يدوي</button></div>
    <div id="sttAll"><p id="sttDesc" style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 10px"></p></div>
    <div id="sttMan" style="display:none">
@@ -3686,12 +3687,13 @@ function openSignedTable(){window._sttMode='all';window._sttSel=[];window._sttPi
      <div id="stt_list" style="display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 8px"></div>
      <p style="color:var(--muted);font-size:12.5px;line-height:1.7;margin:0 0 10px">أضف المحطات اللي تبيها في الجدول واحدة واحدة.</p>
    </div>
-   <button class="btn" id="sttBtn" onclick="exportSignedTable()">⬇️ تصدير اكسل</button>
+   <div id="smOut"></div>
+   <button class="btn" id="sttBtn" onclick="${_isM?'prepSignedMeas()':'exportSignedTable()'}">${_isM?'📄 تجهيز ملف الميجرات PDF':'⬇️ تصدير اكسل'}</button>
    <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);sttMode('all');}
 const _STT_DESC={nopo:'المحطات الموقّعة اللي لسه ما صدر لها PO.',all:'كل المحطات الموقّعة + كل اللي صدر لها PO — جدول كامل شامل.',po:'المحطات اللي صدر لها PO فقط.'};
 function sttMode(m){window._sttMode=m;['nopo','all','po','manual'].forEach(k=>{const b=document.getElementById('sttTab_'+k);if(b)b.classList.toggle('on',k===m);});
-  const d=document.getElementById('sttDesc');if(d)d.textContent=(_STT_DESC[m]||'')+(PROFILE.role==='admin'?' الأعمدة: رقم المحطة + الإشعار + أمر العمل + القيمة.':' الأعمدة: رقم المحطة + الإشعار + أمر العمل.');
-  document.getElementById('sttAll').style.display=m!=='manual'?'block':'none';document.getElementById('sttMan').style.display=m==='manual'?'block':'none';}
+  const d=document.getElementById('sttDesc');if(d)d.textContent=(_STT_DESC[m]||'')+(window._sttKind==='meas'?' يجمع صور الميجر الموقّع والمختوم (المسح الضوئي) لكل محطة في ملف PDF واحد — صفحة لكل ورقة، بنفس ترتيب جدول الإكسل.':PROFILE.role==='admin'?' الأعمدة: رقم المحطة + الإشعار + أمر العمل + القيمة.':' الأعمدة: رقم المحطة + الإشعار + أمر العمل.');
+  document.getElementById('sttAll').style.display=m!=='manual'?'block':'none';document.getElementById('sttMan').style.display=m==='manual'?'block':'none';const o=document.getElementById('smOut');if(o)o.innerHTML='';const b=document.getElementById('sttBtn');if(b)b.style.display='';}
 function _sttAddProj(p){window._sttSel=window._sttSel||[];const key='pid:'+p.id;if(window._sttSel.some(s=>s.key===key))return false;const wo=String(p.wo_number||'').trim();window._sttSel.push({key,pid:p.id,label:(p.code||'—')+(wo?' · '+wo:'')});return true;}
 function sttAdd(){const inp=document.getElementById('stt_input');const raw=_drNorm(inp.value);const nums=(raw.match(/\d+/g)||[]);window._sttSel=window._sttSel||[];
   let added=0,nf=[],multi=null;
@@ -3707,6 +3709,62 @@ function sttRenderPick(){const box=document.getElementById('stt_pick');if(!box)r
 function sttDel(k){window._sttSel=(window._sttSel||[]).filter(x=>x.key!==k);sttRenderList();}
 function sttRenderList(){const box=document.getElementById('stt_list');if(!box)return;const list=window._sttSel||[];
   box.innerHTML=list.length?list.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:13px">${s.label}<span onclick="sttDel('${s.key}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف محطة بعد</span>';}
+function _sttStations(mode){let pidSet;
+  if(mode==='manual'){const sel=window._sttSel||[];if(!sel.length){toast('أضف محطة واحدة على الأقل');return null;}pidSet=new Set(sel.map(s=>s.pid));}
+  else{const SS=_secSet();const sg=(PROJECTS||[]).filter(p=>_sgCat(p,mode)&&(!SS||SS.has(p.id)));if(!sg.length){toast((mode==='po'?'لا توجد محطات فيها PO':mode==='nopo'?'لا توجد محطات موقّعة بدون PO':'لا توجد محطات موقّعة أو فيها PO')+(SS?' في قسم '+_secName():''));return null;}pidSet=new Set(sg.map(p=>p.id));}
+  const st=[...pidSet].map(id=>(PROJECTS||[]).find(p=>p.id===id)).filter(Boolean);
+  st.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))||String(a.code||'').localeCompare(String(b.code||'')));return st;}
+/* ===== V369: الميجرات الموقّعة المختومة في PDF واحد (صور المسح الضوئي phase=meas) ===== */
+const _SM_PART_PAGES=50;
+async function prepSignedMeas(){
+  const mode=window._sttMode||'all',btn=document.getElementById('sttBtn'),out=document.getElementById('smOut');
+  const stations=_sttStations(mode);if(!stations)return;
+  if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span> جارٍ فحص الميجرات…';}
+  try{const ids=stations.map(p=>p.id);const rows=[];
+    for(let i=0;i<ids.length;i+=100){const ch=ids.slice(i,i+100);
+      const{data,error}=await sb.from('station_photos').select('project_id,photo,created_at').eq('phase','meas').in('project_id',ch).order('created_at');
+      if(error)throw error;(data||[]).forEach(r=>rows.push(r));}
+    const by={};rows.forEach(r=>{if(!ids.includes(r.project_id))return;(by[r.project_id]=by[r.project_id]||[]).push(r.photo);});
+    const have=stations.filter(p=>(by[p.id]||[]).length),miss=stations.filter(p=>!(by[p.id]||[]).length);
+    const parts=[];let cur=[],pg=0;
+    have.forEach(p=>{const n=by[p.id].length;if(cur.length&&pg+n>_SM_PART_PAGES){parts.push(cur);cur=[];pg=0;}cur.push(p);pg+=n;});if(cur.length)parts.push(cur);
+    const pages=have.reduce((s,p)=>s+by[p.id].length,0);
+    const secW=_secCur()==='mini'?'الميني بيلر':_secCur()==='other'?'المحطات':'كل المحطات';
+    const catW={nopo:'موقّعة بدون PO',all:'موقّعة + PO',po:'PO فقط',manual:'محطات مختارة'}[mode]||'';
+    window._smJob={by,parts,base:'ميجرات موقّعة - '+secW+' - '+catW};
+    const chip=p=>`<span style="display:inline-block;background:#fdecea;color:#a12b20;border:1px solid #f1b8b0;border-radius:8px;padding:3px 8px;margin:0 0 5px 5px;font-weight:800;font-size:12.5px">${_stEsc(p.code||p.name||'—')}${p.wo_number?' · '+_stEsc(p.wo_number):''}</span>`;
+    out.innerHTML=`<div class="card" style="padding:12px;margin:4px 0 10px;background:#f7faf8">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="pill ok">✅ لها ميجر: ${have.length} محطة</span><span class="pill" style="background:#e6f0f6;color:#2a6f97">📄 ${pages} صفحة</span>${miss.length?`<span class="pill susp" style="background:#fdecea;color:#a12b20">⚠ بدون ميجر: ${miss.length}</span>`:''}</div>
+      ${parts.length?parts.map((pt,i)=>{const n=pt.reduce((s,p)=>s+by[p.id].length,0);return `<button class="btn" id="smPart${i}" style="margin-bottom:7px;background:#7a3e12" onclick="buildSignedMeasPart(${i})">⬇️ ${parts.length>1?'الجزء '+(i+1)+' من '+parts.length+' — ':''}${pt.length} محطة · ${n} صفحة</button>`;}).join('')+(parts.length>1?`<small style="display:block;color:var(--muted);margin-bottom:6px">الملف مقسوم أجزاء (كل جزء حوالي ${_SM_PART_PAGES} صفحة) عشان يفتح بسرعة على الجوال ويقبله الواتساب.</small>`:''):'<div class="empty">ما فيه ولا محطة لها صورة ميجر موقّع</div>'}
+      ${miss.length?`<div style="margin-top:8px;font-size:12.5px;font-weight:800;color:#a12b20;margin-bottom:6px">هذي المحطات موقّعة لكن ما انرفع لها صورة الميجر المختوم — ما راح تدخل في الملف:</div><div>${miss.map(chip).join('')}</div>`:''}
+    </div>`;
+    if(btn){btn.style.display='none';btn.disabled=false;}
+  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='📄 تجهيز ملف الميجرات PDF';}}
+}
+async function _smImg(path){
+  const{data:blob,error}=await sb.storage.from('photos').download(path);if(error||!blob)throw error||new Error('download');
+  let bmp,u=null;try{bmp=await createImageBitmap(blob,{imageOrientation:'from-image'});}catch(_){u=URL.createObjectURL(blob);bmp=await new Promise((res,rej)=>{const g=new Image();g.onload=()=>res(g);g.onerror=rej;g.src=u;});}
+  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;const MAX=2400,k=Math.min(1,MAX/Math.max(w0,h0));const w=Math.round(w0*k),h=Math.round(h0*k);
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(bmp,0,0,w,h);try{bmp.close&&bmp.close();}catch(_){}if(u)URL.revokeObjectURL(u);
+  return{dataUrl:c.toDataURL('image/jpeg',0.88),w,h};}
+async function buildSignedMeasPart(i){
+  const J=window._smJob;if(!J)return;const pt=J.parts[i];const btn=document.getElementById('smPart'+i);const lbl=btn?btn.innerHTML:'';
+  const paths=[];pt.forEach(p=>J.by[p.id].forEach(ph=>paths.push(ph)));
+  if(btn){btn.disabled=true;}
+  try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;let pdf=null,done=0,fail=0;const res=new Array(paths.length);
+    const upd=()=>{if(btn)btn.innerHTML='<span class="spin"></span> جارٍ التجهيز '+done+' / '+paths.length;};upd();
+    let nx=0;await Promise.all(Array.from({length:Math.min(5,paths.length)},async()=>{while(nx<paths.length){const k=nx++;try{res[k]=await _smImg(paths[k]);}catch(_){res[k]=null;fail++;}done++;upd();}}));
+    for(const im of res){if(!im)continue;const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
+      if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
+      const m=3,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
+      pdf.addImage(im.dataUrl,'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih,undefined,'FAST');}
+    if(!pdf){toast('تعذّر تحميل صور الميجر');if(btn){btn.disabled=false;btn.innerHTML=lbl;}return;}
+    const nm=J.base+(J.parts.length>1?' (جزء '+(i+1)+' من '+J.parts.length+')':'')+'.pdf';
+    pdf.save(nm.replace(/[\\/:*?"<>|]/g,'_'));
+    if(btn){btn.disabled=false;btn.innerHTML='✅ تم — '+lbl.replace(/^⬇️ /,'');btn.style.background='#1f6f4a';}
+    toast('تم تجهيز الملف ✓'+(fail?' — تعذّر تحميل '+fail+' صورة':''));
+  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.innerHTML=lbl;}}
+}
 async function exportSignedTable(){
   const mode=window._sttMode||'all',btn=document.getElementById('sttBtn');
   let pidSet;
