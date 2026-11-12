@@ -337,6 +337,44 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 .scB.sS{color:#1b6b3a;background:#e4f4ea;border-color:#a9d6bb}
 .scB.sX{color:#8b9691;background:#f6f8f7;border-color:#e2e7e4}
 .scMore{font-size:11px;color:var(--muted);text-align:left;margin-top:8px}
+
+/* V373: نسخة نحيفة مضغوطة */
+.lxCard{padding:11px 11px 9px!important;margin-bottom:10px!important}
+.lxH{font-size:14px!important;margin-bottom:7px!important}
+.lxBar{height:5px!important;margin-bottom:9px!important}
+.lxG4{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lxTot{background:linear-gradient(135deg,#0d4d38,#17774f);color:#fff;border-radius:10px;padding:7px 9px;min-height:60px;display:flex;flex-direction:column;justify-content:center}
+.lxTot .lxTL{color:#d9efe4}
+.lxTot .lxTN{color:#fff;font-size:17px}
+.lxTot .lxTN small{font-size:10px;opacity:.85}
+.lxTot .lxTS{color:#cfe8dc}
+.lxTile{border-radius:10px!important;padding:7px 9px!important;min-height:60px;text-align:right!important;display:flex;flex-direction:column;justify-content:center}
+.lxTL{font-size:11px!important;font-weight:800}
+.lxTN{font-size:19px!important;line-height:1.15!important;margin:2px 0 1px!important;font-weight:900}
+.lxTile .lxTN{display:flex;align-items:baseline;gap:6px}
+.lxTV{font-size:11px!important;font-weight:800}
+.lxTS{font-size:10px!important;margin-top:1px!important;line-height:1.3!important;color:var(--muted)}
+.lxTypes{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+.lxTypes span{background:#f2f5f3;border:1px solid #e1e8e4;border-radius:7px;padding:3px 8px;font-size:11px;font-weight:700;color:#4a5a53}
+.lxTypes b{color:var(--green);font-weight:900}
+.lxFoot{margin-top:7px!important;padding:7px 10px!important;border-radius:9px!important;font-size:12px!important}
+.lxFoot small{font-size:10.5px;color:var(--muted);font-weight:700}
+.lxLink{margin-top:6px!important;font-size:11.5px!important}
+.lxStep{padding:6px 2px!important;font-size:12.5px!important;gap:8px!important}
+.lxStep i{width:7px!important;height:7px!important}
+.lxStep.last{padding:7px 9px!important;margin-top:4px!important;border-radius:9px!important}
+/* بطاقة المحطة النحيفة */
+.station{margin-bottom:7px!important;border-radius:11px!important}
+.station>.h{padding:8px 10px!important}
+.scName{font-size:14px;line-height:1.25;display:inline-flex;align-items:center;gap:4px;flex-wrap:wrap}
+.scSub{font-size:11px;color:var(--muted);margin-top:1px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.scVal{border-radius:7px!important;padding:3px 8px!important;font-size:12px!important}
+.scVal small{font-size:9.5px!important}
+.scG{gap:5px!important;margin-top:6px!important}
+.scB{flex-direction:row!important;align-items:center!important;justify-content:space-between!important;gap:6px!important;min-height:27px!important;padding:3px 8px!important;border-radius:7px!important}
+.scB span{font-size:10px!important;white-space:nowrap}
+.scB b{font-size:11.5px!important}
+.scMore{font-size:10px!important;margin-top:0!important;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -705,7 +743,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='372';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='373';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2973,16 +3011,21 @@ async function loadWorkOrders(useCache){
   const _tc={'غرفة':0,'بكج':0,'ميني بيلر':0,'غير محدد':0};listIds.forEach(pid=>{const p=(PROJECTS||[]).find(x=>x.id===pid)||{};let t=(p.station_type||'').trim();if(!_tc.hasOwnProperty(t))t='غير محدد';_tc[t]++;});
   const _live=_PJ.filter(p=>!_isArchived(p));const _allPs=_live.filter(p=>_sgCat(p,'all'));const _allV=_allPs.reduce((a,p)=>a+(valByP[p.id]||0),0);
   const _sgLine=(signedN===_allPs.length&&Math.abs(signedVal-_allV)<0.01)
-    ?`<div class="lxFoot" onclick="_woShowCat('all')"><span>✍️ إجمالي الموقّع (يشمل PO)</span><b>${signedN} محطة · ${fmt(signedVal)} ﷼</b></div>`
+    ?`<div class="lxFoot" onclick="_woShowCat('all')"><span>✍️ إجمالي الموقّع <small>(يشمل PO)</small></span><b>${signedN} محطة · ${fmt(signedVal)} ﷼</b></div>`
     :`<div class="lxFoot" onclick="_woShowSigned()"><span>✍️ إجمالي الموقّع</span><b>${signedN} محطة · ${fmt(signedVal)} ﷼</b></div><div class="lxFoot" onclick="_woShowCat('all')"><span>📋 موقّعة + PO (الكل)</span><b>${_allPs.length} محطة · ${fmt(_allV)} ﷼</b></div>`;
   const _pipe=[['نصيبنا بانتظار النزول للمقاول',vPending,'#9aa7a1'],['نزل للمقاول — بانتظار إصدار فاتورتنا',vMain,'#c58b3e'],['صدرت الفاتورة — بانتظار وصوله لنا',vInv,'#2f74c0'],['وصل نصيبنا فعلياً ✅',vUs,'#1f8a52']];
   document.getElementById('woSummary').innerHTML=_secHd+(_adm?`
-  <div class="lxHero">
-    <div class="lxHL">إجمالي القيمة</div>
-    <div class="lxHV">${fmt(grand)} <small>﷼</small></div>
-    <div class="lxHR"><span class="lxHN"><b>${stationsN}</b> ${_stLbl.replace('إجمالي ','')}</span>${Object.entries(_tc).filter(([t,n])=>n||t!=='غير محدد').map(([t,n])=>`<span class="lxChip">${t} <b>${n}</b></span>`).join('')}</div>
+  <div class="card lxCard">
+    <div class="lxBar"><i style="width:${_stp.exec.n/_stT*100}%;background:#c58b3e"></i><i style="width:${_stp.sign.n/_stT*100}%;background:#2e8b57"></i><i style="width:${_stp.po.n/_stT*100}%;background:#2f74c0"></i></div>
+    <div class="lxG4">
+      <div class="lxTot"><div class="lxTL">💰 إجمالي القيمة</div><div class="lxTN">${fmt(grand)} <small>﷼</small></div><div class="lxTS">${stationsN} ${_stLbl.replace('إجمالي ','')}</div></div>
+      ${_stTile('exec','🔧 تم التنفيذ',_stp.exec,'#fbf5ec','#8a5a1c','غير موقّعة')}
+      ${_stTile('sign','✅ تم التوقيع',_stp.sign,'#edf8f1','#1b6b3a','بانتظار PO'+(_stp.sign.sap?' · '+_stp.sign.sap+' في الساب':''))}
+      ${_stTile('po','🔵 تم إصدار PO',_stp.po,'#edf3fc','#1d5fa8',_stp.po.main?_stp.po.main+' نزل للمقاول':'')}
+    </div>
+    <div class="lxTypes">${Object.entries(_tc).filter(([t,n])=>n||t!=='غير محدد').map(([t,n])=>`<span>${t} <b>${n}</b></span>`).join('')}</div>
+    ${_sgLine}${_arcN?`<div class="lxLink" onclick="_woShowStep('arch')">📦 الأرشيف (وصل المبلغ): <b>${_arcN}</b> ←</div>`:''}
   </div>
-  <div class="card lxCard"><div class="lxH">📋 مراحل المحطات</div>${stageChips}${_sgLine}</div>
   <div class="card lxCard"><div class="lxH">💰 حركة المبالغ <small>نصيبنا 75%</small></div>
     ${_pipe.map(([l,v,c],ix)=>`<div class="lxStep${ix===3?' last':''}"><i style="background:${c}"></i><span>${l}</span><b style="color:${ix===3?'#1f8a52':ix===1?'#a8691f':'inherit'}">${fmt(v)} <small>﷼</small></b></div>`).join('')}
   </div>
@@ -3006,7 +3049,7 @@ function _sgCat(p,k){const sg=!!p.consultant_signed,po=_isPO(p);return k==='nopo
 function _woShowStep(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={exec:'unsigned',sign:'signed_nopo',po:'po',arch:'archive'}[k]||'all';renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function _woShowCat(k){const f=document.getElementById('wo_filter');if(!f)return;f.value={nopo:'signed_nopo',all:'signed_all',po:'po'}[k];renderWOList();const b=document.getElementById('woList');if(b)b.scrollIntoView({behavior:'smooth',block:'start'});}
 function _toolsBox(inner){const op=!!window._toolsOpen;const n=(inner.match(/<button /g)||[]).length;
-  return `<div class="card" style="padding:0;margin-bottom:13px;overflow:hidden;border:1.5px solid #c9d8cf"><button type="button" onclick="_toolsToggle(this)" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:#f3f8f5;border:none;padding:14px 16px;font-family:inherit;font-size:16px;font-weight:800;color:var(--green);cursor:pointer"><span>📂 التقارير والملفات <small style="color:var(--muted);font-weight:700">(${n})</small></span><span class="tbArr" style="transition:.2s;display:inline-block;${op?'transform:rotate(180deg)':''}">▾</span></button><div class="tbBody" style="padding:12px 12px 4px;${op?'':'display:none'}">${inner}</div></div>`;}
+  return `<div class="card" style="padding:0;margin-bottom:13px;overflow:hidden;border:1.5px solid #c9d8cf"><button type="button" onclick="_toolsToggle(this)" style="width:100%;display:flex;justify-content:space-between;align-items:center;background:#f3f8f5;border:none;padding:10px 14px;font-family:inherit;font-size:14px;font-weight:800;color:var(--green);cursor:pointer"><span>📂 التقارير والملفات <small style="color:var(--muted);font-weight:700">(${n})</small></span><span class="tbArr" style="transition:.2s;display:inline-block;${op?'transform:rotate(180deg)':''}">▾</span></button><div class="tbBody" style="padding:12px 12px 4px;${op?'':'display:none'}">${inner}</div></div>`;}
 function _toolsToggle(b){const body=b.nextElementSibling;const op=body.style.display==='none';body.style.display=op?'':'none';window._toolsOpen=op;const ar=b.querySelector('.tbArr');if(ar)ar.style.transform=op?'rotate(180deg)':'';}
 function _sgCards(PJ,valByP,showMoney){const live=PJ.filter(p=>!_isArchived(p));const C=[['nopo','✅ موقّعة بدون PO','#eaf7ef','#1b6b3a'],['all','📋 موقّعة + PO (الكل)','#eef4fb','#12507a'],['po','🔵 PO فقط','#e3f2fd','#0b6bcb']];
   return `<div style="font-weight:800;font-size:13.5px;margin:2px 2px 7px;color:var(--muted)">التوقيع والـ PO</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px">`+C.map(([k,l,bg,fg])=>{const ps=live.filter(p=>_sgCat(p,k));const v=ps.reduce((s,p)=>s+(valByP[p.id]||0),0);
@@ -3218,17 +3261,16 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
   const dispStage=stage;const _stDone=/تم التنفيذ|رفع|PO|نزل المبلغ|وصل المبلغ/.test(dispStage);const _po=_isPO(p);
   return `<div class="station${_sg?' signed':''}${_po?' po':''}" id="${id}"><div class="h" onclick="document.getElementById('${id}').classList.toggle('open')">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-      <b style="font-size:16px;line-height:1.3;display:inline-flex;align-items:center;flex-wrap:wrap">${p.name}${_po?_poBadge(24):''}</b>
+      <b class="scName">${p.name}${_po?_poBadge(18):''}</b>
       ${_money?`<span class="scVal">${fmt(tot)} <small>﷼</small></span>`:''}
     </div>
-    <div style="margin-top:3px"><small style="color:var(--muted)">${p.station_type?p.station_type+' · ':''}${es.length} بند${p.assignment?' · '+p.assignment:''}</small></div>
+    <div class="scSub"><span>${p.station_type?p.station_type+' · ':''}${es.length} بند${p.assignment?' · '+p.assignment:''}</span><span class="scMore">التفاصيل ›</span></div>
     <div class="scG">
       <div class="scB ${p.notice_no?'sN':'sX'}"><span>إشعار</span><b>${p.notice_no||'—'}</b></div>
       <div class="scB ${p.wo_number?'sW':'sX'}"><span>📋 أمر عمل</span><b>${p.wo_number||'—'}</b></div>
       <div class="scB ${_po?'sP':_stDone?'sD':'sE'}"><span>المرحلة</span><b>${dispStage}</b></div>
       <div class="scB ${_sg?'sS':'sX'}"><span>التوقيع</span><b>${_sg?'✅ تم التوقيع':'لم يوقّع'}</b></div>
     </div>
-    <div class="scMore">اضغط للتفاصيل ›</div>
     </div>
     <div class="body"><table class="tbl"><thead><tr><th>البند</th><th style="text-align:center">الكمية</th>${_money?'<th style="text-align:center">سعر الوحدة</th><th style="text-align:left">الإجمالي</th>':''}</tr></thead><tbody>
     ${es.map(e=>`<tr><td>${e.item_code?e.item_code+' - ':''}${e.item_name_full||e.item_name}</td><td style="text-align:center">${fmt(e.qty)} ${e.unit||''}</td>${_money?`<td style="text-align:center">${fmt(e.rate)}</td><td style="text-align:left">${fmt(e.amount)}</td>`:''}</tr>`).join('')}
