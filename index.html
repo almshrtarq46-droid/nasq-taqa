@@ -656,7 +656,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='369';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='370';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -2966,22 +2966,24 @@ function _secTag(){const n=_secName();return n?' <span style="font-size:12px;bac
 function _woTypeGet(){if(window._woType)return window._woType;let t='all';try{t=sessionStorage.getItem('nasqWoType')||'all';}catch(_){}window._woType=t;return t;}
 function woType(t){window._woType=t;try{sessionStorage.setItem('nasqWoType',t);}catch(_){}loadWorkOrders(true);}
 /* ===== ميجرات دفعة واحدة (ZIP) للقائمة الظاهرة — نفس ملف الميجر الفردي بالضبط ===== */
-const _BULK_PART=50;
+const _BULK_PART=50;const _bulkPS=()=>(window._bulk&&window._bulk.split)?_BULK_PART:100000;
 function openBulkMeas(){const ids=(window._woKeys||[]).slice();if(!ids.length){toast('القائمة فاضية');return;}
   const wt=_woTypeGet(),fs=document.getElementById('wo_filter');const fl=fs&&fs.selectedIndex>=0?fs.options[fs.selectedIndex].text:'';
   const label=(wt==='mini'?'ميني بيلر':wt==='other'?'غرفة وبكج':'كل المحطات')+(fl&&fs.value!=='all'?' - '+fl:'');
-  window._bulk={ids,label,tpl:(window._bulk&&window._bulk.tpl)||'pdc',done:{},busy:false};_bulkRender();}
+  window._bulk={ids,label,tpl:(window._bulk&&window._bulk.tpl)||'pdc',done:{},busy:false,split:false};_bulkRender();}
+function _bulkSplit(v){if(!window._bulk||window._bulk.busy)return;window._bulk.split=v;window._bulk.done={};_bulkRender();}
 function _bulkSetTpl(t){if(!window._bulk||window._bulk.busy)return;window._bulk.tpl=t;window._bulk.done={};_bulkRender();}
-function _bulkRender(){const B=window._bulk;const n=B.ids.length,parts=Math.ceil(n/_BULK_PART);
-  const btns=Array.from({length:parts},(_,k)=>{const a=k*_BULK_PART+1,b=Math.min(n,(k+1)*_BULK_PART);const d=B.done[k];
+function _bulkRender(){const B=window._bulk;const PS=_bulkPS();const n=B.ids.length,parts=Math.ceil(n/PS);
+  const btns=Array.from({length:parts},(_,k)=>{const a=k*PS+1,b=Math.min(n,(k+1)*PS);const d=B.done[k];
     return `<button class="btn" id="bulkBtn${k}" style="margin-bottom:8px;${d?'background:#1b6b3a':''}" onclick="bulkMeasPart(${k})">${d?'✓ ':'⬇️ '}${parts>1?'الجزء '+(k+1)+' (محطات '+a+'–'+b+')':'تجهيز وتحميل الميجرات ('+n+')'}</button>`;}).join('');
   openModal(`<h3 style="margin-bottom:4px">🖨 ميجرات دفعة واحدة</h3><small style="color:var(--muted);display:block;margin-bottom:12px">${n} محطة — ${_xmlEsc(B.label)} · ملف ZIP فيه ميجر لكل محطة</small>
     <div class="seg" style="margin-bottom:12px"><button class="${B.tpl==='pdc'?'on':''}" onclick="_bulkSetTpl('pdc')">ميجر pdc</button><button class="${B.tpl==='old'?'on':''}" onclick="_bulkSetTpl('old')">ميجر</button></div>
-    ${parts>1?'<div class="hint" style="margin-bottom:10px">القائمة كبيرة، فقسّمتها أجزاء كل جزء '+_BULK_PART+' محطة عشان الملف ما يثقل على الجوال. حمّل كل جزء لحاله.</div>':''}
+    ${n>_BULK_PART?`<div class="seg" style="margin-bottom:10px"><button class="${B.split?'':'on'}" onclick="_bulkSplit(false)">ملف واحد (${n})</button><button class="${B.split?'on':''}" onclick="_bulkSplit(true)">أجزاء كل ${_BULK_PART}</button></div>`:''}
+    ${parts>1?'<div class="hint" style="margin-bottom:10px">مقسوم أجزاء كل جزء '+_BULK_PART+' محطة. حمّل كل جزء لحاله.</div>':''}
     ${btns}<div id="bulkProg" style="font-size:13px;color:var(--copper);font-weight:700;text-align:center;margin:6px 0"></div><div id="bulkRes"></div>
     <button class="link" style="display:block;margin:12px auto 0" onclick="if(!window._bulk.busy)closeModal()">إغلاق</button>`);}
 async function bulkMeasPart(k){const B=window._bulk;if(!B||B.busy)return;B.busy=true;
-  const ids=B.ids.slice(k*_BULK_PART,(k+1)*_BULK_PART);const prog=document.getElementById('bulkProg'),resBox=document.getElementById('bulkRes');
+  const PS=_bulkPS();const ids=B.ids.slice(k*PS,(k+1)*PS);const prog=document.getElementById('bulkProg'),resBox=document.getElementById('bulkRes');
   const btn=document.getElementById('bulkBtn'+k);if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   const setP=t=>{const e=document.getElementById('bulkProg');if(e)e.textContent=t;};
   try{await ensureLib('jszip');setP('جارٍ التحضير…');try{await loadCatalog();}catch(_){}if(!(MATERIALS&&MATERIALS.length)){try{await loadMaterials();}catch(_){}}
@@ -2994,7 +2996,7 @@ async function bulkMeasPart(k){const B=window._bulk;if(!B||B.busy)return;B.busy=
     res.forEach(r=>{if(!r||r.err||!r.blob)return;let nm=r.name;if(used[nm]){nm=nm.replace(/\.xlsx$/,'')+'_'+(r.notice||(used[r.name]+1))+'.xlsx';}used[r.name]=(used[r.name]||0)+1;zip.file(nm,r.blob);ok++;});
     if(!ok)throw new Error('ما انجهز أي ميجر');
     const out=await zip.generateAsync({type:'blob',compression:'STORE'});
-    const parts=Math.ceil(B.ids.length/_BULK_PART);
+    const parts=Math.ceil(B.ids.length/PS);
     const zname=(B.tpl==='pdc'?'ميجرات pdc':'ميجرات')+' - '+B.label.replace(/[\\/:*?"<>|]/g,'_')+(parts>1?' - جزء '+(k+1):'')+' ('+ok+').zip';
     const url=URL.createObjectURL(out);const a=document.createElement('a');a.href=url;a.download=zname;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),120000);
     B.done[k]=true;
@@ -3726,44 +3728,51 @@ async function prepSignedMeas(){
       if(error)throw error;(data||[]).forEach(r=>rows.push(r));}
     const by={};rows.forEach(r=>{if(!ids.includes(r.project_id))return;(by[r.project_id]=by[r.project_id]||[]).push(r.photo);});
     const have=stations.filter(p=>(by[p.id]||[]).length),miss=stations.filter(p=>!(by[p.id]||[]).length);
-    const parts=[];let cur=[],pg=0;
-    have.forEach(p=>{const n=by[p.id].length;if(cur.length&&pg+n>_SM_PART_PAGES){parts.push(cur);cur=[];pg=0;}cur.push(p);pg+=n;});if(cur.length)parts.push(cur);
     const pages=have.reduce((s,p)=>s+by[p.id].length,0);
     const secW=_secCur()==='mini'?'الميني بيلر':_secCur()==='other'?'المحطات':'كل المحطات';
     const catW={nopo:'موقّعة بدون PO',all:'موقّعة + PO',po:'PO فقط',manual:'محطات مختارة'}[mode]||'';
-    window._smJob={by,parts,base:'ميجرات موقّعة - '+secW+' - '+catW};
-    const chip=p=>`<span style="display:inline-block;background:#fdecea;color:#a12b20;border:1px solid #f1b8b0;border-radius:8px;padding:3px 8px;margin:0 0 5px 5px;font-weight:800;font-size:12.5px">${_stEsc(p.code||p.name||'—')}${p.wo_number?' · '+_stEsc(p.wo_number):''}</span>`;
-    out.innerHTML=`<div class="card" style="padding:12px;margin:4px 0 10px;background:#f7faf8">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="pill ok">✅ لها ميجر: ${have.length} محطة</span><span class="pill" style="background:#e6f0f6;color:#2a6f97">📄 ${pages} صفحة</span>${miss.length?`<span class="pill susp" style="background:#fdecea;color:#a12b20">⚠ بدون ميجر: ${miss.length}</span>`:''}</div>
-      ${parts.length?parts.map((pt,i)=>{const n=pt.reduce((s,p)=>s+by[p.id].length,0);return `<button class="btn" id="smPart${i}" style="margin-bottom:7px;background:#7a3e12" onclick="buildSignedMeasPart(${i})">⬇️ ${parts.length>1?'الجزء '+(i+1)+' من '+parts.length+' — ':''}${pt.length} محطة · ${n} صفحة</button>`;}).join('')+(parts.length>1?`<small style="display:block;color:var(--muted);margin-bottom:6px">الملف مقسوم أجزاء (كل جزء حوالي ${_SM_PART_PAGES} صفحة) عشان يفتح بسرعة على الجوال ويقبله الواتساب.</small>`:''):'<div class="empty">ما فيه ولا محطة لها صورة ميجر موقّع</div>'}
-      ${miss.length?`<div style="margin-top:8px;font-size:12.5px;font-weight:800;color:#a12b20;margin-bottom:6px">هذي المحطات موقّعة لكن ما انرفع لها صورة الميجر المختوم — ما راح تدخل في الملف:</div><div>${miss.map(chip).join('')}</div>`:''}
-    </div>`;
+    window._smJob={by,have,miss,pages,split:false,base:'ميجرات موقّعة - '+secW+' - '+catW};_smRender();
     if(btn){btn.style.display='none';btn.disabled=false;}
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='📄 تجهيز ملف الميجرات PDF';}}
+}
+function _smSplit(v){const J=window._smJob;if(!J||J.busy)return;J.split=v;_smRender();}
+function _smRender(){const J=window._smJob,out=document.getElementById('smOut');if(!J||!out)return;const{by,have,miss,pages}=J;
+    const parts=[];let cur=[],pg=0;const lim=J.split?_SM_PART_PAGES:1e9;
+    have.forEach(p=>{const n=by[p.id].length;if(cur.length&&pg+n>lim){parts.push(cur);cur=[];pg=0;}cur.push(p);pg+=n;});if(cur.length)parts.push(cur);J.parts=parts;
+    window._smChip=p=>`<span style="display:inline-block;background:#fdecea;color:#a12b20;border:1px solid #f1b8b0;border-radius:8px;padding:3px 8px;margin:0 0 5px 5px;font-weight:800;font-size:12.5px">${_stEsc(p.code||p.name||'—')}${p.wo_number?' · '+_stEsc(p.wo_number):''}</span>`;
+    out.innerHTML=`<div class="card" style="padding:12px;margin:4px 0 10px;background:#f7faf8">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="pill ok">✅ لها ميجر: ${have.length} محطة</span><span class="pill" style="background:#e6f0f6;color:#2a6f97">📄 ${pages} صفحة</span>${miss.length?`<span class="pill susp" style="background:#fdecea;color:#a12b20">⚠ بدون ميجر: ${miss.length}</span>`:''}</div>
+      ${pages>_SM_PART_PAGES?`<div class="seg" style="margin-bottom:8px"><button class="${J.split?'':'on'}" onclick="_smSplit(false)">ملف واحد (${pages} صفحة)</button><button class="${J.split?'on':''}" onclick="_smSplit(true)">أجزاء كل ${_SM_PART_PAGES} صفحة</button></div>`:''}
+      ${parts.length?parts.map((pt,i)=>{const n=pt.reduce((s,p)=>s+by[p.id].length,0);return `<button class="btn" id="smPart${i}" style="margin-bottom:7px;background:#7a3e12" onclick="buildSignedMeasPart(${i})">⬇️ ${parts.length>1?'الجزء '+(i+1)+' من '+parts.length+' — ':''}${pt.length} محطة · ${n} صفحة</button>`;}).join('')+(parts.length>1?`<small style="display:block;color:var(--muted);margin-bottom:6px">مقسوم أجزاء (كل جزء حوالي ${_SM_PART_PAGES} صفحة). حمّل كل جزء لحاله.</small>`:pages>_SM_PART_PAGES?`<small style="display:block;color:var(--muted);margin-bottom:6px">الملف الواحد كبير وياخذ وقت يتجهز (لا تقفل الشاشة). لو علّق الجوال اختر «أجزاء».</small>`:''):'<div class="empty">ما فيه ولا محطة لها صورة ميجر موقّع</div>'}
+      ${miss.length?`<div style="margin-top:8px;font-size:12.5px;font-weight:800;color:#a12b20;margin-bottom:6px">هذي المحطات موقّعة لكن ما انرفع لها صورة الميجر المختوم — ما راح تدخل في الملف:</div><div>${miss.map(window._smChip).join('')}</div>`:''}
+    </div>`;
 }
 async function _smImg(path){
   const{data:blob,error}=await sb.storage.from('photos').download(path);if(error||!blob)throw error||new Error('download');
   let bmp,u=null;try{bmp=await createImageBitmap(blob,{imageOrientation:'from-image'});}catch(_){u=URL.createObjectURL(blob);bmp=await new Promise((res,rej)=>{const g=new Image();g.onload=()=>res(g);g.onerror=rej;g.src=u;});}
-  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;const MAX=2400,k=Math.min(1,MAX/Math.max(w0,h0));const w=Math.round(w0*k),h=Math.round(h0*k);
+  const w0=bmp.width||bmp.naturalWidth,h0=bmp.height||bmp.naturalHeight;const MAX=2200,k=Math.min(1,MAX/Math.max(w0,h0));const w=Math.round(w0*k),h=Math.round(h0*k);
   const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(bmp,0,0,w,h);try{bmp.close&&bmp.close();}catch(_){}if(u)URL.revokeObjectURL(u);
-  return{dataUrl:c.toDataURL('image/jpeg',0.88),w,h};}
+  return{dataUrl:c.toDataURL('image/jpeg',0.85),w,h};}
 async function buildSignedMeasPart(i){
   const J=window._smJob;if(!J)return;const pt=J.parts[i];const btn=document.getElementById('smPart'+i);const lbl=btn?btn.innerHTML:'';
   const paths=[];pt.forEach(p=>J.by[p.id].forEach(ph=>paths.push(ph)));
-  if(btn){btn.disabled=true;}
-  try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;let pdf=null,done=0,fail=0;const res=new Array(paths.length);
+  if(J.busy)return;J.busy=true;if(btn){btn.disabled=true;}
+  try{await ensureLib('jspdf');const{jsPDF}=window.jspdf;let pdf=null,done=0,fail=0;
     const upd=()=>{if(btn)btn.innerHTML='<span class="spin"></span> جارٍ التجهيز '+done+' / '+paths.length;};upd();
-    let nx=0;await Promise.all(Array.from({length:Math.min(5,paths.length)},async()=>{while(nx<paths.length){const k=nx++;try{res[k]=await _smImg(paths[k]);}catch(_){res[k]=null;fail++;}done++;upd();}}));
-    for(const im of res){if(!im)continue;const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
-      if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
-      const m=3,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
-      pdf.addImage(im.dataUrl,'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih,undefined,'FAST');}
-    if(!pdf){toast('تعذّر تحميل صور الميجر');if(btn){btn.disabled=false;btn.innerHTML=lbl;}return;}
+    // دفعات صغيرة بالترتيب: نحمّل 5 صور، نضيفها للملف، ونفرّغ الذاكرة — عشان الملف الكبير ما يعلّق الجوال
+    for(let q=0;q<paths.length;q+=5){
+      const chunk=await Promise.all(paths.slice(q,q+5).map(async ph=>{try{return await _smImg(ph);}catch(_){fail++;return null;}finally{done++;upd();}}));
+      for(const im of chunk){if(!im)continue;const land=im.w>im.h,pw=land?297:210,ph=land?210:297;
+        if(!pdf)pdf=new jsPDF({orientation:land?'l':'p',unit:'mm',format:'a4',compress:true});else pdf.addPage('a4',land?'l':'p');
+        const m=3,ar=im.w/im.h;let iw=pw-2*m,ih=iw/ar;if(ih>ph-2*m){ih=ph-2*m;iw=ih*ar;}
+        pdf.addImage(im.dataUrl,'JPEG',(pw-iw)/2,(ph-ih)/2,iw,ih,undefined,'FAST');im.dataUrl=null;}}
+    if(!pdf){J.busy=false;toast('تعذّر تحميل صور الميجر');if(btn){btn.disabled=false;btn.innerHTML=lbl;}return;}
+    if(btn)btn.innerHTML='<span class="spin"></span> جارٍ حفظ الملف…';await new Promise(r=>setTimeout(r,30));
     const nm=J.base+(J.parts.length>1?' (جزء '+(i+1)+' من '+J.parts.length+')':'')+'.pdf';
     pdf.save(nm.replace(/[\\/:*?"<>|]/g,'_'));
     if(btn){btn.disabled=false;btn.innerHTML='✅ تم — '+lbl.replace(/^⬇️ /,'');btn.style.background='#1f6f4a';}
-    toast('تم تجهيز الملف ✓'+(fail?' — تعذّر تحميل '+fail+' صورة':''));
-  }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.innerHTML=lbl;}}
+    J.busy=false;toast('تم تجهيز الملف ✓'+(fail?' — تعذّر تحميل '+fail+' صورة':''));
+  }catch(e){J.busy=false;toast('خطأ: '+(e&&e.message||e)+' — جرّب «أجزاء»');if(btn){btn.disabled=false;btn.innerHTML=lbl;}}
 }
 async function exportSignedTable(){
   const mode=window._sttMode||'all',btn=document.getElementById('sttBtn');
