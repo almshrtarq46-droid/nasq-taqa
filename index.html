@@ -656,7 +656,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='370';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='371';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3713,7 +3713,7 @@ function sttRenderList(){const box=document.getElementById('stt_list');if(!box)r
   box.innerHTML=list.length?list.map(s=>`<span style="display:inline-flex;align-items:center;gap:6px;background:#eaf3ee;color:#0f6b4f;border:1px solid #bcddcb;border-radius:9px;padding:5px 10px;font-weight:800;font-size:13px">${s.label}<span onclick="sttDel('${s.key}')" style="cursor:pointer;color:#c0392b;font-weight:900;font-size:16px">×</span></span>`).join(''):'<span style="color:var(--muted);font-size:12.5px">لم تُضف محطة بعد</span>';}
 function _sttStations(mode){let pidSet;
   if(mode==='manual'){const sel=window._sttSel||[];if(!sel.length){toast('أضف محطة واحدة على الأقل');return null;}pidSet=new Set(sel.map(s=>s.pid));}
-  else{const SS=_secSet();const sg=(PROJECTS||[]).filter(p=>_sgCat(p,mode)&&(!SS||SS.has(p.id)));if(!sg.length){toast((mode==='po'?'لا توجد محطات فيها PO':mode==='nopo'?'لا توجد محطات موقّعة بدون PO':'لا توجد محطات موقّعة أو فيها PO')+(SS?' في قسم '+_secName():''));return null;}pidSet=new Set(sg.map(p=>p.id));}
+  else{const SS=_secSet();const sg=(PROJECTS||[]).filter(p=>!_isArchived(p)&&_sgCat(p,mode)&&(!SS||SS.has(p.id)));if(!sg.length){toast((mode==='po'?'لا توجد محطات فيها PO':mode==='nopo'?'لا توجد محطات موقّعة بدون PO':'لا توجد محطات موقّعة أو فيها PO')+(SS?' في قسم '+_secName():''));return null;}pidSet=new Set(sg.map(p=>p.id));}
   const st=[...pidSet].map(id=>(PROJECTS||[]).find(p=>p.id===id)).filter(Boolean);
   st.sort((a,b)=>String(b.created_at||'').localeCompare(String(a.created_at||''))||String(a.code||'').localeCompare(String(b.code||'')));return st;}
 /* ===== V369: الميجرات الموقّعة المختومة في PDF واحد (صور المسح الضوئي phase=meas) ===== */
@@ -3744,6 +3744,7 @@ function _smRender(){const J=window._smJob,out=document.getElementById('smOut');
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px"><span class="pill ok">✅ لها ميجر: ${have.length} محطة</span><span class="pill" style="background:#e6f0f6;color:#2a6f97">📄 ${pages} صفحة</span>${miss.length?`<span class="pill susp" style="background:#fdecea;color:#a12b20">⚠ بدون ميجر: ${miss.length}</span>`:''}</div>
       ${pages>_SM_PART_PAGES?`<div class="seg" style="margin-bottom:8px"><button class="${J.split?'':'on'}" onclick="_smSplit(false)">ملف واحد (${pages} صفحة)</button><button class="${J.split?'on':''}" onclick="_smSplit(true)">أجزاء كل ${_SM_PART_PAGES} صفحة</button></div>`:''}
       ${parts.length?parts.map((pt,i)=>{const n=pt.reduce((s,p)=>s+by[p.id].length,0);return `<button class="btn" id="smPart${i}" style="margin-bottom:7px;background:#7a3e12" onclick="buildSignedMeasPart(${i})">⬇️ ${parts.length>1?'الجزء '+(i+1)+' من '+parts.length+' — ':''}${pt.length} محطة · ${n} صفحة</button>`;}).join('')+(parts.length>1?`<small style="display:block;color:var(--muted);margin-bottom:6px">مقسوم أجزاء (كل جزء حوالي ${_SM_PART_PAGES} صفحة). حمّل كل جزء لحاله.</small>`:pages>_SM_PART_PAGES?`<small style="display:block;color:var(--muted);margin-bottom:6px">الملف الواحد كبير وياخذ وقت يتجهز (لا تقفل الشاشة). لو علّق الجوال اختر «أجزاء».</small>`:''):'<div class="empty">ما فيه ولا محطة لها صورة ميجر موقّع</div>'}
+      ${(()=>{const multi=have.filter(p=>by[p.id].length>1);return multi.length?`<div style="margin-top:8px;font-size:12.5px;font-weight:800;color:#8a4b00;margin-bottom:6px">📑 محطات فيها أكثر من صفحة ميجر (${multi.length}) — عشان كذا عدد الصفحات (${pages}) أكثر من عدد المحطات (${have.length}). تأكد أنها مو صور مكررة:</div><div>${multi.map(p=>`<span style="display:inline-block;background:#fff4e5;color:#8a4b00;border:1px solid #f0cf8f;border-radius:8px;padding:3px 8px;margin:0 0 5px 5px;font-weight:800;font-size:12.5px">${_stEsc(p.code||p.name||'—')} × ${by[p.id].length}</span>`).join('')}</div>`:'';})()}
       ${miss.length?`<div style="margin-top:8px;font-size:12.5px;font-weight:800;color:#a12b20;margin-bottom:6px">هذي المحطات موقّعة لكن ما انرفع لها صورة الميجر المختوم — ما راح تدخل في الملف:</div><div>${miss.map(window._smChip).join('')}</div>`:''}
     </div>`;
 }
@@ -3778,7 +3779,7 @@ async function exportSignedTable(){
   const mode=window._sttMode||'all',btn=document.getElementById('sttBtn');
   let pidSet;
   if(mode==='manual'){const sel=window._sttSel||[];if(!sel.length){toast('أضف محطة واحدة على الأقل');return;}pidSet=new Set(sel.map(s=>s.pid));}
-  else{const SS=_secSet();const sg=(PROJECTS||[]).filter(p=>_sgCat(p,mode)&&(!SS||SS.has(p.id)));if(!sg.length){toast((mode==='po'?'لا توجد محطات فيها PO':mode==='nopo'?'لا توجد محطات موقّعة بدون PO':'لا توجد محطات موقّعة أو فيها PO')+(SS?' في قسم '+_secName():''));return;}pidSet=new Set(sg.map(p=>p.id));}
+  else{const SS=_secSet();const sg=(PROJECTS||[]).filter(p=>!_isArchived(p)&&_sgCat(p,mode)&&(!SS||SS.has(p.id)));if(!sg.length){toast((mode==='po'?'لا توجد محطات فيها PO':mode==='nopo'?'لا توجد محطات موقّعة بدون PO':'لا توجد محطات موقّعة أو فيها PO')+(SS?' في قسم '+_secName():''));return;}pidSet=new Set(sg.map(p=>p.id));}
   const _sttMoney=PROFILE.role==='admin'||PROFILE.role==='viewer';
   if(btn){btn.disabled=true;btn.innerHTML='<span class="spin"></span>';}
   try{await ensureLib('exceljs');let PRICES={};try{PRICES=await _secLoad();}catch(_){}
