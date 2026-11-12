@@ -743,7 +743,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='373';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='374';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -988,8 +988,7 @@ const NAV_MAIN=[
   {v:'hr',l:'الموارد البشرية',i:'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2 M9 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8 M22 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75'},
   {v:'finance',l:'المالية',i:'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'},
   {v:'expenses',l:'المصروفات',i:'M20 12V8H6a2 2 0 0 1-2-2 2 2 0 0 1 2-2h12v4 M4 6v12a2 2 0 0 0 2 2h14v-4 M18 12a2 2 0 0 0 0 4h4v-4z'},
-  {v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},
-  {v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'}
+  {v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'}
 ];
 const NAV_SET_CHILDREN=[
   {v:'catalog',l:'البنود والأسعار',i:'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M9 12h6 M9 16h6'},
@@ -1015,14 +1014,16 @@ function buildNav(role){
   const nav=document.getElementById('nav'),hamb=document.getElementById('hambBtn');
   hamb.style.display='grid';nav.style.display='none';
   const isAdmin=role==='admin',isEntry=PROFILE&&PROFILE.role==='data_entry',isViewer=PROFILE&&PROFILE.role==='viewer';
-  let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET; let first=isAdmin?'overview':'home';
+  let main=isAdmin?NAV_MAIN:NAV_WORKER.slice(); const children=(isAdmin?NAV_SET_CHILDREN:NAV_WORKER_SET).slice(); let first=isAdmin?'overview':'home';
+  // V374: الخريطة المباشرة + تحويل الصور إلى PDF + بيانات الشركة داخل «الإعدادات»
+  if(isAdmin)children.push({v:'livemap',l:'الخريطة المباشرة',i:'M9 20l-6-3V4l6 3 6-3 6 3v13l-6-3-6 3z M9 4v13 M15 7v13'});
+  if(isAdmin||isEntry)children.push({v:'sapfiles',l:'تحويل الصور إلى PDF',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h4'});
+  if(isAdmin||(PROFILE&&PROFILE.docs_access))children.push({v:'company',l:'بيانات الشركة',i:'M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01'});
   if(isEntry){main=[NAV_WORKER[0],{v:'workorders',l:'كل المحطات (تعديل)',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'dispatch',l:'توزيع المحطات (المسار)',i:'M3 11l19-9-9 19-2-8-8-2z'},{v:'inventory',l:'المخزون',i:'M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z M3.3 7l8.7 5 8.7-5 M12 22V12'},...NAV_WORKER.slice(1)];first='home';}
   if(isViewer){main=[{v:'workorders',l:'المحطات والقيم',i:'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M8 13h8 M8 17h6'},{v:'station-search',l:'البحث عن المحطة',i:'M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z M21 21l-4.35-4.35'}];first='workorders';}
   let html=main.map(it=>it.g?`<div class="grp">${it.g}</div>`:`<button class="sb-item" data-v="${it.v}" onclick="goView('${it.v}');toggleSidebar(false)">${_svgPath(it.i)}<span style="flex:1;text-align:right">${it.l}</span>${it.cnt?`<span class="sb-cnt" data-cnt="${it.cnt}"></span>`:''}</button>`).join('');
   if(!isViewer){html+=`<button class="sb-item" id="setHead" onclick="toggleSetMenu()">${_svgPath('M12 7v5l3 2 M12 21a9 9 0 1 1 0-18 9 9 0 0 1 0 18z')}<span style="flex:1;text-align:right">الإعدادات</span><svg id="setChev" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" style="transition:transform .2s;color:var(--muted)"><path d="M6 9l6 6 6-6"/></svg></button>`;
   html+=`<div id="setChildren">`+children.map(c=>`<button class="sb-item" data-v="${c.v}" style="padding-right:30px;font-size:13.5px" onclick="goView('${c.v}');toggleSidebar(false)">${_svgPath(c.i)}${c.l}</button>`).join('')+`</div>`;}
-  if(isAdmin||isEntry)html+=`<button class="sb-item" data-v="sapfiles" onclick="goView('sapfiles');toggleSidebar(false)">${_svgPath('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M9 13h6 M9 17h4')}تحويل الصور إلى PDF</button>`;
-  if(isAdmin||(PROFILE&&PROFILE.docs_access))html+=`<button class="sb-item" data-v="company" style="margin-top:6px" onclick="goView('company');toggleSidebar(false)">${_svgPath('M3 21h18 M5 21V8l7-5 7 5v13 M9 21v-6h6v6 M9 9h.01 M15 9h.01 M9 12h.01 M15 12h.01')}بيانات الشركة</button>`;
   document.getElementById('sbMenu').innerHTML=html;try{_updSecBadges();}catch(_){}
   const _valid=isViewer?['workorders','station-search']:(isAdmin?['overview','workorders','station-search','dispatch','hr','finance','expenses','inventory','livemap','catalog','assignments','settings','zones','approvals','projects','backup','company','sapfiles']:(isEntry?['home','station-search','myroute','dispatch','att-worker','field','my-att','my-works','company','workorders','inventory','sapfiles']:['home','station-search','myroute','att-worker','field','my-att','my-works','company','sapfiles']));
   let _want='';try{_want=sessionStorage.getItem('nasqView')||'';}catch(e){}
