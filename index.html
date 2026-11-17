@@ -766,7 +766,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='379';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='380';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1074,23 +1074,33 @@ const STATIONS_VER=1;               /* ارفعه فقط عند تحديث مل�
 /* ===== V376: العقد الموحد — بحث برقم البند أو بأي كلمة (الملف مشفّر، والمفتاح عند المدير فقط في Supabase) ===== */
 const UC_VER=1;let _ucData=null,_ucP=null,_ucTimer=null;
 /* V379: توقيع المقاول الإلكتروني (لميجرات البرامج فقط) — الصورة مشفّرة في sig.enc والمفتاح في app_keys (name='signature') للمدير ومدخل البيانات */
-const SIG_VER=1;let _sigP=null;
+const SIG_VER=2;let _sigP=null;
 async function _sigLoad(){if(_sigP)return _sigP;
   _sigP=(async()=>{const{data,error}=await sb.from('app_keys').select('key').eq('name','signature').maybeSingle();
     if(error||!data||!data.key)throw new Error('nokey');
     const r=await fetch('sig.enc?v='+SIG_VER);if(!r.ok)throw new Error('تعذّر تحميل ملف التوقيع');
     const bin=Uint8Array.from(atob((await r.text()).trim()),c=>c.charCodeAt(0));const kb=Uint8Array.from(atob(data.key),c=>c.charCodeAt(0));
     const k=await crypto.subtle.importKey('raw',kb,'AES-GCM',false,['decrypt']);
-    return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:bin.slice(0,12)},k,bin.slice(12)));})();
+    const pt=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:bin.slice(0,12)},k,bin.slice(12)));
+    // v2: {png,svg} — SVG متجه (حاد في PDF بأي تكبير) + PNG احتياطي للبرامج القديمة
+    if(pt[0]===0x7B){const o=JSON.parse(new TextDecoder().decode(pt));return{png:Uint8Array.from(atob(o.png),c=>c.charCodeAt(0)),svg:o.svg||null};}
+    return{png:pt,svg:null};})();
   try{return await _sigP;}catch(e){_sigP=null;throw e;}}
 /* يضيف صورة التوقيع في خانة Signature حق المقاول (J54 تحت الاسم) داخل رسم الورقة الأولى */
-async function _sigInject(zip,png){const E=9525,A=(n)=>Math.round(n*E);
-  const dp='xl/drawings/drawing1.xml',rp='xl/drawings/_rels/drawing1.xml.rels';
+async function _sigInject(zip,sig){
+  // V380: الصورة تمتد على كامل خانة التوقيع (J:W × صفّي 54–55) والتوقيع مرسوم في منتصفها → يطلع في النص تماماً تحت الاسم
+  // + نسخة SVG متجهة (Office 2016+) حتى يبقى التوقيع حاد جداً بعد التحويل إلى PDF، و PNG عالي الدقة احتياطي مع منع ضغط الصورة
+  const dp='xl/drawings/drawing1.xml',rp='xl/drawings/_rels/drawing1.xml.rels',ctp='[Content_Types].xml';
   let dr=await zip.file(dp).async('string'),rl=await zip.file(rp).async('string');
-  zip.file('xl/media/nasq_sig.png',png);
-  rl=rl.replace('</Relationships>','<Relationship Id="rIdNasqSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/nasq_sig.png"/></Relationships>');
-  const w=116,h=45;
-  dr=dr.replace('</xdr:wsDr>',`<xdr:oneCellAnchor><xdr:from><xdr:col>9</xdr:col><xdr:colOff>${A(30)}</xdr:colOff><xdr:row>53</xdr:row><xdr:rowOff>${A(0)}</xdr:rowOff></xdr:from><xdr:ext cx="${A(w)}" cy="${A(h)}"/><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="90" name="NASQ Signature"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdNasqSig"/><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${A(w)}" cy="${A(h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:oneCellAnchor></xdr:wsDr>`);
+  zip.file('xl/media/nasq_sig.png',sig.png);
+  let rels='<Relationship Id="rIdNasqSig" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/nasq_sig.png"/>';
+  let svgExt='';
+  if(sig.svg){zip.file('xl/media/nasq_sig.svg',sig.svg);
+    rels+='<Relationship Id="rIdNasqSigSvg" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/nasq_sig.svg"/>';
+    svgExt='<a:ext uri="{96DAC541-7B7A-43D3-8B79-37D633B846F1}"><asvg:svgBlip xmlns:asvg="http://schemas.microsoft.com/office/drawing/2016/SVG/main" r:embed="rIdNasqSigSvg"/></a:ext>';
+    let ct=await zip.file(ctp).async('string');if(!/Extension="svg"/i.test(ct)){ct=ct.replace('<Default ','<Default Extension="svg" ContentType="image/svg+xml"/><Default ');zip.file(ctp,ct);}}
+  rl=rl.replace('</Relationships>',rels+'</Relationships>');
+  dr=dr.replace('</xdr:wsDr>',`<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>9</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>53</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:from><xdr:to><xdr:col>23</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>55</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="90" name="NASQ Signature"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdNasqSig" cstate="print"><a:extLst><a:ext uri="{28A0092B-C50C-407E-A947-70E740481C1C}"><a14:useLocalDpi xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" val="1"/></a:ext>${svgExt}</a:extLst></a:blip><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1600200" cy="457200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>`);
   zip.file(dp,dr);zip.file(rp,rl);}
 async function _ucLoad(){if(_ucData)return _ucData;if(_ucP)return _ucP;
   _ucP=(async()=>{const{data,error}=await sb.from('app_keys').select('key').eq('name','contract').maybeSingle();
