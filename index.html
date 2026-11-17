@@ -452,7 +452,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       <h2 class="section-title" id="woTitle">جميع المحطات</h2>
       <div class="hint">كل محطة برقمها وتحتها البنود المنجزة. الكميات يسجّلها العامل، والأسعار والإجماليات تظهر للمدير فقط.</div>
       <div class="row"><div class="field"><label>الفترة</label><select id="wo_period" onchange="loadWorkOrders()"><option value="all">الكل</option><option value="today">اليوم</option><option value="7">آخر 7 أيام</option><option value="30">آخر 30 يوم</option></select></div><div class="field"><label>الفلترة</label><select id="wo_filter" onchange="renderWOList()"><option value="all">جميع المحطات</option><option value="wo">تم إصدار أمر عمل</option><option value="notice">لها إشعار</option><option value="unsigned">تم التنفيذ — غير موقّعة</option><option value="signed">تم التوقيع (كل الموقّعة)</option><option value="signed_nopo">موقّعة بدون PO</option><option value="signed_all">موقّعة + PO (الكل)</option><option value="po">PO فقط</option><option value="archive">الأرشيف (منتهية)</option></select></div></div>
-      <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">الكل</button><button data-t="other" onclick="woType('other')">المحطات</button><button data-t="mini" onclick="woType('mini')">الميني بيلر</button></div>
+      <div class="seg" id="woTypeSeg" style="margin-bottom:10px"><button data-t="all" class="on" onclick="woType('all')">الكل</button><button data-t="other" onclick="woType('other')">المحطات</button><button data-t="mini" onclick="woType('mini')">الميني بيلر</button><button data-t="prog" onclick="woType('prog')">البرامج</button></div>
       <input id="wo_search" placeholder="بحث برقم المحطة أو الإشعار أو أمر العمل…" oninput="renderWOList()" style="margin-bottom:12px">
       <div id="woSummary"></div><div id="woSecCards"></div>
       <div id="woList"></div>
@@ -766,7 +766,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='376';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='377';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -3026,6 +3026,7 @@ async function loadWorkOrders(useCache){
   const period=document.getElementById('wo_period').value;
   let data;if(useCache===true&&window._woData)data=window._woData;else{try{data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false}));window._woData=data;}catch(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}}
   let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
+  _calcProgIds(data);
   if(period!=='all'){const wdOf=e=>String(e.work_date||'').slice(0,10);
     if(period==='today'){const t=todayKey();rows=rows.filter(e=>wdOf(e)===t);}
     else{const d=new Date();d.setDate(d.getDate()-Number(period));const cut=d.toISOString().slice(0,10);rows=rows.filter(e=>wdOf(e)>=cut);}}
@@ -3125,7 +3126,7 @@ function _toolsToggle(b){const body=b.nextElementSibling;const op=body.style.dis
 function _sgCards(PJ,valByP,showMoney){const live=PJ.filter(p=>!_isArchived(p));const C=[['nopo','✅ موقّعة بدون PO','#eaf7ef','#1b6b3a'],['all','📋 موقّعة + PO (الكل)','#eef4fb','#12507a'],['po','🔵 PO فقط','#e3f2fd','#0b6bcb']];
   return `<div style="font-weight:800;font-size:13.5px;margin:2px 2px 7px;color:var(--muted)">التوقيع والـ PO</div><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:13px">`+C.map(([k,l,bg,fg])=>{const ps=live.filter(p=>_sgCat(p,k));const v=ps.reduce((s,p)=>s+(valByP[p.id]||0),0);
     return `<div class="kpi" style="background:${bg};cursor:pointer" onclick="_woShowCat('${k}')"><b style="color:${fg}">${ps.length}</b><span style="font-size:11.5px">${l}</span>${showMoney?`<small style="display:block;font-weight:800;color:${fg};margin-top:4px;font-size:12px">${fmt(v)} ﷼</small>`:''}</div>`;}).join('')+`</div>`;}
-function _secCounts(){const c={other:0,mini:0};(PROJECTS||[]).forEach(p=>{if(_isArchived(p))return;c[_secOfP(p)]++;});return c;}
+function _secCounts(){const c={other:0,mini:0,prog:0};(PROJECTS||[]).forEach(p=>{if(_isArchived(p))return;c[_secOfP(p)]++;});return c;}
 function _updSecBadges(){const c=_secCounts();document.querySelectorAll('.sb-cnt').forEach(e=>{const n=c[e.dataset.cnt]||0;e.textContent=n.toLocaleString('en-US');e.style.display=(PROJECTS&&PROJECTS.length)?'':'none';});}
 function _woAllMode(on){const f=document.getElementById('wo_filter'),q=document.getElementById('wo_search'),l=document.getElementById('woList');
   const ff=f&&(f.closest('.field')||f.parentElement);if(ff)ff.style.display=on?'none':'';if(q)q.style.display=on?'none':'';if(l)l.style.display=on?'none':'';}
@@ -3135,9 +3136,11 @@ function _woSecHeader(t,canT){const ti=document.getElementById('woTitle');if(ti)
   const si=window._secInfo,_adm=PROFILE.role==='admin',vv=k=>(_adm&&si&&si[k])?`<small style="font-weight:800;color:inherit;font-size:13px">${fmt(si[k].v)} ﷼</small>`:'';
   box.innerHTML=`<div class="seccards"><button class="seccard" onclick="goView('wo-other')"><span>🏢 قسم المحطات (غرفة / بكج)</span><b>${c.other.toLocaleString('en-US')}</b>${vv('other')}<small>اضغط لفتح القسم ›</small></button><button class="seccard mini" onclick="goView('wo-mini')"><span>🔌 قسم الميني بيلر</span><b>${c.mini.toLocaleString('en-US')}</b>${vv('mini')}<small>اضغط لفتح القسم ›</small></button></div>`;}
 function _secCur(){return (PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'))?_woTypeGet():'all';}
-function _secOfP(p){return String((p&&p.station_type)||'').trim()==='ميني بيلر'?'mini':'other';}
+/* V377: قسم «البرامج» = أي محطة فيها عمل كيبل 800 أو لقز 800 (تُصنّف تلقائياً من بنودها) — مفصول عن المحطات والميني بيلر */
+function _calcProgIds(data){const s=new Set();(data||[]).forEach(e=>{if(e&&e.project_id&&(_isCable800Work(e)||_isLug800Work(e)))s.add(e.project_id);});window._progIds=s;return s;}
+function _secOfP(p){if(p&&window._progIds&&window._progIds.has(p.id))return 'prog';return String((p&&p.station_type)||'').trim()==='ميني بيلر'?'mini':'other';}
 function _secSet(){const t=_secCur();if(t==='all')return null;return new Set((PROJECTS||[]).filter(p=>_secOfP(p)===t).map(p=>p.id));}
-function _secName(){const t=_secCur();return t==='mini'?'الميني بيلر':t==='other'?'المحطات':'';}
+function _secName(){const t=_secCur();return t==='mini'?'الميني بيلر':t==='other'?'المحطات':t==='prog'?'البرامج':'';}
 function _secTag(){const n=_secName();return n?' <span style="font-size:12px;background:#fff1df;color:#b5732f;border:1px solid #e8a34a;border-radius:12px;padding:2px 9px;font-weight:800">قسم '+n+'</span>':'';}
 function _woTypeGet(){if(window._woType)return window._woType;let t='all';try{t=sessionStorage.getItem('nasqWoType')||'all';}catch(_){}window._woType=t;return t;}
 function woType(t){window._woType=t;try{sessionStorage.setItem('nasqWoType',t);}catch(_){}loadWorkOrders(true);}
@@ -3145,7 +3148,7 @@ function woType(t){window._woType=t;try{sessionStorage.setItem('nasqWoType',t);}
 const _BULK_PART=50;const _bulkPS=()=>(window._bulk&&window._bulk.split)?_BULK_PART:100000;
 function openBulkMeas(){const ids=(window._woKeys||[]).slice();if(!ids.length){toast('القائمة فاضية');return;}
   const wt=_woTypeGet(),fs=document.getElementById('wo_filter');const fl=fs&&fs.selectedIndex>=0?fs.options[fs.selectedIndex].text:'';
-  const label=(wt==='mini'?'ميني بيلر':wt==='other'?'غرفة وبكج':'كل المحطات')+(fl&&fs.value!=='all'?' - '+fl:'');
+  const label=(wt==='mini'?'ميني بيلر':wt==='other'?'غرفة وبكج':wt==='prog'?'البرامج (كيبل 800)':'كل المحطات')+(fl&&fs.value!=='all'?' - '+fl:'');
   window._bulk={ids,label,tpl:(window._bulk&&window._bulk.tpl)||'pdc',done:{},busy:false,split:false};_bulkRender();}
 function _bulkSplit(v){if(!window._bulk||window._bulk.busy)return;window._bulk.split=v;window._bulk.done={};_bulkRender();}
 function _bulkSetTpl(t){if(!window._bulk||window._bulk.busy)return;window._bulk.tpl=t;window._bulk.done={};_bulkRender();}
@@ -3196,12 +3199,12 @@ function renderWOList(){
   const matchT=p=>!term||[p.code,p.wo_number,p.notice_no].some(v=>String(v||'').includes(term));
   const _tSeg=document.getElementById('woTypeSeg');const _canT=!!(PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry'));if(_tSeg)_tSeg.style.display=_canT?'':'none';
   const _wt=_canT?_woTypeGet():'all';document.querySelectorAll('#woTypeSeg button').forEach(b=>b.classList.toggle('on',b.dataset.t===_wt));_woSecHeader(_wt,_canT);_woAllMode(false);
-  const matchY=p=>_wt==='all'||(_wt==='mini'?String(p.station_type||'').trim()==='ميني بيلر':String(p.station_type||'').trim()!=='ميني بيلر');
+  const matchY=p=>_wt==='all'||_secOfP(p)===_wt;
   let keys=(PROJECTS||[]).filter(p=>{if(!matchY(p))return false;if(filt==='archive')return _isArchived(p)&&matchT(p);if(_isArchived(p))return false;return matchF(p)&&matchT(p);}).map(p=>p.id);
   window._woKeys=keys.slice();
   if(!keys.length){box.innerHTML='<div class="empty">'+(term?'لا توجد محطة مطابقة للبحث':filt==='archive'?'لا توجد محطات في الأرشيف (لم يصل مبلغ أي محطة بعد)':filt==='signed'?'لا توجد محطات موقّعة':filt==='po'?'لا توجد محطات صدر لها PO':filt==='signed_nopo'?'كل المحطات الموقّعة صدر لها PO ✓':filt==='signed_all'?'لا توجد محطات موقّعة أو فيها PO':filt==='wo'?'لا توجد محطات صدر لها أمر عمل':filt==='notice'?'لا توجد محطات لها إشعار':filt==='none'?'كل المحطات فيها بنود ✓':'لا توجد محطات')+'</div>';return;}
   const _mny=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='viewer');let _fv=0;if(_mny)keys.forEach(pid=>(byP[pid]||[]).forEach(e=>{_fv+=Number(e.amount||0);}));
-  const _wtl=_wt==='mini'?' · ميني بيلر':_wt==='other'?' · غرفة / بكج':'';
+  const _wtl=_wt==='mini'?' · ميني بيلر':_wt==='other'?' · غرفة / بكج':_wt==='prog'?' · البرامج':'';
   const _canBulk=PROFILE&&(PROFILE.role==='admin'||PROFILE.role==='data_entry');
   const cnt='<div style="font-size:12.5px;color:var(--muted);margin:0 2px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap"><span>عدد النتائج: <b style="color:var(--green)">'+keys.length+'</b> محطة'+_wtl+'</span>'+(_mny?'<span style="background:#eaf7ef;color:#1b6b3a;border-radius:20px;padding:4px 11px;font-weight:800;font-size:13px">القيمة الإجمالية: '+fmt(_fv)+' ﷼</span>':'')+'</div>'
     ;document.querySelectorAll('.bulkCnt').forEach(e=>e.textContent=keys.length);
@@ -3909,7 +3912,7 @@ async function prepSignedMeas(){
     const by={};rows.forEach(r=>{if(!ids.includes(r.project_id))return;(by[r.project_id]=by[r.project_id]||[]).push(r.photo);});
     const have=stations.filter(p=>(by[p.id]||[]).length),miss=stations.filter(p=>!(by[p.id]||[]).length);
     const pages=have.reduce((s,p)=>s+by[p.id].length,0);
-    const secW=_secCur()==='mini'?'الميني بيلر':_secCur()==='other'?'المحطات':'كل المحطات';
+    const secW=_secName()||'كل المحطات';
     const catW={nopo:'موقّعة بدون PO',all:'موقّعة + PO',po:'PO فقط',manual:'محطات مختارة'}[mode]||'';
     window._smJob={by,have,miss,pages,split:false,base:'ميجرات موقّعة - '+secW+' - '+catW};_smRender();
     if(btn){btn.style.display='none';btn.disabled=false;}
@@ -3973,7 +3976,7 @@ async function exportSignedTable(){
     const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('المحطات الموقّعة',{views:[{rightToLeft:true,showGridLines:false,state:'frozen',ySplit:2}]});
     ws.columns=_sttMoney?[{width:5},{width:18},{width:16},{width:16},{width:15}]:[{width:5},{width:18},{width:16},{width:16}];
     const H=_sttMoney?['م','رقم المحطة','رقم الإشعار','رقم أمر العمل','القيمة (﷼)']:['م','رقم المحطة','رقم الإشعار','رقم أمر العمل'];
-    const _secW=_secCur()==='mini'?'الميني بيلر':'المحطات';const _catW={nopo:' الموقّعة بدون PO',all:' الموقّعة + PO',po:' — PO فقط',manual:' الموقّعة'}[mode]||' الموقّعة';
+    const _secW=(_secCur()==='all'?'':_secName())||'المحطات';const _catW={nopo:' الموقّعة بدون PO',all:' الموقّعة + PO',po:' — PO فقط',manual:' الموقّعة'}[mode]||' الموقّعة';
     const t1=ws.addRow([_secW+_catW+' — نسق الطاقة · عدد: '+stations.length]);ws.mergeCells(1,1,1,H.length);
     t1.font={name:AR,size:12,bold:true};t1.height=20;t1.getCell(1).alignment={horizontal:'right',vertical:'middle'};
     const hr=ws.addRow(H);hr.height=22;hr.eachCell(c=>{c.font={name:AR,size:10,bold:true};c.fill={type:'pattern',pattern:'solid',fgColor:{argb:HEADBG}};c.border=bord;c.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
@@ -3982,7 +3985,7 @@ async function exportSignedTable(){
     if(_sttMoney){const g1=ws.addRow(['الإجمالي','','','',Number(gt.toFixed(2))]);ws.mergeCells(g1.number,1,g1.number,4);
     g1.eachCell({includeEmpty:true},(c,i)=>{c.border=bord;c.font={name:AR,size:11,bold:true};c.alignment={horizontal:i===1?'right':'center',vertical:'middle'};if(i===5)c.numFmt='#,##0.00';});}
     const buf=await wb.xlsx.writeBuffer();const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(_secCur()==='mini'?'الميني بيلر':'المحطات')+({nopo:' - تم التوقيع بدون PO.xlsx',po:' - PO فقط 🔵.xlsx'}[mode]||' - تم التوقيع ✅.xlsx');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=((_secCur()==='all'?'':_secName())||'المحطات')+({nopo:' - تم التوقيع بدون PO.xlsx',po:' - PO فقط 🔵.xlsx'}[mode]||' - تم التوقيع ✅.xlsx');document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),8000);
     closeModal();toast('تم التصدير ✓ — '+stations.length+' محطة');
   }catch(e){toast('خطأ: '+(e&&e.message||e));if(btn){btn.disabled=false;btn.textContent='⬇️ تصدير اكسل';}}
 }
