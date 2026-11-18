@@ -772,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='387';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='388';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1110,7 +1110,7 @@ async function _sigInject(zip,sig){
   zip.file(dp,dr);zip.file(rp,rl);}
 /* V382: ميجر البرامج PDF مباشر بنفس شكل تصدير إكسل — الخلفية من PDF إكسل نفسه + الكتابة فوقها بنفس المقاسات (pdc/pdcpdf.js)
    الملف الواحد = ميجرنا ← ميجر الاستشاري (صورة كاملة لكل صفحة) ← صور قبل ← صور بعد (صورتان لكل صفحة)، واسمه رقم أمر العمل */
-const PDC_VER=4;let _pdcA=null;let _pdcL;const _pdcFontC={};
+const PDC_VER=5;let _pdcA=null;let _pdcL;const _pdcFontC={};
 const _PDC_FONT={novaB:'nova-b',novaR:'nova-r',liberR:'liber-r',liberB:'liber-b',carlitoR:'carlito-r',carlitoB:'carlito-b',arR:'ar-r',arB:'ar-b'};
 async function _pdcAssets(){if(_pdcA)return _pdcA;
   _pdcA=(async()=>{await ensureLib('pdflib','fontkit','pdcpdf','jszip');
@@ -1129,34 +1129,52 @@ function _sigSvgParts(svg){if(!svg)return null;const vb=svg.match(/viewBox="0 0 
   if(!vb||!d)return null;return{d:d[1],w:+vb[1],h:+vb[2],tx:tr?+tr[1]:0,ty:tr?+tr[2]:0,c0:9,c1:23,r0:53,dy0:-1.5,r1:54,dy1:1};}
 async function _progCmeasCount(pid){const{data,error}=await sb.from('station_photos').select('id').eq('project_id',pid).eq('phase','cmeas');if(error)throw error;return (data||[]).length;}
 /* صور المحطة لمرحلة معيّنة → صور JPEG مثبّتة الاتجاه */
-async function _stPhaseImgs(pid,phase,max){const{data,error}=await sb.from('station_photos').select('photo').eq('project_id',pid).eq('phase',phase).order('created_at');if(error)throw error;
-  const blobs=await Promise.all((data||[]).map(async r=>{try{const{data:b,error:de}=await sb.storage.from('photos').download(r.photo);if(de||!b)return null;return b;}catch(_){return null;}}));
-  const out=[];for(const b of blobs){if(!b)continue;const im=await _sapFileToImg(b,max);if(im)out.push(im);}return out;}
-async function _progPdf(p,xlsxBlob,tplSheetXml,sig){
-  const A=await _pdcAssets();const{PDFDocument}=window.PDFLib;
-  const res=await PdcPdf.render({libs:{PDFLib:window.PDFLib,fontkit:window.fontkit,JSZip:window.JSZip},xlsx:new Uint8Array(await xlsxBlob.arrayBuffer()),tplSheetXml,
-    dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,arLib:await _pdcArLib(),sig:sig?_sigSvgParts(sig.svg):null});
+/* V388 سرعة: كل صور المحطة (الاستشاري + قبل + بعد) بطلب واحد وتنزيل متوازي، وتُضمَّن في PDF كما هي بدون إعادة ترميز */
+function _jpegOrient(u){if(u[0]!==0xFF||u[1]!==0xD8)return -1;let i=2;while(i+4<u.length){if(u[i]!==0xFF)return 1;const mk=u[i+1],len=(u[i+2]<<8)|u[i+3];
+    if(mk===0xE1&&u[i+4]===0x45&&u[i+5]===0x78){const t=i+10,le=u[t]===0x49;const r16=o=>le?(u[o]|(u[o+1]<<8)):((u[o]<<8)|u[o+1]);const r32=o=>le?(u[o]|(u[o+1]<<8)|(u[o+2]<<16)|(u[o+3]<<24)):((u[o]<<24)|(u[o+1]<<16)|(u[o+2]<<8)|u[o+3]);
+      const ifd=t+r32(t+4),n=r16(ifd);for(let k=0;k<n;k++){const e=ifd+2+k*12;if(r16(e)===0x0112)return r16(e+8);}return 1;}
+    if(mk===0xDA)return 1;i+=2+len;}return 1;}
+function _progPhotos(pid,force){if(!force&&window._ppre&&window._ppre.pid===pid&&Date.now()-window._ppre.t<60000)return window._ppre.p;
+  const pr=(async()=>{const{data,error}=await sb.from('station_photos').select('photo,phase,created_at').eq('project_id',pid).in('phase',['cmeas','before','after']).order('created_at');if(error)throw error;
+    const rows=data||[];const bytes=await Promise.all(rows.map(async r=>{try{const{data:b,error:de}=await sb.storage.from('photos').download(r.photo);if(de||!b)return null;return new Uint8Array(await b.arrayBuffer());}catch(_){return null;}}));
+    const o={cmeas:[],before:[],after:[]};rows.forEach((r,i)=>{if(bytes[i])o[r.phase].push(bytes[i]);});return o;})();
+  window._ppre={pid,t:Date.now(),p:pr};pr.catch(()=>{if(window._ppre&&window._ppre.p===pr)window._ppre=null;});return pr;}
+async function _embPhoto(doc,u){try{const o=_jpegOrient(u);if(o===1||o===0){const j=await doc.embedJpg(u);return{j,w:j.width,h:j.height};}
+    if(u[0]===0x89&&u[1]===0x50){const j=await doc.embedPng(u);return{j,w:j.width,h:j.height};}}catch(_){}
+  const im=await _sapFileToImg(new Blob([u]),2200);if(!im)return null;const j=await doc.embedJpg(im.dataUrl);return{j,w:im.w,h:im.h};}
+async function _progPdf(p,zip,tplSheetXml,sig){const T0=performance.now();
+  const phP=_progPhotos(p.id);
+  const[A,L]=await Promise.all([_pdcAssets(),_pdcArLib()]);
+  const res=await PdcPdf.render({libs:{PDFLib:window.PDFLib,fontkit:window.fontkit,JSZip:window.JSZip},zip,tplSheetXml,tplSheet:window._pdcTplSheet,
+    dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,arLib:L,sig:sig?_sigSvgParts(sig.svg):null});
+  window._pdcTplSheet=res.tplSheet||window._pdcTplSheet;
   const doc=res.doc;const MM=72/25.4,A4W=297*MM,A4H=210*MM;
-  const emb=async im=>doc.embedJpg(im.dataUrl);
+  const ph=await phP;
   // ميجر الاستشاري: صفحة كاملة لكل صورة باتجاهها
-  const cm=await _stPhaseImgs(p.id,'cmeas',2600);
-  for(const im of cm){const land=im.w>im.h,pw=land?A4W:A4H,ph=land?A4H:A4W,m=4*MM;const pg=doc.addPage([pw,ph]);const j=await emb(im);
-    let iw=pw-2*m,ih=iw*im.h/im.w;if(ih>ph-2*m){ih=ph-2*m;iw=ih*im.w/im.h;}pg.drawImage(j,{x:(pw-iw)/2,y:(ph-ih)/2,width:iw,height:ih});}
+  for(const u of ph.cmeas){const e=await _embPhoto(doc,u);if(!e)continue;const land=e.w>e.h,pw=land?A4W:A4H,phh=land?A4H:A4W,m=4*MM;const pg=doc.addPage([pw,phh]);
+    let iw=pw-2*m,ih=iw*e.h/e.w;if(ih>phh-2*m){ih=phh-2*m;iw=ih*e.w/e.h;}pg.drawImage(e.j,{x:(pw-iw)/2,y:(phh-ih)/2,width:iw,height:ih});}
   // قبل ثم بعد: صورتان في الصفحة (نفس تجميع صور المحطة)
-  for(const ph of['before','after']){const imgs=await _stPhaseImgs(p.id,ph,1800);let pg=null;
-    const margin=8*MM,gap=6*MM,cw=(A4W-margin*2-gap)/2,ch=A4H-margin*2;
-    for(let i=0;i<imgs.length;i++){const im=imgs[i],pos=i%2;if(pos===0)pg=doc.addPage([A4W,A4H]);
-      let dw=cw,dh=dw*im.h/im.w;if(dh>ch){dh=ch;dw=dh*im.w/im.h;}
-      const cx=margin+pos*(cw+gap); // نفس ترتيب «تجميع صور قبل/بعد في PDF»
-      try{pg.drawImage(await emb(im),{x:cx+(cw-dw)/2,y:margin+(ch-dh)/2,width:dw,height:dh});}catch(_){}}}
+  const margin=8*MM,gap=6*MM,cw=(A4W-margin*2-gap)/2,ch=A4H-margin*2;
+  for(const k of['before','after']){let pg=null,i=0;
+    for(const u of ph[k]){const e=await _embPhoto(doc,u);if(!e)continue;const pos=i%2;if(pos===0)pg=doc.addPage([A4W,A4H]);
+      let dw=cw,dh=dw*e.h/e.w;if(dh>ch){dh=ch;dw=dh*e.w/e.h;}
+      pg.drawImage(e.j,{x:margin+pos*(cw+gap)+(cw-dw)/2,y:margin+(ch-dh)/2,width:dw,height:dh});i++;}}
   doc.setTitle(String(p.wo_number||p.code||'ميجر'));
-  return new Blob([await doc.save()],{type:'application/pdf'});}
+  const out=new Blob([await doc.save({useObjectStreams:false})],{type:'application/pdf'});
+  window._pdcMs=Math.round(performance.now()-T0);return out;}
+/* تحميل مسبق لمحرّك ميجر البرامج (مرة وحدة) حتى تطلع الطباعة فوراً */
+let _pdcWarmed=false;
+function _pdcWarm(){if(_pdcWarmed||!PROFILE||!['admin','data_entry'].includes(PROFILE.role))return;_pdcWarmed=true;
+  const run=()=>{_pdcAssets().then(()=>Promise.all([_pdcArLib(),_pdcFont('novaB'),_pdcFont('arB'),_pdcTpl('measurement_template_pdc.xlsx')])).catch(()=>{_pdcWarmed=false;});};
+  if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:4000});else setTimeout(run,1500);}
+const _tplBufs={};
+function _pdcTpl(name){const k=name+APP_VER;if(!_tplBufs[k])_tplBufs[k]=fetch('./'+name+'?_v='+APP_VER,{cache:'force-cache'}).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل القالب');return r.arrayBuffer();}).catch(e=>{delete _tplBufs[k];throw e;});return _tplBufs[k];}
 /* رفع صورة/صور ميجر الاستشاري لمحطة موجودة (جودة عالية) */
 function _pickCmeas(pid,after){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.style.display='none';document.body.appendChild(inp);
   inp.onchange=async()=>{const files=[...(inp.files||[])];inp.remove();if(!files.length)return;toast('جارٍ رفع ميجر الاستشاري…');
     try{for(const f of files){const im=await _sapFileToImg(f,2600);if(!im)throw new Error('تعذّر قراءة الصورة');const path=await uploadPhoto(im.dataUrl,'cmeas');
         const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'cmeas',photo:path,work_date:todayKey()});if(error)throw error;}
-      toast('تم رفع ميجر الاستشاري ✓');if(after)after();
+      window._ppre=null;toast('تم رفع ميجر الاستشاري ✓');if(after)after();
     }catch(e){toast('تعذّر الرفع: '+(e&&e.message||e));}};
   inp.click();}
 function _cmeasBlock(pid){openModal(`<h3 style="margin:0 0 10px">📄 ميجر الاستشاري مطلوب</h3>
@@ -2416,7 +2434,7 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
       if(_sil)_preWarn.push('بند مسجّل بأكثر من اسم: '+bad.join('، '));else if(!confirm('⚠️ تنبيه قبل الطباعة\n\n'+msg+'\n\nيعني فيه إدخال برقم بند غلط، والكميات بتنجمع تحت نفس الرقم في ورقة القياس.\nالأفضل تصحّح الإدخال أولاً.\n\nتبي تكمل الطباعة كذا؟')){toast('تم الإلغاء — صحّح رقم البند أولاً');return;}}
     const items=Object.values(agg);
     let _tbuf=opt.cache&&opt.cache[cfg.tpl];
-    if(!_tbuf){const resp=await fetch('./'+cfg.tpl+'?_v='+APP_VER,{cache:'reload'});if(!resp.ok)throw new Error('تعذّر تحميل القالب');_tbuf=await resp.arrayBuffer();if(opt.cache)opt.cache[cfg.tpl]=_tbuf;}
+    if(!_tbuf){_tbuf=await _pdcTpl(cfg.tpl);if(opt.cache)opt.cache[cfg.tpl]=_tbuf;}
     const zip=await JSZip.loadAsync(_tbuf);
     const path=cfg.sheetFile||'xl/worksheets/sheet1.xml';
     let xml=await zip.file(path).async('string');
@@ -2508,13 +2526,14 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
     if(_progPdfMode){let n=0;try{n=await _progCmeasCount(p.id);}catch(_){n=-1;}if(n===0){_cmeasBlock(p.id);return;}}
     let _sigObj=null;
     if(_isProgSt&&cfg.sig){try{_sigObj=await _sigLoad();await _sigInject(zip,_sigObj);}catch(e){_preWarn.push(e&&e.message==='nokey'?'التوقيع الإلكتروني ما انضاف — لازم كود SQL مفتاح التوقيع (مرة واحدة)':'التوقيع الإلكتروني ما انضاف: '+(e&&e.message||e));}}
-    let out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+    const _genX=()=>zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+    let out=_progPdfMode?null:await _genX();
     const _woN=String(p.wo_number||'').trim().replace(/[\\/:*?"<>|]/g,'-');
     if(_isProgSt&&!_woN)_preWarn.push('محطة برامج بدون رقم أمر عمل — اسم الملف صار رقم المحطة');
     let fname=(_isProgSt&&_woN)?_woN+'.xlsx':cfg.fname+'_'+(p.code||'محطة')+'.xlsx';
     if(_progPdfMode){toast('جارٍ تجهيز ملف PDF (الميجر + ميجر الاستشاري + الصور)…');
-      try{out=await _progPdf(p,out,_tplXml0,_sigObj);fname=fname.replace(/\.xlsx$/,'.pdf');}
-      catch(e){console.error(e);_preWarn.push('تعذّر تجهيز PDF ('+(e&&e.message||e)+') — نزل ملف Excel بدلاً منه');}}
+      try{out=await _progPdf(p,zip,_tplXml0,_sigObj);fname=fname.replace(/\.xlsx$/,'.pdf');toast('PDF جاهز ✓ ('+(window._pdcMs/1000).toFixed(1)+' ث)');}
+      catch(e){console.error(e);out=await _genX();_preWarn.push('تعذّر تجهيز PDF ('+(e&&e.message||e)+') — نزل ملف Excel بدلاً منه');}}
     // مراجعة المبالغ: الإجمالي في الورقة (من جدول أسعار القالب) مقابل إجمالي التطبيق
     const warn=[];let tc=null,ts=null,app=0;
     const f2=n=>(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2543,7 +2562,7 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
   }catch(e){if(_sil)throw e;toast('خطأ: '+(e&&e.message||e));}
 }
 function printMeasurementSheet(pid,opt){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',mat:{rows:[41,45],code:['D','AH'],name:['J','AN'],qty:['AA','BE']},sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}},opt);}
-function printMeasurementSheetPDC(pid,opt){return _measureSheet(pid,{title:'ميجر pdc',sig:true,cDate:'J55',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}},opt);}
+function printMeasurementSheetPDC(pid,opt){if(!(opt&&opt.silent)&&window._progIds&&window._progIds.has(pid)){try{_progPhotos(pid,true);}catch(_){}}return _measureSheet(pid,{title:'ميجر pdc',sig:true,cDate:'J55',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}},opt);}
 const PDC_SERVICES=['401000027','401000013','401000019','603000018','605000006','605000007','605000008','605000011','606000011','606000013','606000014','606000018','606000023','604000002'];
 let _pdcPrices=null;
 async function _pdcLoadPrices(){if(_pdcPrices)return _pdcPrices;const r=await fetch('./pdc_prices.json?_v='+APP_VER,{cache:'reload'});_pdcPrices=await r.json();return _pdcPrices;}
@@ -3129,7 +3148,7 @@ function _stTypeSummary(ids){
       ${c['غير محدد']?`<span class="pill pend">غير محدد: ${c['غير محدد']}</span>`:''}
     </div></div>`;
 }
-async function loadWorkOrders(useCache){
+async function loadWorkOrders(useCache){try{_pdcWarm();}catch(_){}
   const period=document.getElementById('wo_period').value;
   let data;if(useCache===true&&window._woData)data=window._woData;else{try{data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false}));window._woData=data;}catch(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}}
   let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));

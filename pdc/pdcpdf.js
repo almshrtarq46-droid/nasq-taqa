@@ -165,7 +165,7 @@ const MIRROR={'(':')',')':'(','<':'>','>':'<','[':']',']':'[','{':'}','}':'{'};
 
 async function render(opts){
   const{PDFLib,fontkit,JSZip}=opts.libs;const{PDFDocument,rgb,pushGraphicsState,popGraphicsState,rectangle,clip,endPath}=PDFLib;
-  const zip=await JSZip.loadAsync(opts.xlsx);
+  const zip=opts.zip||await JSZip.loadAsync(opts.xlsx); // V388: يقبل الملف مباشرة بدون ضغط/فك (أسرع)
   const sheetXml=await zip.file(opts.sheetPath||'xl/worksheets/sheet1.xml').async('string');
   const stylesXml=await zip.file('xl/styles.xml').async('string');
   const themeF=zip.file('xl/theme/theme1.xml');const themeXml=themeF?await themeF.async('string'):'';
@@ -173,7 +173,7 @@ async function render(opts){
   const sst=i=>{if(!sstArr){sstArr=[];if(sstF&&opts._sstXml)for(const m of opts._sstXml.matchAll(/<si>([\s\S]*?)<\/si>/g))sstArr.push(unesc([...m[1].matchAll(/<t[^>]*>([\s\S]*?)<\/t>/g)].map(x=>x[1]).join('')));}return sstArr[i]==null?'':sstArr[i];};
   if(sstF)opts._sstXml=await sstF.async('string');
   const sheet=parseSheet(sheetXml),sty=parseStyles(stylesXml,themeXml);
-  const tplSheet=parseSheet(opts.tplSheetXml);
+  const tplSheet=opts.tplSheet||(opts.tplSheet=parseSheet(opts.tplSheetXml));
   const E=makeEval(sheet,opts.tables,sst);
   const geo=opts.geom,X=geo.X,Y=geo.Y,H=geo.H,SC=geo.s;
   const maxR=opts.maxRow||65,maxC=opts.maxCol||122,minR=opts.minRow||5;
@@ -207,7 +207,7 @@ async function render(opts){
   /* مكتبة الأوصاف: نصوص عربية مرسومة بإكسل نفسه (من PDF صدّره المستخدم) — تُنقل كما هي = نفس خط إكسل 100% */
   const LB=opts.arLib||null,libJobs=[];const nrm=t=>String(t||'').replace(/\s+/g,' ').trim();
   // مطابقة مرنة: نفس النص مع اختلاف الهمزات/الياء/التاء المربوطة فقط (مثل أحادي ↔ آحادي)
-  const anrm=t=>nrm(t).replace(/[\u064B-\u065F\u0640]/g,'').replace(/[آأإٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي');
+  const anrm=t=>nrm(t).replace(/\s*([\/\-\(\)\.,،:])\s*/g,'$1').replace(/[\u064B-\u065F\u0640]/g,'').replace(/[آأإٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي');
   if(LB&&!LB._n){LB._n={};for(const z in LB.map){const o={};for(const t in LB.map[z])o[anrm(t)]=LB.map[z][t];LB._n[z]=o;}}
   for(const o of sheet.cells.values()){const{r,c}=o;if(r<minR||r>maxR||c>maxC)continue;
     const g=mtl.get(key(r,c));if(g&&(g[0]!==r||g[1]!==c))continue;if(!isDyn(r,c))continue;
@@ -219,7 +219,9 @@ async function render(opts){
     const isAr=AR.test(text);const fs1=(/[A-Za-z0-9\u0600-\u06FF]/.exec(text)||[''])[0];const rtl=isAr&&AR.test(fs1);
     let h=xf.h;if(h==='general')h=(typeof v==='number')?'right':(rtl&&xf.ro!==1?'right':'left');
     if(h==='centerContinuous'||h==='fill'||h==='justify'||h==='distributed')h='center';
-    if(LB&&rtl&&h==='right'){const m=LB.map[String(fo.sz)];const e=m&&(m[nrm(text)]||LB._n[String(fo.sz)][anrm(text)]);const cal=LB.cal[String(fo.sz)];
+    if(LB&&rtl&&h==='right'){const m=LB.map[String(fo.sz)];let e=m&&(m[nrm(text)]||LB._n[String(fo.sz)][anrm(text)]);
+      // ما تطابق النص؟ نأخذ وصف العقد لرقم البند اللي في نفس الصف (AE للمقاول / CM للاستشاري)
+      if(!e&&LB.code){const cc={AL:['AE','S'],CT:['CM','C']}[colStr(c)];if(cc){const cd=String(E.val(r,colNum(cc[0]))??'').trim();e=LB.code[cc[1]]&&LB.code[cc[1]][cd]||null;}}const cal=LB.cal[String(fo.sz)];
       if(e&&cal){libJobs.push({e,R,cal,ref:colStr(c)+r});drawn.push({ref:colStr(c)+r,text,lib:1});continue;}}
     const fL=await gF(fontKey(fo.name,fo.b)),fA=isAr?await gF(fo.b?'arB':'arR'):fL;
     // مقاطع النص: عربي (A) / أرقام (D) / لاتيني (L) / محايد (N) — في السياق العربي إكسل يعرض الأرقام بالهندية ويعكس الرموز
@@ -261,6 +263,6 @@ async function render(opts){
   if(opts.sig&&opts.sig.d){const sg=opts.sig;const R={x0:X[sg.c0],x1:X[sg.c1],t:Y[sg.r0]+sg.dy0,b:Y[sg.r1]+(sg.dy1||0)};
     const sx=(R.x1-R.x0)/sg.w,sy=(R.b-R.t)/sg.h;const s=Math.min(sx,sy);const ox=R.x0+((R.x1-R.x0)-sg.w*s)/2,oy=R.t+((R.b-R.t)-sg.h*s)/2;
     page.drawSvgPath(sg.d,{x:ox+(sg.tx||0)*s,y:H-(oy+(sg.ty||0)*s),scale:s,color:hex(sg.color||'1537A8'),borderWidth:0});}
-  return{doc,page,drawn};}
+  return{doc,page,drawn,tplSheet};}
 G.PdcPdf={render,parseSheet,parseStyles,fmtNum,shiftF};
 })(typeof window!=='undefined'?window:globalThis);
