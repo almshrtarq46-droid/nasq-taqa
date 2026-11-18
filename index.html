@@ -772,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='382';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='383';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -5163,8 +5163,11 @@ function _isCable800Mat(m){return String((m&&m.sec_code)||'').trim()==='90811101
 function _isLug800Mat(m){return String((m&&m.sec_code)||'').trim()==='908122054'||/(لقز|لجز|لكس|لقس|لجزات|لقزات)[^0-9]{0,12}800(?!\d)/.test(_mTxt(m))||/(conn|term|lug)[\s\S]{0,40}800/i.test(_mTxt(m));}
 function _wTxt(o){return ((o&&(o.name||o.item_name))||'')+' '+((o&&(o.name_full||o.item_name_full))||'');}
 function _wCode(o){return String((o&&(o.code||o.item_code))||'').trim();}
-function _isLug800Work(o){return _wCode(o)==='305010303'||(/(لقز|لجز|لكس|لقس|نهاية|نهايات|ترمينال)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
-function _isCable800Work(o){if(_isLug800Work(o))return false;return _wCode(o)==='304010104'||(/(كابل|كيبل|كيابل)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
+/* V383: البند اللي له رقم عقد يُحكم برقمه فقط (304010104 كيبل 800 / 305010303 لقز 800) — الاسم يُستخدم فقط للبند بدون رقم
+   (كان بند 310000015 «إصلاح غلاف العازل…» ينحسب كيبل 800 بسبب اسمه → 42 + 3 = 45) */
+function _wCoded(o){return /^\d{9}$/.test(_wCode(o));}
+function _isLug800Work(o){return _wCode(o)==='305010303'||(!_wCoded(o)&&/(لقز|لجز|لكس|لقس|نهاية|نهايات|ترمينال)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
+function _isCable800Work(o){if(_isLug800Work(o))return false;return _wCode(o)==='304010104'||(!_wCoded(o)&&/(كابل|كيبل|كيابل)/.test(_wTxt(o))&&/800(?!\d)/.test(_wTxt(o)));}
 function _mat800Sums(work,mats){let wC=0,wL=0,mC=0,mL=0;
   (work||[]).forEach(o=>{if(_isCable800Work(o))wC+=Number(o.qty||0);else if(_isLug800Work(o))wL+=Number(o.qty||0);});
   (mats||[]).forEach(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};if(_isCable800Mat(m))mC+=Number(r.qty||0);else if(_isLug800Mat(m))mL+=Number(r.qty||0);});
