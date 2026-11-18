@@ -703,6 +703,12 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
         <div id="afterThumbs" class="thumbs"></div>
         <input type="file" accept="image/*" multiple id="afterInput" style="display:none" onchange="onFieldPhoto(this,'after')">
         <button class="btn ghost sm" style="width:100%;margin-bottom:14px" onclick="document.getElementById('afterInput').click()">📷 إضافة صور بعد (تقدر تختار عدة صور)</button>
+        <div id="cmeasBox" style="display:none;margin:0 0 14px;padding:10px;border:2px solid #1d6fb8;border-radius:12px;background:#eef5fc">
+          <label style="color:#1d4f86;font-weight:800">📄 ميجر الاستشاري <span style="color:var(--bad)">*</span> <small style="font-weight:600;color:#55606e">(إجباري للبرامج — صورة عادية بالجوال)</small></label>
+          <div id="cmeasThumbs" class="thumbs"></div>
+          <input type="file" accept="image/*" multiple id="cmeasInput" style="display:none" onchange="onCmeasPhoto(this)">
+          <button class="btn sm" style="width:100%;background:#1d6fb8;border-color:#1d6fb8" onclick="document.getElementById('cmeasInput').click()">📷 رفع ميجر الاستشاري</button>
+        </div>
         <div class="field"><label>ملاحظات</label><textarea id="f_note" rows="2" placeholder="اختياري"></textarea></div>
         <div class="locbar wait" id="f_loc" style="display:none"></div>
         <button class="btn" id="f_save" onclick="saveFieldReport()">رفع العمل</button>
@@ -766,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='381';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='382';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1102,6 +1108,57 @@ async function _sigInject(zip,sig){
   rl=rl.replace('</Relationships>',rels+'</Relationships>');
   dr=dr.replace('</xdr:wsDr>',`<xdr:twoCellAnchor editAs="oneCell"><xdr:from><xdr:col>9</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>52</xdr:row><xdr:rowOff>152400</xdr:rowOff></xdr:from><xdr:to><xdr:col>23</xdr:col><xdr:colOff>0</xdr:colOff><xdr:row>54</xdr:row><xdr:rowOff>0</xdr:rowOff></xdr:to><xdr:pic><xdr:nvPicPr><xdr:cNvPr id="90" name="NASQ Signature"/><xdr:cNvPicPr><a:picLocks noChangeAspect="1"/></xdr:cNvPicPr></xdr:nvPicPr><xdr:blipFill><a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rIdNasqSig" cstate="print"><a:extLst><a:ext uri="{28A0092B-C50C-407E-A947-70E740481C1C}"><a14:useLocalDpi xmlns:a14="http://schemas.microsoft.com/office/drawing/2010/main" val="1"/></a:ext>${svgExt}</a:extLst></a:blip><a:stretch><a:fillRect/></a:stretch></xdr:blipFill><xdr:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="1600200" cy="312420"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></xdr:spPr></xdr:pic><xdr:clientData/></xdr:twoCellAnchor></xdr:wsDr>`);
   zip.file(dp,dr);zip.file(rp,rl);}
+/* V382: ميجر البرامج PDF مباشر بنفس شكل تصدير إكسل — الخلفية من PDF إكسل نفسه + الكتابة فوقها بنفس المقاسات (pdc/pdcpdf.js)
+   الملف الواحد = ميجرنا ← ميجر الاستشاري (صورة كاملة لكل صفحة) ← صور قبل ← صور بعد (صورتان لكل صفحة)، واسمه رقم أمر العمل */
+const PDC_VER=1;let _pdcA=null;const _pdcFontC={};
+const _PDC_FONT={novaB:'nova-b',novaR:'nova-r',liberR:'liber-r',liberB:'liber-b',carlitoR:'carlito-r',carlitoB:'carlito-b',arR:'ar-r',arB:'ar-b'};
+async function _pdcAssets(){if(_pdcA)return _pdcA;
+  _pdcA=(async()=>{await ensureLib('pdflib','fontkit','pdcpdf','jszip');
+    const[j,bg]=await Promise.all([fetch('pdc/pdc.json?v='+PDC_VER).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل بيانات الميجر');return r.json();}),
+      fetch('pdc/bg.pdf?v='+PDC_VER).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل خلفية الميجر');return r.arrayBuffer();})]);
+    return{...j,bg:new Uint8Array(bg)};})();
+  try{return await _pdcA;}catch(e){_pdcA=null;throw e;}}
+async function _pdcFont(k){const f=_PDC_FONT[k];if(!f)return null;if(!_pdcFontC[f])_pdcFontC[f]=fetch('pdc/fonts/'+f+'.ttf?v='+PDC_VER).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل الخط');return r.arrayBuffer();}).then(b=>new Uint8Array(b));
+  try{return await _pdcFontC[f];}catch(e){delete _pdcFontC[f];throw e;}}
+function _sigSvgParts(svg){if(!svg)return null;const vb=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/),tr=svg.match(/translate\(([\d.\-]+)[ ,]+([\d.\-]+)\)/),d=svg.match(/ d="([^"]+)"/);
+  if(!vb||!d)return null;return{d:d[1],w:+vb[1],h:+vb[2],tx:tr?+tr[1]:0,ty:tr?+tr[2]:0,c0:9,c1:23,r0:53,dy0:-1.5,r1:54,dy1:1};}
+async function _progCmeasCount(pid){const{data,error}=await sb.from('station_photos').select('id').eq('project_id',pid).eq('phase','cmeas');if(error)throw error;return (data||[]).length;}
+/* صور المحطة لمرحلة معيّنة → صور JPEG مثبّتة الاتجاه */
+async function _stPhaseImgs(pid,phase,max){const{data,error}=await sb.from('station_photos').select('photo').eq('project_id',pid).eq('phase',phase).order('created_at');if(error)throw error;
+  const blobs=await Promise.all((data||[]).map(async r=>{try{const{data:b,error:de}=await sb.storage.from('photos').download(r.photo);if(de||!b)return null;return b;}catch(_){return null;}}));
+  const out=[];for(const b of blobs){if(!b)continue;const im=await _sapFileToImg(b,max);if(im)out.push(im);}return out;}
+async function _progPdf(p,xlsxBlob,tplSheetXml,sig){
+  const A=await _pdcAssets();const{PDFDocument}=window.PDFLib;
+  const res=await PdcPdf.render({libs:{PDFLib:window.PDFLib,fontkit:window.fontkit,JSZip:window.JSZip},xlsx:new Uint8Array(await xlsxBlob.arrayBuffer()),tplSheetXml,
+    dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,sig:sig?_sigSvgParts(sig.svg):null});
+  const doc=res.doc;const MM=72/25.4,A4W=297*MM,A4H=210*MM;
+  const emb=async im=>doc.embedJpg(im.dataUrl);
+  // ميجر الاستشاري: صفحة كاملة لكل صورة باتجاهها
+  const cm=await _stPhaseImgs(p.id,'cmeas',2600);
+  for(const im of cm){const land=im.w>im.h,pw=land?A4W:A4H,ph=land?A4H:A4W,m=4*MM;const pg=doc.addPage([pw,ph]);const j=await emb(im);
+    let iw=pw-2*m,ih=iw*im.h/im.w;if(ih>ph-2*m){ih=ph-2*m;iw=ih*im.w/im.h;}pg.drawImage(j,{x:(pw-iw)/2,y:(ph-ih)/2,width:iw,height:ih});}
+  // قبل ثم بعد: صورتان في الصفحة (نفس تجميع صور المحطة)
+  for(const ph of['before','after']){const imgs=await _stPhaseImgs(p.id,ph,1800);let pg=null;
+    const margin=8*MM,gap=6*MM,cw=(A4W-margin*2-gap)/2,ch=A4H-margin*2;
+    for(let i=0;i<imgs.length;i++){const im=imgs[i],pos=i%2;if(pos===0)pg=doc.addPage([A4W,A4H]);
+      let dw=cw,dh=dw*im.h/im.w;if(dh>ch){dh=ch;dw=dh*im.w/im.h;}
+      const cx=margin+pos*(cw+gap); // نفس ترتيب «تجميع صور قبل/بعد في PDF»
+      try{pg.drawImage(await emb(im),{x:cx+(cw-dw)/2,y:margin+(ch-dh)/2,width:dw,height:dh});}catch(_){}}}
+  doc.setTitle(String(p.wo_number||p.code||'ميجر'));
+  return new Blob([await doc.save()],{type:'application/pdf'});}
+/* رفع صورة/صور ميجر الاستشاري لمحطة موجودة (جودة عالية) */
+function _pickCmeas(pid,after){const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.multiple=true;inp.style.display='none';document.body.appendChild(inp);
+  inp.onchange=async()=>{const files=[...(inp.files||[])];inp.remove();if(!files.length)return;toast('جارٍ رفع ميجر الاستشاري…');
+    try{for(const f of files){const im=await _sapFileToImg(f,2600);if(!im)throw new Error('تعذّر قراءة الصورة');const path=await uploadPhoto(im.dataUrl,'cmeas');
+        const{error}=await sb.from('station_photos').insert({project_id:pid,worker_id:ME.id,phase:'cmeas',photo:path,work_date:todayKey()});if(error)throw error;}
+      toast('تم رفع ميجر الاستشاري ✓');if(after)after();
+    }catch(e){toast('تعذّر الرفع: '+(e&&e.message||e));}};
+  inp.click();}
+function _cmeasBlock(pid){openModal(`<h3 style="margin:0 0 10px">📄 ميجر الاستشاري مطلوب</h3>
+  <div style="padding:10px;border-radius:10px;background:#fff4e5;color:#8a4b00;font-weight:700;line-height:1.8">لا يمكن طباعة ميجر البرامج إلا بعد رفع صورة ميجر الاستشاري لهذه المحطة.<br>صوّره بالجوال وارفعه، وبعدها يطلع الملف كامل: ميجرنا ← ميجر الاستشاري ← صور قبل ← صور بعد.</div>
+  <button class="btn" style="margin-top:12px" onclick="closeModal();_pickCmeas('${pid}',()=>printMeasurementSheetPDC('${pid}'))">📷 رفع ميجر الاستشاري الآن</button>
+  <button class="link" style="display:block;margin:12px auto 0" onclick="closeModal()">إغلاق</button>`);}
+function _isProgPid(pid,es){return (es||[]).some(e=>_isCable800Work(e)||_isLug800Work(e))||!!(window._progIds&&window._progIds.has(pid));}
 async function _ucLoad(){if(_ucData)return _ucData;if(_ucP)return _ucP;
   _ucP=(async()=>{const{data,error}=await sb.from('app_keys').select('key').eq('name','contract').maybeSingle();
     if(error||!data||!data.key)throw new Error('nokey');
@@ -2358,6 +2415,7 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
     const zip=await JSZip.loadAsync(_tbuf);
     const path=cfg.sheetFile||'xl/worksheets/sheet1.xml';
     let xml=await zip.file(path).async('string');
+    const _tplXml0=xml; // V382: نسخة القالب الأصلية (لمحرّك PDF البرامج)
     let sty=null;try{sty=await zip.file('xl/styles.xml').async('string');}catch(_){}
     let prTbl=null;if(cfg.prices){const _pk='~'+cfg.prices;prTbl=opt.cache&&opt.cache[_pk]||null;if(!prTbl){try{prTbl=await (await fetch('./'+cfg.prices+'?_v='+APP_VER,{cache:'reload'})).json();if(opt.cache)opt.cache[_pk]=prTbl;}catch(_){}}}
     const S=(ref,val,isText)=>{if(ref!=null&&val!=null&&val!=='')xml=_setCellXml(xml,ref,val,isText);};
@@ -2440,11 +2498,18 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
     }}catch(_){}
     // V379: ميجر «البرامج» (كيبل 800 / لقز 800): توقيع المقاول تلقائياً (pdc) + اسم الملف = رقم أمر العمل
     const _isProgSt=(data||[]).some(e=>_isCable800Work(e)||_isLug800Work(e))||!!(window._progIds&&window._progIds.has(p.id));
-    if(_isProgSt&&cfg.sig){try{await _sigInject(zip,await _sigLoad());}catch(e){_preWarn.push(e&&e.message==='nokey'?'التوقيع الإلكتروني ما انضاف — لازم كود SQL مفتاح التوقيع (مرة واحدة)':'التوقيع الإلكتروني ما انضاف: '+(e&&e.message||e));}}
-    const out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
+    // V382: ميجر البرامج = PDF مباشر (ميجرنا + ميجر الاستشاري + قبل + بعد) — ممنوع بدون ميجر الاستشاري
+    const _progPdfMode=_isProgSt&&cfg.sig&&!_sil;
+    if(_progPdfMode){let n=0;try{n=await _progCmeasCount(p.id);}catch(_){n=-1;}if(n===0){_cmeasBlock(p.id);return;}}
+    let _sigObj=null;
+    if(_isProgSt&&cfg.sig){try{_sigObj=await _sigLoad();await _sigInject(zip,_sigObj);}catch(e){_preWarn.push(e&&e.message==='nokey'?'التوقيع الإلكتروني ما انضاف — لازم كود SQL مفتاح التوقيع (مرة واحدة)':'التوقيع الإلكتروني ما انضاف: '+(e&&e.message||e));}}
+    let out=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
     const _woN=String(p.wo_number||'').trim().replace(/[\\/:*?"<>|]/g,'-');
     if(_isProgSt&&!_woN)_preWarn.push('محطة برامج بدون رقم أمر عمل — اسم الملف صار رقم المحطة');
-    const fname=(_isProgSt&&_woN)?_woN+'.xlsx':cfg.fname+'_'+(p.code||'محطة')+'.xlsx';
+    let fname=(_isProgSt&&_woN)?_woN+'.xlsx':cfg.fname+'_'+(p.code||'محطة')+'.xlsx';
+    if(_progPdfMode){toast('جارٍ تجهيز ملف PDF (الميجر + ميجر الاستشاري + الصور)…');
+      try{out=await _progPdf(p,out,_tplXml0,_sigObj);fname=fname.replace(/\.xlsx$/,'.pdf');}
+      catch(e){console.error(e);_preWarn.push('تعذّر تجهيز PDF ('+(e&&e.message||e)+') — نزل ملف Excel بدلاً منه');}}
     // مراجعة المبالغ: الإجمالي في الورقة (من جدول أسعار القالب) مقابل إجمالي التطبيق
     const warn=[];let tc=null,ts=null,app=0;
     const f2=n=>(Math.round(n*100)/100).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -2797,8 +2862,10 @@ const _LIBS={
   jspdf:['https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',()=>window.jspdf],
   html2canvas:['https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js',()=>window.html2canvas]
 };
+/* مكتبات محلية تُحمّل عند الحاجة فقط (لا تدخل في التحميل المسبق) — ميجر البرامج PDF */
+const _LIBS_LAZY={pdflib:['pdc/lib/pdf-lib.min.js?v=1',()=>window.PDFLib],fontkit:['pdc/lib/fontkit.umd.min.js?v=1',()=>window.fontkit],pdcpdf:['pdc/pdcpdf.js?v='+PDC_VER,()=>window.PdcPdf]};
 const _libP={};
-async function ensureLib(){for(let i=0;i<arguments.length;i++){const n=arguments[i],L=_LIBS[n];if(!L||L[1]())continue;if(!_libP[n])_libP[n]=_loadScript(L[0]);await _libP[n];}}
+async function ensureLib(){for(let i=0;i<arguments.length;i++){const n=arguments[i],L=_LIBS[n]||_LIBS_LAZY[n];if(!L||L[1]())continue;if(!_libP[n])_libP[n]=_loadScript(L[0]);await _libP[n];}}
 function _idlePreload(){const run=()=>{for(const n in _LIBS){if(!_LIBS[n][1]()&&!_libP[n])_libP[n]=_loadScript(_LIBS[n][0]).catch(()=>{});}};if('requestIdleCallback'in window)requestIdleCallback(run,{timeout:5000});else setTimeout(run,2500);}
 async function _listAllFiles(prefix){
   let out=[],offset=0;const limit=100;
@@ -3389,7 +3456,8 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
       <button class="actile" onclick="viewStationPhotos('${pid}')"><b>📷</b><span>الصور</span></button>
       <button class="actile" onclick="openStationEntries('${pid}')"><b>✏️</b><span>الأعمال</span></button>
       <button class="actile" onclick="printMeasurementSheet('${pid}')"><b>🖨</b><span>ميجر</span></button>
-      <button class="actile" onclick="printMeasurementSheetPDC('${pid}')"><b>🖨</b><span>ميجر pdc</span></button>
+      <button class="actile" onclick="printMeasurementSheetPDC('${pid}')"><b>🖨</b><span>${_isProgPid(pid,es)?'ميجر PDF':'ميجر pdc'}</span></button>
+      ${!_vwr&&_isProgPid(pid,es)?`<button class="actile" onclick="viewStationPhotos('${pid}')"><b>📄</b><span>ميجر الاستشاري</span></button>`:''}
       <button class="actile" onclick="openStationMats('${pid}')"><b>⚡</b><span>المواد</span></button>
       ${!_vwr?`<button class="actile" onclick="openScanner('${pid}')"><b>📄</b><span>مسح الميجر</span></button>`:''}
       ${_canSign?`<button class="actile" onclick="confirmToggleSigned('${pid}',event)"><b>${_sg?'✅':'☐'}</b><span>${_sg?'إلغاء التوقيع':'تحديد موقّع'}</span></button>`:''}
@@ -3445,7 +3513,8 @@ async function _renderStPhotos(pid){
   const{data}=await sb.from('station_photos').select('*').eq('project_id',pid).order('created_at');
   const rows=data||[];
   const ed=canEditPhotos();
-  const before=rows.filter(x=>x.phase==='before'),after=rows.filter(x=>x.phase==='after'),meas=rows.filter(x=>x.phase==='meas');
+  const before=rows.filter(x=>x.phase==='before'),after=rows.filter(x=>x.phase==='after'),meas=rows.filter(x=>x.phase==='meas'),cmeas=rows.filter(x=>x.phase==='cmeas');
+  const _prgSt=_isProgPid(pid,_entriesFor?_entriesFor(pid):null)||cmeas.length>0;
   const paths=rows.map(x=>x.photo);
   const p=(PROJECTS||[]).find(x=>x.id===pid)||{};
   const stName=(p.code||p.name||'محطة').toString().replace(/[\\/:*?"<>|]/g,'_');
@@ -3456,7 +3525,13 @@ async function _renderStPhotos(pid){
   const shareAll=(phase,n)=>n?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#25D366;border-color:#25D366;color:#fff" onclick="waStPhotos('${phase}')">📲 مشاركة كل صور ${phase==='before'?'قبل':'بعد'} (${n}) دفعة واحدة</button>`:'';
   const addBefore=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','before')">➕ إضافة صور قبل</button>`:'';
   const addAfter=ed?`<button class="btn ghost sm" style="width:100%;margin-top:8px" onclick="pickStPhotos('${pid}','after')">➕ إضافة صور بعد</button>`:'';
-  wrap.innerHTML=`
+  const cmeasSec=_prgSt?`<div style="background:#eef5fc;border:2px solid #1d6fb8;border-radius:14px;padding:12px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#1d6fb8;flex:none"></span><b style="font-size:15px;color:#1d4f86">📄 ميجر الاستشاري (${cmeas.length})</b></div>
+      ${cmeas.length?'':'<div style="color:#8a4b00;font-weight:700;font-size:13px">⚠ لم يُرفع بعد — طباعة ميجر البرامج ممنوعة حتى يُضاف</div>'}
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0">${cell(cmeas,'ميجر_الاستشاري')}</div>
+      ${ed?`<button class="btn sm" style="width:100%;margin-top:8px;background:#1d6fb8;border-color:#1d6fb8" onclick="_pickCmeas('${pid}',()=>_renderStPhotos('${pid}'))">📷 رفع ميجر الاستشاري</button>`:''}
+    </div><div style="height:2px;background:var(--line);border-radius:2px;margin:16px 0"></div>`:'';
+  wrap.innerHTML=cmeasSec+`
     <div style="background:#e7f4ec;border:2px solid #1f6f4a;border-radius:14px;padding:12px">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px"><span style="width:11px;height:11px;border-radius:50%;background:#1f6f4a;flex:none"></span><b style="font-size:15px;color:#1b6b3a">📄 الميجر الموقّع (${meas.length})</b></div>
       ${meas.length?`<button class="btn sm" style="width:100%;margin:6px 0 2px;background:#12343B" onclick="photosPDF('${pid}','meas')">🖨 حفظ الميجر PDF (${meas.length})</button>`:''}
@@ -4452,9 +4527,9 @@ function sapRmPend(i){_sapImgs.splice(i,1);sapRenderPend();}
 function sapClear(){_sapImgs=[];const s=document.getElementById('sapStation');if(s)s.value='';sapRenderPend();}
 function sapRenderPend(){const box=document.getElementById('sapPend');if(!box)return;
   box.innerHTML=_sapImgs.length?_sapImgs.map((f,i)=>`<div class="sapchip"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">🖼 ${_irEsc(f.name||('صورة '+(i+1)))}</span><button onclick="sapRmPend(${i})">✕</button></div>`).join(''):'<div class="saphint2">لا صور بعد — اضغط «إضافة صور»</div>';}
-async function _sapFileToImg(file){
+async function _sapFileToImg(file,maxPx){
   // نعيد ترميز الصورة عبر canvas لتثبيت اتجاه EXIF (وإلا تطلع مدوّرة/ممغوطة في PDF) وتصغيرها قليلاً لسرعة التحميل
-  const MAX=1800;
+  const MAX=maxPx||1800;
   const bake=(src,w,h)=>{const sc=Math.min(1,MAX/Math.max(w,h));const cw=Math.max(1,Math.round(w*sc)),ch=Math.max(1,Math.round(h*sc));
     const c=document.createElement('canvas');c.width=cw;c.height=ch;const cx=c.getContext('2d');cx.fillStyle='#fff';cx.fillRect(0,0,cw,ch);
     cx.drawImage(src,0,0,cw,ch);return{dataUrl:c.toDataURL('image/jpeg',0.9),w:cw,h:ch};};
@@ -5054,8 +5129,8 @@ async function doCheck(dir){
   }catch(e){toast(e.message);lb.className='locbar bad2';lb.textContent='⛔ '+e.message;const b=document.getElementById('att_btn');if(b){b.disabled=false;}renderAttWorker();}
 }
 /* ===== WORKER: field entry (multi-photo + multi-item, no prices) ===== */
-let beforePhotos=[],afterPhotos=[],fieldItems=[],fieldMats=[];
-function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];fieldMats=[];
+let beforePhotos=[],afterPhotos=[],fieldItems=[],fieldMats=[],cmeasPhotos=[];
+function initField(){beforePhotos=[];afterPhotos=[];fieldItems=[];fieldMats=[];cmeasPhotos=[];renderCmeas();
   document.getElementById('f_assign').innerHTML=ASSIGNMENTS.map(a=>`<option value="${a.id}">${a.name}</option>`).join('')||'<option value="">لا توجد إسنادات — راجع المدير</option>';
   document.getElementById('f_station_no').value='';document.getElementById('f_station_type').value='';document.getElementById('f_note').value='';document.getElementById('f_qty').value='';document.getElementById('f_item_search').value='';
   const _nn=document.getElementById('f_notice_no');if(_nn)_nn.value='';const _wo=document.getElementById('f_wo_no');if(_wo)_wo.value='';
@@ -5197,7 +5272,13 @@ function addFieldItem(){const it=CATALOG.find(i=>i.id===document.getElementById(
   const nc=_needsMatsItem(it);
   fieldItems.push({item_id:it.id,name:it.name,name_full:it.name_full||it.name,unit:it.unit,qty:q,code:it.code||'',needsCustody:nc});document.getElementById('f_qty').value='';renderFieldItems();renderFieldMats();
   if(nc&&!fieldMats.length)toast('البند «'+it.name+'» يحتاج مواد — يجب إضافة المواد بالكميات تحت');}
-function renderFieldItems(){document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name} ${it.needsCustody?'<span class="custtag">يتطلب مواد</span>':''}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems();renderFieldMats()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
+/* V382: ميجر الاستشاري في رفع المحطة — يظهر ويصير إجباري لما فيه بند برامج (كيبل 800 / لقز 800) */
+function _fieldIsProg(){return fieldItems.some(it=>_isCable800Work(it)||_isLug800Work(it));}
+function renderCmeas(){const b=document.getElementById('cmeasBox');if(!b)return;b.style.display=_fieldIsProg()?'block':'none';
+  const t=document.getElementById('cmeasThumbs');if(t)t.innerHTML=cmeasPhotos.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="cmeasPhotos.splice(${i},1);renderCmeas()">✕</button></div>`).join('');}
+async function onCmeasPhoto(input){const files=Array.from(input.files||[]);input.value='';if(!files.length)return;
+  for(const f of files){try{const im=await _sapFileToImg(f,2600);if(im)cmeasPhotos.push({data:im.dataUrl});}catch(_){}}renderCmeas();}
+function renderFieldItems(){renderCmeas();document.getElementById('itemsAdded').innerHTML=fieldItems.map((it,i)=>`<div class="item" style="padding:9px"><div class="meta"><b style="font-size:14px">${it.name} ${it.needsCustody?'<span class="custtag">يتطلب مواد</span>':''}</b><small>${fmt(it.qty)} ${it.unit}</small></div><button class="btn danger sm" style="flex:none;width:40px" onclick="fieldItems.splice(${i},1);renderFieldItems();renderFieldMats()">✕</button></div>`).join('')||'<small style="color:var(--muted)">لم تُضف بنود بعد</small>';}
 function renderThumbs(phase){const arr=phase==='before'?beforePhotos:afterPhotos;document.getElementById(phase+'Thumbs').innerHTML=arr.map((p,i)=>`<div class="th"><img src="${p.data}"><button onclick="${phase==='before'?'beforePhotos':'afterPhotos'}.splice(${i},1);renderThumbs('${phase}')">✕</button></div>`).join('');}
 function readFileData(f){return new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(rd.result);rd.onerror=()=>rej(new Error('تعذّر قراءة الصورة'));rd.readAsDataURL(f);});}
 async function onFieldPhoto(input,phase){
@@ -5232,6 +5313,7 @@ async function saveFieldReport(){
    const _mm=_matQtyCheck(fieldItems,fieldMats);if(_mm.length){_matsMismatch('upload',_mm);return;}}
   if(!beforePhotos.length){toast('أضف صور قبل التنفيذ');return;}
   if(!afterPhotos.length){toast('أضف صور بعد التنفيذ');return;}
+  const _prog=_fieldIsProg();if(_prog&&!cmeasPhotos.length){toast('ارفع صورة ميجر الاستشاري (إجباري للبرامج)');const b=document.getElementById('cmeasBox');if(b)b.scrollIntoView({behavior:'smooth',block:'center'});return;}
   const btn=document.getElementById('f_save');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
   try{
     let pid;const{data:_allSame}=await sb.from('projects').select('id,station_type,notice_no').eq('code',stationNo);
@@ -5247,6 +5329,9 @@ async function saveFieldReport(){
     const tasks=[...beforePhotos.map(ph=>['before',ph]),...afterPhotos.map(ph=>['after',ph])];
     const photoRows=await Promise.all(tasks.map(([phase,ph])=>uploadPhoto(ph.data,phase).then(path=>({project_id:pid,worker_id:ME.id,phase,photo:path,lat:ph.lat,lng:ph.lng,work_date:wd}))));
     const{error:pe}=await sb.from('station_photos').insert(photoRows);if(pe)throw pe;
+    // ميجر الاستشاري (البرامج) — يُحفظ بعد الصور حتى لو تعذّر ما توقف المحطة
+    if(_prog&&cmeasPhotos.length){try{const cr=await Promise.all(cmeasPhotos.map(ph=>uploadPhoto(ph.data,'cmeas').then(path=>({project_id:pid,worker_id:ME.id,phase:'cmeas',photo:path,work_date:wd}))));
+      const{error:cme}=await sb.from('station_photos').insert(cr);if(cme)throw cme;}catch(e){toast('حُفظت المحطة — لكن تعذّر حفظ ميجر الاستشاري: '+(e&&e.message||e)+' (أضفه من بطاقة المحطة)');}}
     let note=document.getElementById('f_note').value.trim();
     // ملخص العهدة يُدوَّن في ملاحظة المحطة حتى لو لم يُفعّل الخصم بعد
     const _cuSum=fieldMats.filter(r=>Number(r.qty)>0).map(r=>{const m=(MATERIALS||[]).find(x=>x.id===r.material_id)||{};return (m.name||'')+' '+fmt(Number(r.qty))+' '+(m.unit||'');}).join(' + ');

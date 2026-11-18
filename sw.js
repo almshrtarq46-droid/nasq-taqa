@@ -51,6 +51,14 @@ self.addEventListener('fetch', e => {
     return;
   }
 
+  // --- محرّك ميجر البرامج PDF (pdc/…?v=N): cache-first — الرابط يحمل رقم النسخة ---
+  if (/\/pdc\//.test(url)) {
+    e.respondWith(caches.open('nasq-pdc-v1').then(c =>
+      c.match(req).then(hit => hit || fetch(req).then(resp => { if (resp && resp.ok) { try { c.put(req, resp.clone()); } catch (_) {} } return resp; }))
+    ));
+    return;
+  }
+
   // --- CDN libs & fonts: cache-first ---
   if (CDN.test(url)) {
     e.respondWith(caches.open(CDN_CACHE).then(c =>

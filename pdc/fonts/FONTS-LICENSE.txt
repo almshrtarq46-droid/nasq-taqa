@@ -1,0 +1,5 @@
+All fonts in this folder are licensed under the SIL Open Font License, Version 1.1 (https://openfontlicense.org).
+- liber-*.ttf : Liberation Sans 2.1.5 (subset)
+- nova-*.ttf  : "NasqCond" — derived from Liberation Sans 2.1.5, glyph advances scaled to a condensed width (subset). Renamed per OFL Reserved Font Name rules.
+- carlito-*.ttf : Carlito 1.104 (subset)
+- ar-*.ttf : Noto Sans Arabic 2.004
