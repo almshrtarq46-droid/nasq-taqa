@@ -255,7 +255,7 @@ async function render(opts){
     const emb=await doc.embedPages(libJobs.map(j=>src.getPage(j.e[0])),libJobs.map(j=>({left:j.e[3],bottom:j.e[4],right:j.e[5],top:j.e[6]})));
     libJobs.forEach((j,i)=>{const{e,R,cal}=j;const xEnd=R.x1-cal.pad,yB=H-((R.t+R.b)/2+cal.k);
       page.pushOperators(pushGraphicsState(),rectangle(R.x0+0.3,H-R.b,R.x1-R.x0-0.3,R.b-R.t),clip(),endPath());
-      page.drawPage(emb[i],{x:e[3]+(xEnd-e[1]),y:e[4]+(yB-e[2])});
+      const k=cal.s||1;page.drawPage(emb[i],{x:xEnd+(e[3]-e[1])*k,y:yB+(e[4]-e[2])*k,xScale:k,yScale:k});
       page.pushOperators(popGraphicsState());});}
   // 3) التوقيع (متجه)
   if(opts.sig&&opts.sig.d){const sg=opts.sig;const R={x0:X[sg.c0],x1:X[sg.c1],t:Y[sg.r0]+sg.dy0,b:Y[sg.r1]+(sg.dy1||0)};
