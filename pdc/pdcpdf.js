@@ -147,18 +147,18 @@ function segments(text,rtl){const out=[];let cur=null;
     if(t==='N'&&(ch==='.'||ch===',')&&cur&&cur.t==='D'&&i+1<chars.length&&cls(chars[i+1])==='D')t='D';
     if(cur&&cur.t===t)cur.s+=ch;else{cur={t,s:ch};out.push(cur);}});
   out.forEach(sg=>{if(sg.t==='N'){sg.draw=rtl?[...sg.s].reverse().map(ch=>MIRROR[ch]||ch).join(''):sg.s;}
-    else if(sg.t==='D'){sg.draw=rtl?[...sg.s].reverse().join('').replace(/[0-9]/g,d=>String.fromCharCode(0x660+ +d)).replace(/\./g,'\u066B').replace(/,/g,'\u066C'):sg.s;}
+    else if(sg.t==='D'){sg.draw=sg.s;} // V387: الأرقام بالإنجليزي دائماً (طلب المدير)
     else sg.draw=sg.s;});
   // في السياق اللاتيني: المحايد بين حروف عربية يتبع العربي
   return out;}
 /* ترتيب العرض البصري: قائمة قطع من اليسار لليمين. النص الإنجليزي/الرقمي الذي فيه كلمة عربية (مثل «2,156.00 ر.س.») تُعرض الكلمة العربية كوحدة يمين→يسار */
 function layout(text,rtl){
-  const piece=sg=>({draw:sg.draw,ar:sg.t==='A'||(sg.t==='D'&&rtl),dig:sg.t==='D'&&rtl});
+  const piece=sg=>({draw:sg.draw,ar:sg.t==='A',dig:false});
   if(rtl)return segments(text,true).reverse().map(piece);
   const out=[];const re=/[\u0600-\u06FF][\u0600-\u06FF .\u200f\u060C]*/g;let last=0,m;
   const pushL=t=>{if(t)segments(t,false).forEach(sg=>out.push({draw:sg.draw,ar:false}));};
   while((m=re.exec(text))){pushL(text.slice(last,m.index));let u=m[0];const tr=u.replace(/\s+$/,'');
-    out.push({group:segments(tr,true).reverse().map(sg=>({draw:sg.draw,ar:sg.t==='A'||sg.t==='D',dig:sg.t==='D'})),key:tr});
+    out.push({group:segments(tr,true).reverse().map(sg=>({draw:sg.draw,ar:sg.t==='A',dig:false})),key:tr});
     if(tr.length<u.length)pushL(u.slice(tr.length));last=m.index+u.length;}
   pushL(text.slice(last));return out;}
 const MIRROR={'(':')',')':'(','<':'>','>':'<','[':']',']':'[','{':'}','}':'{'};
