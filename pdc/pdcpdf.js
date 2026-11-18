@@ -183,9 +183,9 @@ async function render(opts){
   const dynSet=new Set(opts.dyn||[]);
   const isDyn=(r,c)=>{const ref=colStr(c)+r;if(dynSet.has(ref))return true;const t=tplSheet.cells.get(key(r,c));return !t||(t.v==null&&!t.f);};
 
-  const doc=await PDFDocument.create();doc.registerFontkit(fontkit);
-  const bg=await PDFDocument.load(opts.bgPdf);const [bgPage]=await doc.embedPdf(bg,[0]);
-  const page=doc.addPage([bgPage.width,bgPage.height]);page.drawPage(bgPage,{x:0,y:0,width:bgPage.width,height:bgPage.height});
+  /* الصفحة نفسها = صفحة إكسل الأصلية (بدون تغليفها في XObject) — حتى يبقى التكبير/التصغير حاد مثل ملف إكسل تماماً */
+  const doc=await PDFDocument.load(opts.bgPdf);doc.registerFontkit(fontkit);
+  const page=doc.getPage(0);page.node.normalize&&page.node.normalize();
   /* الخطوط تُحمّل وتُضمَّن عند الحاجة فقط (الخطوط اللاتينية مقلّصة مسبقاً، والعربي يُقلَّص هنا) */
   const _F={};const gF=async k=>{if(_F[k])return _F[k];let b=opts.fonts&&opts.fonts[k];if(!b&&opts.loadFont)b=await opts.loadFont(k);
     if(!b){if(k!=='liberB')return gF('liberB');throw new Error('font '+k);}return _F[k]=await doc.embedFont(b,{subset:/^ar/.test(k)});};
@@ -204,6 +204,11 @@ async function render(opts){
 
   // 2) النصوص
   const drawn=[];
+  /* مكتبة الأوصاف: نصوص عربية مرسومة بإكسل نفسه (من PDF صدّره المستخدم) — تُنقل كما هي = نفس خط إكسل 100% */
+  const LB=opts.arLib||null,libJobs=[];const nrm=t=>String(t||'').replace(/\s+/g,' ').trim();
+  // مطابقة مرنة: نفس النص مع اختلاف الهمزات/الياء/التاء المربوطة فقط (مثل أحادي ↔ آحادي)
+  const anrm=t=>nrm(t).replace(/[\u064B-\u065F\u0640]/g,'').replace(/[آأإٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/ؤ/g,'و').replace(/ئ/g,'ي');
+  if(LB&&!LB._n){LB._n={};for(const z in LB.map){const o={};for(const t in LB.map[z])o[anrm(t)]=LB.map[z][t];LB._n[z]=o;}}
   for(const o of sheet.cells.values()){const{r,c}=o;if(r<minR||r>maxR||c>maxC)continue;
     const g=mtl.get(key(r,c));if(g&&(g[0]!==r||g[1]!==c))continue;if(!isDyn(r,c))continue;
     const v=E.val(r,c);if(v==null||v==='')continue;if(v===0&&!sheet.showZeros)continue;
@@ -214,6 +219,8 @@ async function render(opts){
     const isAr=AR.test(text);const fs1=(/[A-Za-z0-9\u0600-\u06FF]/.exec(text)||[''])[0];const rtl=isAr&&AR.test(fs1);
     let h=xf.h;if(h==='general')h=(typeof v==='number')?'right':(rtl&&xf.ro!==1?'right':'left');
     if(h==='centerContinuous'||h==='fill'||h==='justify'||h==='distributed')h='center';
+    if(LB&&rtl&&h==='right'){const m=LB.map[String(fo.sz)];const e=m&&(m[nrm(text)]||LB._n[String(fo.sz)][anrm(text)]);const cal=LB.cal[String(fo.sz)];
+      if(e&&cal){libJobs.push({e,R,cal,ref:colStr(c)+r});drawn.push({ref:colStr(c)+r,text,lib:1});continue;}}
     const fL=await gF(fontKey(fo.name,fo.b)),fA=isAr?await gF(fo.b?'arB':'arR'):fL;
     // مقاطع النص: عربي (A) / أرقام (D) / لاتيني (L) / محايد (N) — في السياق العربي إكسل يعرض الأرقام بالهندية ويعكس الرموز
     const pcs=layout(text,rtl);
@@ -244,6 +251,12 @@ async function render(opts){
       else drawP(p,cx);cx+=want;}
     if(needClip)page.pushOperators(popGraphicsState());
     drawn.push({ref:colStr(c)+r,text,x,base,w,size:sz});}
+  if(libJobs.length){const src=LB.doc;
+    const emb=await doc.embedPages(libJobs.map(j=>src.getPage(j.e[0])),libJobs.map(j=>({left:j.e[3],bottom:j.e[4],right:j.e[5],top:j.e[6]})));
+    libJobs.forEach((j,i)=>{const{e,R,cal}=j;const xEnd=R.x1-cal.pad,yB=H-((R.t+R.b)/2+cal.k);
+      page.pushOperators(pushGraphicsState(),rectangle(R.x0+0.3,H-R.b,R.x1-R.x0-0.3,R.b-R.t),clip(),endPath());
+      page.drawPage(emb[i],{x:e[3]+(xEnd-e[1]),y:e[4]+(yB-e[2])});
+      page.pushOperators(popGraphicsState());});}
   // 3) التوقيع (متجه)
   if(opts.sig&&opts.sig.d){const sg=opts.sig;const R={x0:X[sg.c0],x1:X[sg.c1],t:Y[sg.r0]+sg.dy0,b:Y[sg.r1]+(sg.dy1||0)};
     const sx=(R.x1-R.x0)/sg.w,sy=(R.b-R.t)/sg.h;const s=Math.min(sx,sy);const ox=R.x0+((R.x1-R.x0)-sg.w*s)/2,oy=R.t+((R.b-R.t)-sg.h*s)/2;

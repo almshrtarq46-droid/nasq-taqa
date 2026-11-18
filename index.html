@@ -772,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='384';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='385';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1110,7 +1110,7 @@ async function _sigInject(zip,sig){
   zip.file(dp,dr);zip.file(rp,rl);}
 /* V382: ميجر البرامج PDF مباشر بنفس شكل تصدير إكسل — الخلفية من PDF إكسل نفسه + الكتابة فوقها بنفس المقاسات (pdc/pdcpdf.js)
    الملف الواحد = ميجرنا ← ميجر الاستشاري (صورة كاملة لكل صفحة) ← صور قبل ← صور بعد (صورتان لكل صفحة)، واسمه رقم أمر العمل */
-const PDC_VER=1;let _pdcA=null;const _pdcFontC={};
+const PDC_VER=2;let _pdcA=null;let _pdcL;const _pdcFontC={};
 const _PDC_FONT={novaB:'nova-b',novaR:'nova-r',liberR:'liber-r',liberB:'liber-b',carlitoR:'carlito-r',carlitoB:'carlito-b',arR:'ar-r',arB:'ar-b'};
 async function _pdcAssets(){if(_pdcA)return _pdcA;
   _pdcA=(async()=>{await ensureLib('pdflib','fontkit','pdcpdf','jszip');
@@ -1118,6 +1118,11 @@ async function _pdcAssets(){if(_pdcA)return _pdcA;
       fetch('pdc/bg.pdf?v='+PDC_VER).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل خلفية الميجر');return r.arrayBuffer();})]);
     return{...j,bg:new Uint8Array(bg)};})();
   try{return await _pdcA;}catch(e){_pdcA=null;throw e;}}
+/* مكتبة الأوصاف العربية (PDF صدّره المدير من إكسل) — لو موجودة تنكتب الأوصاف بخط إكسل نفسه 100%، وإلا بالخط القريب */
+async function _pdcArLib(){if(_pdcL!==undefined)return _pdcL;
+  try{const r=await fetch('pdc/arlib.json?v='+PDC_VER);if(!r.ok){_pdcL=null;return null;}const j=await r.json();
+    const b=await fetch('pdc/arlib.pdf?v='+PDC_VER).then(x=>{if(!x.ok)throw 0;return x.arrayBuffer();});
+    j.doc=await window.PDFLib.PDFDocument.load(new Uint8Array(b));_pdcL=j;}catch(_){_pdcL=null;}return _pdcL;}
 async function _pdcFont(k){const f=_PDC_FONT[k];if(!f)return null;if(!_pdcFontC[f])_pdcFontC[f]=fetch('pdc/fonts/'+f+'.ttf?v='+PDC_VER).then(r=>{if(!r.ok)throw new Error('تعذّر تحميل الخط');return r.arrayBuffer();}).then(b=>new Uint8Array(b));
   try{return await _pdcFontC[f];}catch(e){delete _pdcFontC[f];throw e;}}
 function _sigSvgParts(svg){if(!svg)return null;const vb=svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/),tr=svg.match(/translate\(([\d.\-]+)[ ,]+([\d.\-]+)\)/),d=svg.match(/ d="([^"]+)"/);
@@ -1130,7 +1135,7 @@ async function _stPhaseImgs(pid,phase,max){const{data,error}=await sb.from('stat
 async function _progPdf(p,xlsxBlob,tplSheetXml,sig){
   const A=await _pdcAssets();const{PDFDocument}=window.PDFLib;
   const res=await PdcPdf.render({libs:{PDFLib:window.PDFLib,fontkit:window.fontkit,JSZip:window.JSZip},xlsx:new Uint8Array(await xlsxBlob.arrayBuffer()),tplSheetXml,
-    dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,sig:sig?_sigSvgParts(sig.svg):null});
+    dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,arLib:await _pdcArLib(),sig:sig?_sigSvgParts(sig.svg):null});
   const doc=res.doc;const MM=72/25.4,A4W=297*MM,A4H=210*MM;
   const emb=async im=>doc.embedJpg(im.dataUrl);
   // ميجر الاستشاري: صفحة كاملة لكل صورة باتجاهها
