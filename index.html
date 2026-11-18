@@ -772,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='389';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='390';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1146,8 +1146,9 @@ function _progPhotos(pid,force){if(!force&&window._ppre&&window._ppre.pid===pid&
 async function _embPhoto(doc,u){try{const o=_jpegOrient(u);if(o===1||o===0){const j=await doc.embedJpg(u);return{j,w:j.width,h:j.height};}
     if(u[0]===0x89&&u[1]===0x50){const j=await doc.embedPng(u);return{j,w:j.width,h:j.height};}}catch(_){}
   const im=await _sapFileToImg(new Blob([u]),2200);if(!im)return null;const j=await doc.embedJpg(im.dataUrl);return{j,w:im.w,h:im.h};}
-async function _progPdf(p,zip,tplSheetXml,sig){const T0=performance.now();
-  const phP=_progPhotos(p.id);
+async function _progPdf(p,zip,tplSheetXml,sig,withPhotos){const T0=performance.now();
+  // V390: البرامج = الميجر + ميجر الاستشاري + قبل + بعد. المحطات والميني بيلر = الميجر فقط
+  const phP=withPhotos===false?Promise.resolve({cmeas:[],before:[],after:[]}):_progPhotos(p.id);
   const[A,L]=await Promise.all([_pdcAssets(),_pdcArLib()]);_ptm('assets');
   const res=await PdcPdf.render({libs:{PDFLib:window.PDFLib,fontkit:window.fontkit,JSZip:window.JSZip},zip,tplSheetXml,tplSheet:window._pdcTplSheet,
     dyn:A.dyn,tables:A.tables,geom:A.geom,bgPdf:A.bg,loadFont:_pdcFont,arLib:L,sig:sig?_sigSvgParts(sig.svg):null});
@@ -2529,17 +2530,18 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
     // V379: ميجر «البرامج» (كيبل 800 / لقز 800): توقيع المقاول تلقائياً (pdc) + اسم الملف = رقم أمر العمل
     const _isProgSt=(data||[]).some(e=>_isCable800Work(e)||_isLug800Work(e))||!!(window._progIds&&window._progIds.has(p.id));
     // V382: ميجر البرامج = PDF مباشر (ميجرنا + ميجر الاستشاري + قبل + بعد) — ممنوع بدون ميجر الاستشاري
-    _ptm('xlsx');const _progPdfMode=_isProgSt&&cfg.sig&&!_sil;
+    _ptm('xlsx');const _pdfMode=!!cfg.sig&&!_sil; // V390: كل ميجرات pdc تطلع PDF (البرامج والمحطات والميني بيلر)
+    const _progPdfMode=_isProgSt&&_pdfMode;
     if(_progPdfMode){let n=0;try{n=await (_cmP||_progCmeasCount(p.id));}catch(_){n=-1;}if(n===0){_cmeasBlock(p.id);return;}}
     _ptm('cmeas?');let _sigObj=null;
     if(_isProgSt&&cfg.sig){try{_sigObj=await _sigLoad();await _sigInject(zip,_sigObj);}catch(e){_preWarn.push(e&&e.message==='nokey'?'التوقيع الإلكتروني ما انضاف — لازم كود SQL مفتاح التوقيع (مرة واحدة)':'التوقيع الإلكتروني ما انضاف: '+(e&&e.message||e));}}
     const _genX=()=>zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',compression:'DEFLATE'});
-    let out=_progPdfMode?null:await _genX();
+    let out=_pdfMode?null:await _genX();
     const _woN=String(p.wo_number||'').trim().replace(/[\\/:*?"<>|]/g,'-');
     if(_isProgSt&&!_woN)_preWarn.push('محطة برامج بدون رقم أمر عمل — اسم الملف صار رقم المحطة');
     let fname=(_isProgSt&&_woN)?_woN+'.xlsx':cfg.fname+'_'+(p.code||'محطة')+'.xlsx';
-    if(_progPdfMode){toast('جارٍ تجهيز ملف PDF (الميجر + ميجر الاستشاري + الصور)…');
-      try{out=await _progPdf(p,zip,_tplXml0,_sigObj);fname=fname.replace(/\.xlsx$/,'.pdf');toast('PDF جاهز ✓ ('+(window._pdcMs/1000).toFixed(1)+' ث)');}
+    if(_pdfMode){toast(_progPdfMode?'جارٍ تجهيز ملف PDF (الميجر + ميجر الاستشاري + الصور)…':'جارٍ تجهيز الميجر PDF…');
+      try{out=await _progPdf(p,zip,_tplXml0,_progPdfMode?_sigObj:null,_progPdfMode);fname=_progPdfMode?fname.replace(/\.xlsx$/,'.pdf'):String(p.code||'محطة').trim().replace(/[\\/:*?"<>|]/g,'-')+'.pdf';toast('PDF جاهز ✓ ('+(window._pdcMs/1000).toFixed(1)+' ث)');}
       catch(e){console.error(e);out=await _genX();_preWarn.push('تعذّر تجهيز PDF ('+(e&&e.message||e)+') — نزل ملف Excel بدلاً منه');}}
     // مراجعة المبالغ: الإجمالي في الورقة (من جدول أسعار القالب) مقابل إجمالي التطبيق
     const warn=[];let tc=null,ts=null,app=0;
@@ -2560,7 +2562,7 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
     const ok=!warn.length&&!iss.length;
     const row=(l,v,c)=>`<tr><td style="padding:8px 6px;border-bottom:1px solid #eee">${l}</td><td style="padding:8px 6px;border-bottom:1px solid #eee;text-align:left;direction:ltr;font-weight:800;color:${c||'#12343B'}">${v}</td></tr>`;
     openModal(`<h3 style="margin:0 0 10px">${cfg.title} — محطة ${_xmlEsc(p.code||'')}</h3>
-      ${_progPdfMode&&window._pt?`<div style="font-size:11px;color:#8a94a1;direction:ltr;text-align:left;margin:-4px 0 8px">⏱ ${_ptStr()}</div>`:''}
+      ${_pdfMode&&window._pt?`<div style="font-size:11px;color:#8a94a1;direction:ltr;text-align:left;margin:-4px 0 8px">⏱ ${_ptStr()}</div>`:''}
       ${tc!==null&&PROFILE&&PROFILE.role==='admin'?`<table style="width:100%;border-collapse:collapse;font-size:15px">${row('إجمالي المقاول في الورقة',f2(tc)+' ر.س')}${row('إجمالي الاستشاري في الورقة',f2(ts)+' ر.س','#5b3fa0')}${row('إجمالي المحطة في التطبيق',app===null?'غير متاح':f2(app)+' ر.س',(app!==null&&Math.abs(app-tc)>0.01)?'#c0392b':'#7a4a12')}</table>`:''}
       <div style="margin:12px 0;padding:10px;border-radius:10px;background:${ok?'#e8f6ee':'#fff4e5'};color:${ok?'#1b6b3a':'#8a4b00'};font-weight:700">${ok?(PROFILE&&PROFILE.role==='admin'?'✓ المبالغ وأرقام البنود مطابقة لجدول الشركة':'✓ أرقام البنود مطابقة لجدول الشركة — الملف جاهز'):'⚠️ راجع قبل الإرسال:'+(warn.length?'<br>'+warn.map(w=>'• '+_xmlEsc(w)).join('<br>'):'')}</div>
       ${autoFix.length?`<div style="padding:9px;border-radius:9px;background:#eef4ff;color:#1f4e8c;font-size:13px;line-height:1.7;margin-bottom:8px"><b>صُحّح رقم البند تلقائياً وانكتب في الورقة برقمه الصحيح:</b><br>${autoFix.map(f=>'• «'+_xmlEsc(f.name.slice(0,45))+'»: '+(f.from||'بدون رقم')+' ← <b>'+f.to+'</b>'+(fixSaved.includes(f)?' (وتصحّح في التطبيق)':'')).join('<br>')}</div>`:''}
@@ -2570,9 +2572,9 @@ async function _measureSheet(pid,cfg,opt){opt=opt||{};const _sil=!!opt.silent;co
   }catch(e){if(_sil)throw e;toast('خطأ: '+(e&&e.message||e));}
 }
 function printMeasurementSheet(pid,opt){return _measureSheet(pid,{title:'ميجر',tpl:'measurement_template.xlsx',mat:{rows:[41,45],code:['D','AH'],name:['J','AN'],qty:['AA','BE']},sheet:'2021',date:'J4',ssno:'BO4',notif:'AV5',order:'BO5',fname:'ميجر',consultMap:{'401000027':'CH24','401000013':'CH25','401000019':'CH26','603000018':'CH27','605000006':'CH28','605000007':'CH29','605000008':'CH30','605000011':'CH31','606000011':'CH32','606000013':'CH33','606000014':'CH34','606000018':'CH35','606000023':'CH36','604000002':'CH37'},likeRow:'37',alwaysLike:['B38','I38','Z38','B39','I39','Z39','AE24','AL24','BB24'],likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultFull:{'605000009':{code:'BG38',name:'BN38',qty:'CH38',cc:['B38','I38']},'606000035':{code:'BG39',name:'BN39',qty:'CH39',cc:['B39','I39']},'601000008':{code:'CM24',name:'CT24',qty:'DM24',cc:['AE24','AL24']}},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[25,39]},qty:{'401000027':'Z24','401000013':'Z25','401000019':'Z26','603000018':'Z27','605000006':'Z28','605000007':'Z29','605000008':'Z30','605000011':'Z31','606000011':'Z32','606000013':'Z33','606000014':'Z34','606000018':'Z35','606000023':'Z36','604000002':'Z37','605000009':'Z38','606000035':'Z39','601000008':'BB24'}},opt);}
-function printMeasurementSheetPDC(pid,opt){if(!(opt&&opt.silent)&&window._progIds&&window._progIds.has(pid)){
+function printMeasurementSheetPDC(pid,opt){if(!(opt&&opt.silent)){
     // كل اللي يحتاجه الـ PDF يبدأ تحميله فوراً وبالتوازي مع تجهيز الورقة
-    try{_progPhotos(pid,true);}catch(_){}
+    if(window._progIds&&window._progIds.has(pid)){try{_progPhotos(pid,true);}catch(_){}}
     _pdcAssets().then(()=>Promise.all([_pdcArLib(),_pdcFont('novaB'),_pdcFont('arB')])).catch(()=>{});
     _sigLoad().catch(()=>{});_secLoad().catch(()=>{});_pdcTpl('measurement_template_pdc.xlsx').catch(()=>{});}
   return _measureSheet(pid,{title:'ميجر pdc',sig:true,cDate:'J55',tpl:'measurement_template_pdc.xlsx',mat:{rows:[45,50],code:['D','AH','BL','CO'],name:['J','AN','BR','CU'],qty:['AB','BF','CJ','DM'],formulaName:true},sheet:'MEASUREMENT SHEET - 2026',keepOnly:false,date:'J5',ssno:'BO5',notif:'AC5',order:'AV5',fname:'ميجر_pdc',consult:'CH',prices:'pdc_prices.json',forceCalc:true,chain:{rows:[28,43],totC:['DU10','J56'],totS:['EB10','BC56']},likeRow:'41',likeMap:{B:'B',I:'I',Z:'Z',AE:'B',AL:'I',BB:'Z',BG:'BG',BN:'BN',CH:'CH',CM:'BG',CT:'BN',DM:'CH'},consultExtra:{code:'CM',name:'CT',qty:'DM'},extra:{code:'AE',name:'AL',qty:'BB',rows:[28,43]},qty:{'401000027':'Z28','401000013':'Z29','401000019':'Z30','603000018':'Z31','605000006':'Z32','605000007':'Z33','605000008':'Z34','605000011':'Z35','606000011':'Z36','606000013':'Z37','606000014':'Z38','606000018':'Z39','606000023':'Z40','604000002':'Z41'}},opt);}
@@ -3493,7 +3495,7 @@ function stationCard(pid,es,pref){pref=pref||'';const id=pref+'st_'+pid;
       <button class="actile" onclick="viewStationPhotos('${pid}')"><b>📷</b><span>الصور</span></button>
       <button class="actile" onclick="openStationEntries('${pid}')"><b>✏️</b><span>الأعمال</span></button>
       <button class="actile" onclick="printMeasurementSheet('${pid}')"><b>🖨</b><span>ميجر</span></button>
-      <button class="actile" onclick="printMeasurementSheetPDC('${pid}')"><b>🖨</b><span>${_isProgPid(pid,es)?'ميجر PDF':'ميجر pdc'}</span></button>
+      <button class="actile" onclick="printMeasurementSheetPDC('${pid}')"><b>🖨</b><span>ميجر PDF</span></button>
       ${!_vwr&&_isProgPid(pid,es)?`<button class="actile" onclick="viewStationPhotos('${pid}')"><b>📄</b><span>ميجر الاستشاري</span></button>`:''}
       <button class="actile" onclick="openStationMats('${pid}')"><b>⚡</b><span>المواد</span></button>
       ${!_vwr?`<button class="actile" onclick="openScanner('${pid}')"><b>📄</b><span>مسح الميجر</span></button>`:''}
