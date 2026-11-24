@@ -772,7 +772,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='393';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='394';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -929,7 +929,7 @@ async function doAuth(){
   }catch(e){msg(m,translateErr(e.message),'err');}finally{btn.disabled=false;btn.textContent=old;}
 }
 function translateErr(s){if(/Invalid login/i.test(s))return'بيانات الدخول غير صحيحة';if(/already registered/i.test(s))return'هذا الرقم مسجّل مسبقاً';if(/at least 6/i.test(s))return'كلمة المرور 6 أحرف على الأقل';if(/Email not confirmed/i.test(s))return'الحساب غير مُفعّل بعد';return s;}
-async function logout(){try{if('caches'in window)caches.delete('nasq-data-v1');}catch(_){}try{localStorage.removeItem(_PROF_K);}catch(_){}stopLiveTracking();if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
+async function logout(){try{if('caches'in window)caches.delete('nasq-data-v1');}catch(_){}try{localStorage.removeItem(_PROF_K);}catch(_){}try{_IDB.clear();}catch(_){}window._woData=null;stopLiveTracking();if(window._liveInterval){clearInterval(window._liveInterval);window._liveInterval=null;}await sb.auth.signOut();ME=null;PROFILE=null;toggleSidebar(false);show('screen-auth');switchAuth('login');}
 function routeFor(p){if(!p)return'missing';if(p.status==='suspended')return'suspended';if(p.status==='pending')return'pending';return p.role==='admin'?'admin':p.role==='viewer'?'viewer':'worker';}
 function roleLabel(r){return r==='admin'?'مدير النظام':r==='data_entry'?'مدخل بيانات':r==='viewer'?'مكتب الشرق':'عامل ميداني';}
 /* V393: دخول فوري — مستخدم الجلسة المحفوظة بدل طلب getUser من السيرفر، والملف الشخصي من آخر دخول (يتحقق بالخلفية) */
@@ -958,7 +958,16 @@ async function enterApp(role){
   document.getElementById('sb_name').textContent=PROFILE.full_name||'';
   const _sr=document.getElementById('sb_role');if(_sr)_sr.textContent=roleLabel(PROFILE.role);
   // V393: المحطات والبنود (الأثقل) بالخلفية — الواجهة تفتح فوراً، والصفحات اللي تحتاجها تنتظرها تلقائياً
-  _bgDone=false;_bgP=Promise.all([loadProjectsCache().catch(e=>{toast('تعذّر تحميل المحطات: '+(e&&e.message||e));}),loadCatalog()]).then(()=>{_bgDone=true;try{_updSecBadges();}catch(_){}});
+  // V394: لو فيه نسخة محفوظة على الجهاز تفتح منها فوراً، والتحديث من السيرفر بالخلفية
+  const _uid=ME.id,_rk=PROFILE.role;const[cPj,cCt,cWo]=await Promise.all([_cGet('projects'),_cGet('catalog'),_rk!=='worker'?_cGet('entries'):null]);
+  const _hasC=Array.isArray(cPj)&&cPj.length&&Array.isArray(cCt)&&cCt.length;
+  if(_hasC){PROJECTS=cPj;CATALOG=cCt;}if(Array.isArray(cWo)&&cWo.length&&!window._woData)window._woData=cWo;
+  const _old=_hasC?{p:cPj,c:cCt}:null;
+  const _net=Promise.all([loadProjectsCache().catch(e=>{if(!_hasC)toast('تعذّر تحميل المحطات: '+(e&&e.message||e));}),loadCatalog()]).then(()=>{if(!ME||ME.id!==_uid)return;
+    _bgDone=true;try{_updSecBadges();}catch(_){}
+    if(_old&&(!_same(_old.p,PROJECTS)||!_same(_old.c,CATALOG))&&window._curView==='workorders'&&window._woData){try{loadWorkOrders(true);}catch(_){}}});
+  if(_hasC){_bgDone=true;_bgP=Promise.resolve();}else{_bgDone=false;_bgP=_net;}
+  if(_rk!=='worker')_woRefresh();
   await Promise.all([loadZonesCache(),loadSettingsCache(),loadMyCrew(),loadAssignments()]);buildNav(role);show('screen-app');
   if(role==='worker'||role==='data_entry')startLiveTracking();else if(role==='admin')_idlePreload();
   refreshNotifBadge();if(!window._notifTimer)window._notifTimer=setInterval(refreshNotifBadge,60000);
@@ -986,7 +995,7 @@ async function enablePush(){if(!('serviceWorker'in navigator)||!('PushManager'in
     const reg=await navigator.serviceWorker.ready;await _subscribePush(reg);
     toast('تم تفعيل الإشعارات ✓');updatePushBtn();}catch(e){toast('تعذّر التفعيل: '+(e.message||''));}}
 function updatePushBtn(){const b=document.getElementById('pushBtn');if(!b)return;const ok=('Notification'in window)&&('serviceWorker'in navigator)&&('PushManager'in window);b.style.display=(ok&&Notification.permission!=='granted')?'block':'none';}
-async function loadCatalog(){try{if(PROFILE.role==='admin'){const{data}=await sb.from('catalog_items').select('*').order('code');CATALOG=data||[];}else{const{data}=await sb.from('catalog_public').select('*').order('code');CATALOG=data||[];}}catch(e){CATALOG=[];}}
+async function loadCatalog(){try{if(PROFILE.role==='admin'){const{data,error}=await sb.from('catalog_items').select('*').order('code');if(error)throw error;CATALOG=data||[];}else{const{data,error}=await sb.from('catalog_public').select('*').order('code');if(error)throw error;CATALOG=data||[];}_cSet('catalog',CATALOG);}catch(e){if(!CATALOG||!CATALOG.length)CATALOG=[];}}
 async function loadAssignments(){try{const{data}=await sb.from('assignments').select('*').order('created_at',{ascending:false});ASSIGNMENTS=data||[];}catch(e){ASSIGNMENTS=[];}}
 async function loadMyCrew(){MY_CREW_LED=[];MY_CREW_MEMBER=false;try{
   const[{data:led},mem]=await Promise.all([sb.from('crews').select('id,name,leader_id, crew_members(member_id,member_name)').eq('leader_id',ME.id),sb.from('crew_members').select('*',{count:'exact',head:true}).eq('member_id',ME.id)]);
@@ -1015,12 +1024,25 @@ const DOC_TYPES=[
 async function loadSettingsCache(){try{const{data}=await sb.from('settings').select('*').eq('id',1).maybeSingle();SETTINGS=data||DEF_SETTINGS;}catch(e){SETTINGS=DEF_SETTINGS;}}
 function minutesLate(now){if(!SETTINGS||!SETTINGS.work_start)return 0;const[h,m]=SETTINGS.work_start.split(':').map(Number);const start=new Date(now);start.setHours(h,m,0,0);return Math.max(0,Math.round((now.getTime()-start.getTime())/60000));}
 function lateHours(now){const ml=minutesLate(now);const s=SETTINGS||DEF_SETTINGS;const t2=Number(s.late_t2_min??30),t2h=Number(s.late_t2_hours??3),t1=Number(s.late_t1_min??15),t1h=Number(s.late_t1_hours??1);if(ml>=t2)return t2h;if(ml>=t1)return t1h;return 0;}
-async function _fetchAll(build){const PAGE=1000;let out=[],from=0;for(let i=0;i<50;i++){const{data,error}=await build().range(from,from+PAGE-1);if(error)throw error;const b=data||[];out=out.concat(b);if(b.length<PAGE)break;from+=PAGE;}return out;}
+/* V394: الصفحات بعد الأولى تنجلب 4 مع بعض بدل وحدة ورا وحدة */
+async function _fetchAll(build){const PAGE=1000;const f=await build().range(0,PAGE-1);if(f.error)throw f.error;let out=f.data||[];if(out.length<PAGE)return out;
+  let from=PAGE;for(let i=0;i<12;i++){const rs=await Promise.all([0,1,2,3].map(k=>build().range(from+k*PAGE,from+(k+1)*PAGE-1)));let done=false;
+    for(const r of rs){if(r.error)throw r.error;const b=r.data||[];out=out.concat(b);if(b.length<PAGE){done=true;break;}}if(done)break;from+=4*PAGE;}return out;}
+/* V394: كاش على الجهاز (IndexedDB) — الصفحات تفتح فوراً من آخر نسخة وتتحدّث بالخلفية */
+const _IDB={p:null,open(){if(!this.p)this.p=new Promise(res=>{try{const r=indexedDB.open('nasq-cache',1);r.onupgradeneeded=()=>{try{r.result.createObjectStore('kv');}catch(_){}};r.onsuccess=()=>res(r.result);r.onerror=()=>res(null);r.onblocked=()=>res(null);}catch(_){res(null);}});return this.p;},
+  async get(k){const db=await this.open();if(!db)return null;return new Promise(res=>{try{const q=db.transaction('kv').objectStore('kv').get(k);q.onsuccess=()=>res(q.result===undefined?null:q.result);q.onerror=()=>res(null);}catch(_){res(null);}});},
+  async set(k,v){const db=await this.open();if(!db)return;return new Promise(res=>{try{const t=db.transaction('kv','readwrite');t.objectStore('kv').put(v,k);t.oncomplete=()=>res();t.onerror=()=>res();}catch(_){res();}});},
+  async clear(){const db=await this.open();if(!db)return;return new Promise(res=>{try{const t=db.transaction('kv','readwrite');t.objectStore('kv').clear();t.oncomplete=()=>res();t.onerror=()=>res();}catch(_){res();}});}};
+function _ck(n){return (ME&&ME.id||'x')+':'+n;}
+function _cGet(n,ms){return Promise.race([_IDB.get(_ck(n)),new Promise(r=>setTimeout(()=>r(null),ms||1500))]).catch(()=>null);}
+function _cSet(n,v){try{_IDB.set(_ck(n),v);}catch(_){}}
+function _same(a,b){try{return JSON.stringify(a)===JSON.stringify(b);}catch(_){return false;}}
 async function loadProjectsCache(){
   if(PROFILE.role==='admin'){PROJECTS=await _fetchAll(()=>sb.from('projects').select('*, work_items(*)').order('created_at',{ascending:false}));}
   else{const pr=await _fetchAll(()=>sb.from('projects').select('*').order('created_at',{ascending:false}));
     const it=await _fetchAll(()=>sb.from('items_public').select('*'));const by={};(it||[]).forEach(i=>{(by[i.project_id]=by[i.project_id]||[]).push(i);});
     PROJECTS=(pr||[]).map(p=>({...p,work_items:by[p.id]||[]}));}
+  _cSet('projects',PROJECTS);
 }
 function _svgPath(p){return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${p.split(' M').map((d,i)=>`<path d="${i?'M'+d:d}"/>`).join('')}</svg>`;}
 const NAV_MAIN=[
@@ -1086,7 +1108,7 @@ function goView(v){
   document.getElementById('v-'+v).classList.add('on');
   document.querySelectorAll('#nav button,.sb-item').forEach(b=>b.classList.toggle('on',b.dataset.v===_nv));
   window.scrollTo(0,0);
-  window._curView=v;const _vf=({overview:loadOverview,company:loadCompanyDocs,workorders:loadWorkOrders,'station-search':initStationSearch,contract:initContract,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:initExpenses,livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,sapfiles:loadSapFiles,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}));
+  window._curView=v;const _vf=({overview:loadOverview,company:loadCompanyDocs,workorders:()=>loadWorkOrders('nav'),'station-search':initStationSearch,contract:initContract,dispatch:loadDispatch,myroute:loadMyRoute,hr:initHR,finance:initFinance,expenses:()=>initExpenses('nav'),livemap:initLiveMap,approvals:loadApprovals,projects:loadProjects,catalog:loadCatalogAdmin,inventory:initInventory,assignments:loadAssignmentsAdmin,settings:loadSettings,zones:loadZones,home:loadWorkerHome,sapfiles:loadSapFiles,'att-worker':initAttWorker,field:initField,'my-att':loadMyAttendance,'my-works':loadMyWorks,'my-info':loadMyInfo}[v]||(()=>{}));
   if(!_bgDone&&_bgP&&!_BG_FREE.has(v)){_bgP.then(()=>{if(window._curView!==v)return;_vf();setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);});}
   else _vf();
   setTimeout(()=>enforceEnDates(document.getElementById('v-'+v)),40);
@@ -3188,9 +3210,13 @@ function _stTypeSummary(ids){
       ${c['غير محدد']?`<span class="pill pend">غير محدد: ${c['غير محدد']}</span>`:''}
     </div></div>`;
 }
+/* V394: تحديث الأعمال بالخلفية — لو تغيّرت والصفحة مفتوحة تتحدّث بهدوء */
+let _woRefP=null;function _woFetch(){return _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false})).then(d=>{_cSet('entries',d);return d;});}
+let _woAt=0;function _woRefresh(){if(_woRefP)return _woRefP;if(Date.now()-_woAt<20000)return Promise.resolve();const uid=ME&&ME.id;_woRefP=_woFetch().then(d=>{if(!ME||ME.id!==uid)return;_woAt=Date.now();const ch=!_same(window._woData,d);window._woData=d;if(ch&&_bgDone&&window._curView==='workorders')loadWorkOrders(true);}).catch(()=>{}).finally(()=>{_woRefP=null;});return _woRefP;}
 async function loadWorkOrders(useCache){try{_pdcWarm();}catch(_){}
   const period=document.getElementById('wo_period').value;
-  let data;if(useCache===true&&window._woData)data=window._woData;else{try{data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false}));window._woData=data;}catch(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}}
+  if(useCache==='nav'){if(window._woData){useCache=true;_woRefresh();}else if(_woRefP){await _woRefP;useCache=!!window._woData;}else useCache=false;}
+  let data;if(useCache===true&&window._woData)data=window._woData;else{try{data=await _fetchAll(()=>sb.from('entries').select('*, entry_finance(rate,amount)').order('work_date',{ascending:false}));window._woData=data;_woAt=Date.now();_cSet('entries',data);}catch(error){document.getElementById('woList').innerHTML='<div class="empty">خطأ: '+error.message+'</div>';return;}}
   let rows=(data||[]).map(e=>({...e,amount:e.entry_finance?Number(e.entry_finance.amount):0,rate:e.entry_finance?Number(e.entry_finance.rate):0}));
   _calcProgIds(data);
   if(period!=='all'){const wdOf=e=>String(e.work_date||'').slice(0,10);
@@ -4626,14 +4652,21 @@ async function sapMakePdf(){const st=(document.getElementById('sapStation').valu
 /* ===== المصروفات ===== */
 const EXP_CATS=['رواتب','مشتريات','مصروفات حكومية','إيجارات','مسحوبات شخصية','أخرى'];
 let ALL_EXP=[],expPhoto=null;
-async function initExpenses(){
-  document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
-  document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
-  let data=[];try{data=await _fetchAll(()=>sb.from('expenses').select('*').order('expense_date',{ascending:false}).order('id'));}catch(e){toast('تعذّر تحميل المصروفات: '+(e&&e.message||e));}
-  ALL_EXP=(data||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('expense_date'));
+function _expFetch(){return _fetchAll(()=>sb.from('expenses').select('*').order('expense_date',{ascending:false}).order('id')).then(d=>{_cSet('expenses',d);return d;});}
+function _expMonths(keepSel){const sel=document.getElementById('ex_month');const prev=keepSel&&sel?sel.value:null;
   const months=[...new Set(ALL_EXP.map(e=>(e.expense_date||'').slice(0,7)))].filter(Boolean).sort().reverse();
-  const cur=monthKey();if(!months.includes(cur))months.unshift(cur);
-  document.getElementById('ex_month').innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${m}</option>`).join('');
+  const cur=monthKey();if(!months.includes(cur))months.unshift(cur);const want=prev!==null?prev:cur;
+  sel.innerHTML='<option value="">كل الأشهر</option>'+months.map(m=>`<option value="${m}" ${m===want?'selected':''}>${m}</option>`).join('');}
+async function initExpenses(mode){
+  document.getElementById('ex_cat').innerHTML='<option value="">كل التصنيفات</option>'+EXP_CATS.map(c=>`<option value="${c}">${c}</option>`).join('');
+  // V394: عند فتح الصفحة — من آخر نسخة على الجهاز فوراً، والتحديث بالخلفية
+  if(mode==='nav'){const c=await _cGet('expenses',800);if(Array.isArray(c)){ALL_EXP=c.filter(x=>!x.deleted_at).sort(_byDateDesc('expense_date'));_expMonths(false);
+      const f=document.getElementById('ex_from'),t=document.getElementById('ex_to');if(f&&!f.value)f.value=new Date().getFullYear()+'-01-01';if(t&&!t.value)t.value=todayKey();renderExpenses();
+      _expFetch().then(d=>{if(window._curView!=='expenses')return;const n=(d||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('expense_date'));if(_same(n,ALL_EXP))return;ALL_EXP=n;_expMonths(true);renderExpenses();}).catch(()=>{});return;}}
+  document.getElementById('exList').innerHTML='<div class="empty">جارٍ التحميل…</div>';
+  let data=[];try{data=await _expFetch();}catch(e){toast('تعذّر تحميل المصروفات: '+(e&&e.message||e));}
+  ALL_EXP=(data||[]).filter(x=>!x.deleted_at).sort(_byDateDesc('expense_date'));
+  _expMonths(false);
   const f=document.getElementById('ex_from'),t=document.getElementById('ex_to');if(f&&!f.value)f.value=new Date().getFullYear()+'-01-01';if(t&&!t.value)t.value=todayKey();
   renderExpenses();
 }
