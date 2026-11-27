@@ -775,7 +775,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='402';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='403';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1662,30 +1662,36 @@ async function openTomorrowWorks(btn){
     const all=[...seen.entries()].map(([num,ws])=>{const st=_resolveStation(num);return{num,work:[...ws].join(' + ')||'—',url:st?_mapsUrl(st.la,st.lo):null};});
     const TW_MAX=7;const withLoc=all.filter(x=>x.url);const skipped=all.length-withLoc.length;const items=withLoc.slice(0,TW_MAX);const left=withLoc.length-items.length;
     if(!items.length){toast('محطات بكرة كلها بدون موقع — ما انطبع شيء');return;}
-    const NAVY='#12343B',GOLD='#C9A24B',PER=14;const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+    const NAVY='#0E2A47',BLUE='#1565C0',PER=13;const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
     const pages=Math.ceil(items.length/PER);
     for(let pg=0;pg<pages;pg++){
       const part=items.slice(pg*PER,pg*PER+PER);
-      const html=`<div style="font-family:Tajawal,'Segoe UI',Tahoma,sans-serif;direction:rtl;padding:34px 34px 26px;color:#1b2436;background:#fff">
-        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid ${NAVY};padding-bottom:12px;margin-bottom:18px">
-          <div><div style="font-size:34px;font-weight:900;color:${NAVY}">أعمال غدا</div><div style="font-size:18px;font-weight:800;color:#a8842f;margin-top:4px">يوم ${day} · <span dir="ltr" style="unicode-bidi:isolate">${dmy}</span></div></div>
-          <div style="text-align:left;font-size:13px;color:#5b6678;font-weight:700">عدد المحطات: <b style="color:${NAVY};font-size:20px">${items.length}</b>${pages>1?`<div>صفحة ${pg+1} من ${pages}</div>`:''}</div></div>
-        <table style="width:100%;border-collapse:collapse;font-size:15px">
-          <thead><tr>${['#','رقم المحطة','العمل المطلوب','الموقع'].map((h,i)=>`<th style="background:${NAVY};color:#fff;padding:11px 8px;font-weight:800;border:1px solid ${NAVY};${i===2?'text-align:right':'text-align:center'}">${h}</th>`).join('')}</tr></thead>
-          <tbody>${part.map((it,i)=>`<tr style="background:${i%2?'#f6f8fb':'#fff'}">
-            <td style="border:1px solid #d9e0ea;padding:10px 6px;text-align:center;color:#a8842f;font-weight:900;width:36px">${pg*PER+i+1}</td>
-            <td style="border:1px solid #d9e0ea;padding:10px 8px;text-align:center;font-weight:900;font-size:17px;width:110px">${_stEsc(it.num)}</td>
-            <td style="border:1px solid #d9e0ea;padding:10px 10px;font-weight:700">${_stEsc(it.work)}</td>
-            <td style="border:1px solid #d9e0ea;padding:7px 8px;text-align:center;width:150px">${it.url?`<span class="twLnk" data-u="${_stEsc(it.url)}" style="display:inline-block;background:${GOLD};color:#12343B;font-weight:900;border-radius:8px;padding:7px 12px;font-size:14px">📍 الذهاب للمحطة</span>`:'<span style="color:#b00020;font-size:12.5px;font-weight:700">الموقع غير متوفر</span>'}</td></tr>`).join('')}</tbody></table>
-        <div style="margin-top:14px;font-size:11.5px;color:#7a8597">اضغط «الذهاب للمحطة» يفتح موقعها على خرائط جوجل مباشرة.</div></div>`;
+      const html=`<div style="font-family:Tajawal,'Segoe UI',Tahoma,sans-serif;direction:rtl;padding:30px 36px 28px;color:#1b2436;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <img src="img/sharq.png" style="height:58px;width:auto">
+          <img src="img/se.png" style="height:70px;width:auto">
+        </div>
+        <div style="height:3px;background:linear-gradient(90deg,${BLUE},${NAVY});border-radius:2px;margin-bottom:22px"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:16px">
+          <div><div style="font-size:30px;font-weight:900;color:${NAVY};line-height:1.2">أعمال غدا</div>
+            <div style="font-size:16px;font-weight:700;color:#4a5a70;margin-top:6px">يوم <b style="color:${BLUE}">${day}</b> · <span dir="ltr" style="unicode-bidi:isolate;font-weight:800;color:${NAVY}">${dmy}</span></div></div>
+          <div style="background:#eef4fb;border:1px solid #d6e3f3;border-radius:12px;padding:8px 16px;text-align:center"><div style="font-size:11.5px;color:#4a5a70;font-weight:700">عدد المحطات</div><div style="font-size:24px;font-weight:900;color:${NAVY};line-height:1.1">${items.length}</div>${pages>1?`<div style="font-size:10.5px;color:#7a8597">صفحة ${pg+1} من ${pages}</div>`:''}</div></div>
+        <table style="width:100%;border-collapse:separate;border-spacing:0;font-size:15px;border:1px solid #d6e0ec;border-radius:12px;overflow:hidden">
+          <thead><tr>${['#','رقم المحطة','العمل المطلوب','الموقع'].map((h,i)=>`<th style="background:${NAVY};color:#fff;padding:12px 8px;font-weight:800;font-size:14px;${i===2?'text-align:right;padding-right:14px':'text-align:center'}">${h}</th>`).join('')}</tr></thead>
+          <tbody>${part.map((it,i)=>`<tr style="background:${i%2?'#f5f8fc':'#fff'}">
+            <td style="border-top:1px solid #e3e9f1;padding:12px 6px;text-align:center;color:${BLUE};font-weight:900;width:38px">${pg*PER+i+1}</td>
+            <td style="border-top:1px solid #e3e9f1;border-right:1px solid #e3e9f1;padding:12px 8px;text-align:center;font-weight:900;font-size:17px;color:${NAVY};width:115px">${_stEsc(it.num)}</td>
+            <td style="border-top:1px solid #e3e9f1;border-right:1px solid #e3e9f1;padding:12px 14px;font-weight:700;color:#2b3648">${_stEsc(it.work)}</td>
+            <td style="border-top:1px solid #e3e9f1;border-right:1px solid #e3e9f1;padding:8px;text-align:center;width:150px"><span class="twLnk" data-u="${_stEsc(it.url)}" style="display:inline-block;background:${BLUE};color:#fff;font-weight:800;border-radius:8px;padding:8px 14px;font-size:13.5px">📍 الذهاب للمحطة</span></td></tr>`).join('')}</tbody></table></div>`;
       const W=794;const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:'+W+'px;background:#fff';wrap.innerHTML=html;document.body.appendChild(wrap);
+      await Promise.all([...wrap.querySelectorAll('img')].map(im=>im.complete&&im.naturalWidth?0:new Promise(r=>{im.onload=im.onerror=r;})));
       const wr=wrap.getBoundingClientRect();const links=[...wrap.querySelectorAll('.twLnk')].map(el=>{const r=el.getBoundingClientRect();return{x:r.left-wr.left,y:r.top-wr.top,w:r.width,h:r.height,u:el.getAttribute('data-u')};});
       const canvas=await html2canvas(wrap,{scale:2.5,backgroundColor:'#ffffff',imageTimeout:0});const Hpx=wrap.offsetHeight;document.body.removeChild(wrap);
       if(pg>0)pdf.addPage('a4','p');
       const k=210/W;const ih=Math.min(297,Hpx*k);pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,Hpx*k);
       links.forEach(l=>{if(l.y*k<ih)pdf.link(l.x*k,l.y*k,l.w*k,l.h*k,{url:l.u});});
     }
-    _pdfSave(pdf,'أعمال غدا يوم '+day+' '+dmy+'.pdf');toast('تم تجهيز «أعمال غدا» — '+day+' '+dmy+' ✓'+(skipped?' · استُبعدت '+skipped+' محطة بدون موقع':'')+(left?' · '+left+' محطة متبقية تطلع في الأيام الجاية':''));
+    _pdfSave(pdf,'أعمال غدا يوم '+day+' بتاريخ '+dmy+'.pdf');toast('تم تجهيز «أعمال غدا» — '+day+' '+dmy+' ✓'+(skipped?' · استُبعدت '+skipped+' محطة بدون موقع':'')+(left?' · '+left+' محطة متبقية تطلع في الأيام الجاية':''));
   }catch(e){toast('خطأ: '+(e&&e.message||e));}
   finally{if(b){b.disabled=false;b.innerHTML=old;}}
 }
