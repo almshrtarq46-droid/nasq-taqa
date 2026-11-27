@@ -491,6 +491,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
       </div>
       <h3 class="section-title" style="font-size:16px;margin:20px 0 8px">مسارات اليوم</h3>
       <button class="btn ghost sm" type="button" onclick="openDispOverview()" style="width:100%;margin-bottom:10px">📅 عرض المسند حسب اليوم (السابق / التالي)</button>
+      <button class="btn sm" type="button" id="twBtn" onclick="openTomorrowWorks()" style="width:100%;margin-bottom:10px;background:#12343B;border-color:#12343B">📄 أعمال غدا (PDF) — من المسند المسجّل لبكرة</button>
       <div id="dpList"></div>
     </div>
 
@@ -772,7 +773,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='394';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='395';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1641,6 +1642,46 @@ async function loadOvDispatch(){
     ${rows.length?teamRows:'<div class="empty" style="padding:6px">لا يوجد إسناد اليوم</div>'}
     ${cPend>0?`<div style="margin-top:8px;background:#fdf3e6;border:1px solid #eeddc4;border-radius:10px;padding:7px 10px;font-size:13px;color:var(--copper);font-weight:700">⏳ متبقٍ من أيام سابقة: ${cPend} محطة لم تُنجز</div>`:''}
   </div>`;
+}
+/* V395: «أعمال غدا» — PDF من المسند المسجّل لتاريخ بكرة (بتوقيت السعودية)، كل محطة فيها زر يفتح موقعها على الخريطة */
+function _ksaToday(){try{return new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Riyadh'});}catch(_){return todayKey();}}
+async function openTomorrowWorks(){
+  const b=document.getElementById('twBtn');const old=b?b.innerHTML:'';if(b){b.disabled=true;b.innerHTML='⏳ جارٍ التجهيز…';}
+  try{
+    const tom=_dpDayShift(_ksaToday(),1);const day=_arWeekday(tom);const dmy=tom.split('-').reverse().join('-');
+    const rows=await _dpFetch(tom);
+    const seen=new Map();
+    rows.forEach(d=>{const wk=d.works||{};(d.station_nos||[]).forEach(n=>{const k=String(n).trim();if(!k)return;const w=String(wk[n]||'').trim();
+      if(!seen.has(k))seen.set(k,new Set());if(w)seen.get(k).add(w);});});
+    if(!seen.size){toast('ما فيه محطات مسندة لتاريخ بكرة ('+day+' '+dmy+') — سجّلها في التوزيع بتاريخ بكرة');return;}
+    await Promise.all([ensureLib('jspdf','html2canvas'),loadStationIndex().then(()=>_buildStByNum()).catch(()=>{})]);
+    const items=[...seen.entries()].map(([num,ws])=>{const st=_resolveStation(num);return{num,work:[...ws].join(' + ')||'—',url:st?_mapsUrl(st.la,st.lo):null};});
+    const NAVY='#12343B',GOLD='#C9A24B',PER=14;const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
+    const pages=Math.ceil(items.length/PER);
+    for(let pg=0;pg<pages;pg++){
+      const part=items.slice(pg*PER,pg*PER+PER);
+      const html=`<div style="font-family:Tajawal,'Segoe UI',Tahoma,sans-serif;direction:rtl;padding:34px 34px 26px;color:#1b2436;background:#fff">
+        <div style="display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid ${NAVY};padding-bottom:12px;margin-bottom:18px">
+          <div><div style="font-size:34px;font-weight:900;color:${NAVY}">أعمال غدا</div><div style="font-size:18px;font-weight:800;color:#a8842f;margin-top:4px">يوم ${day} · <span dir="ltr" style="unicode-bidi:isolate">${dmy}</span></div></div>
+          <div style="text-align:left;font-size:13px;color:#5b6678;font-weight:700">عدد المحطات: <b style="color:${NAVY};font-size:20px">${items.length}</b>${pages>1?`<div>صفحة ${pg+1} من ${pages}</div>`:''}</div></div>
+        <table style="width:100%;border-collapse:collapse;font-size:15px">
+          <thead><tr>${['#','رقم المحطة','العمل المطلوب','الموقع'].map((h,i)=>`<th style="background:${NAVY};color:#fff;padding:11px 8px;font-weight:800;border:1px solid ${NAVY};${i===2?'text-align:right':'text-align:center'}">${h}</th>`).join('')}</tr></thead>
+          <tbody>${part.map((it,i)=>`<tr style="background:${i%2?'#f6f8fb':'#fff'}">
+            <td style="border:1px solid #d9e0ea;padding:10px 6px;text-align:center;color:#a8842f;font-weight:900;width:36px">${pg*PER+i+1}</td>
+            <td style="border:1px solid #d9e0ea;padding:10px 8px;text-align:center;font-weight:900;font-size:17px;width:110px">${_stEsc(it.num)}</td>
+            <td style="border:1px solid #d9e0ea;padding:10px 10px;font-weight:700">${_stEsc(it.work)}</td>
+            <td style="border:1px solid #d9e0ea;padding:7px 8px;text-align:center;width:150px">${it.url?`<span class="twLnk" data-u="${_stEsc(it.url)}" style="display:inline-block;background:${GOLD};color:#12343B;font-weight:900;border-radius:8px;padding:7px 12px;font-size:14px">📍 الذهاب للمحطة</span>`:'<span style="color:#b00020;font-size:12.5px;font-weight:700">الموقع غير متوفر</span>'}</td></tr>`).join('')}</tbody></table>
+        <div style="margin-top:14px;font-size:11.5px;color:#7a8597">اضغط «الذهاب للمحطة» يفتح موقعها على خرائط جوجل مباشرة.</div></div>`;
+      const W=794;const wrap=document.createElement('div');wrap.style.cssText='position:fixed;left:-99999px;top:0;width:'+W+'px;background:#fff';wrap.innerHTML=html;document.body.appendChild(wrap);
+      const wr=wrap.getBoundingClientRect();const links=[...wrap.querySelectorAll('.twLnk')].map(el=>{const r=el.getBoundingClientRect();return{x:r.left-wr.left,y:r.top-wr.top,w:r.width,h:r.height,u:el.getAttribute('data-u')};});
+      const canvas=await html2canvas(wrap,{scale:2.5,backgroundColor:'#ffffff',imageTimeout:0});const Hpx=wrap.offsetHeight;document.body.removeChild(wrap);
+      if(pg>0)pdf.addPage('a4','p');
+      const k=210/W;const ih=Math.min(297,Hpx*k);pdf.addImage(canvas.toDataURL('image/jpeg',0.92),'JPEG',0,0,210,Hpx*k);
+      links.forEach(l=>{if(l.y*k<ih)pdf.link(l.x*k,l.y*k,l.w*k,l.h*k,{url:l.u});});
+    }
+    _pdfSave(pdf,'أعمال غدا.pdf');toast('تم تجهيز «أعمال غدا» — '+day+' '+dmy+' ✓');
+  }catch(e){toast('خطأ: '+(e&&e.message||e));}
+  finally{if(b){b.disabled=false;b.innerHTML=old;}}
 }
 async function openDispOverview(date){
   date=date||todayKey();
