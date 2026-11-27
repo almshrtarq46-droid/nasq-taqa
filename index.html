@@ -775,7 +775,7 @@ nav button svg{width:22px;height:22px;transition:transform .18s ease}nav button.
 <script>
 const LOGO_SVG='<svg viewBox="0 0 100 100"><polygon points="58,5 22,57 47,57 38,95 82,39 54,39" fill="#0f6b4f"/></svg>';
 document.querySelectorAll('.logo,.lg').forEach(l=>l.innerHTML=LOGO_SVG);
-const APP_VER='399';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
+const APP_VER='400';const _vt=document.getElementById('verTag');if(_vt)_vt.textContent=APP_VER;const _sv=document.getElementById('sbVer');if(_sv)_sv.textContent='V'+APP_VER;
 /* تحديث يدوي: يعيد التحميل من الشبكة (مهم لتطبيق الجوال المثبّت — لا يوجد شريط عنوان) */
 function refreshApp(){try{if('caches'in window)caches.keys().then(ks=>ks.forEach(k=>caches.delete(k)));}catch(_){}const b=location.origin+location.pathname;location.replace(b+'?_r='+Date.now()+location.hash);}
 /* المقدمة الافتتاحية: تظهر ~3 ثوانٍ عند الفتح العادي فقط. عند التحديث/إعادة التحميل (رابط فيه ?) تُزال فوراً */
@@ -1660,7 +1660,7 @@ async function openTomorrowWorks(btn){
     if(!seen.size){toast('ما فيه محطات لبكرة ('+day+' '+dmy+') — لا مسند لبكرة ولا محطات متبقية ما تنفّذت');return;}
     await Promise.all([ensureLib('jspdf','html2canvas'),loadStationIndex().then(()=>_buildStByNum()).catch(()=>{})]);
     const all=[...seen.entries()].map(([num,ws])=>{const st=_resolveStation(num);return{num,work:[...ws].join(' + ')||'—',url:st?_mapsUrl(st.la,st.lo):null};});
-    const TW_MAX=6;const withLoc=all.filter(x=>x.url);const skipped=all.length-withLoc.length;const items=withLoc.slice(0,TW_MAX);const left=withLoc.length-items.length;
+    const TW_MAX=7;const withLoc=all.filter(x=>x.url);const skipped=all.length-withLoc.length;const items=withLoc.slice(0,TW_MAX);const left=withLoc.length-items.length;
     if(!items.length){toast('محطات بكرة كلها بدون موقع — ما انطبع شيء');return;}
     const NAVY='#12343B',GOLD='#C9A24B',PER=14;const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'p',unit:'mm',format:'a4',compress:true});
     const pages=Math.ceil(items.length/PER);
